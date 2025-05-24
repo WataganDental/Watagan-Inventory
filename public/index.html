@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Watagan Dental Inventory System</title>
+  <link href="/css/output.css" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+  <div class="container mx-auto p-4">
+    <h1 class="text-3xl font-bold text-center mb-6">Watagan Dental Inventory System</h1>
+
+    <!-- Update Product Quantity -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+      <h2 class="text-xl font-semibold mb-4">Update Product Quantity</h2>
+      <div class="grid grid-cols-1 gap-4">
+        <div id="batchUpdates" class="space-y-2"></div>
+        <button id="addBatchEntryBtn" class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Add Product to Update</button>
+        <button id="submitBatchUpdatesBtn" class="bg-green-500 text-white p-2 rounded hover:bg-green-600">Submit Updates</button>
+      </div>
+      <div class="mt-4">
+        <video id="updateVideo" class="w-full max-w-md mx-auto mb-4 hidden" autoplay playsinline></video>
+        <canvas id="updateCanvas" class="hidden"></canvas>
+        <button id="startUpdateScannerBtn" class="bg-green-500 text-white p-2 rounded hover:bg-green-600">Start Scanner</button>
+        <button id="stopUpdateScannerBtn" class="bg-red-500 text-white p-2 rounded hover:bg-red-600">Stop Scanner</button>
+        <p id="updateScanResult" class="mt-4 text-center"></p>
+      </div>
+    </div>
+
+    <!-- Add/Edit Product Form -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+      <h2 id="productFormTitle" class="text-xl font-semibold mb-4">Add New Product</h2>
+      <div class="grid grid-cols-1 gap-4">
+        <input id="productId" type="hidden">
+        <input id="productName" type="text" placeholder="Product Name" class="border p-2 rounded">
+        <input id="productQuantity" type="number" placeholder="Quantity" class="border p-2 rounded">
+        <input id="productCost" type="number" step="0.01" placeholder="Cost per Unit ($)" class="border p-2 rounded">
+        <input id="productMinQuantity" type="number" placeholder="Minimum Quantity" class="border p-2 rounded">
+        <select id="productSupplier" class="border p-2 rounded">
+          <option value="">Select Supplier</option>
+        </select>
+        <select id="productLocation" class="border p-2 rounded">
+          <option value="Surgery 1">Surgery 1</option>
+          <option value="Surgery 2">Surgery 2</option>
+          <option value="Surgery 3">Surgery 3</option>
+          <option value="Lab">Lab</option>
+          <option value="Sterilising Room">Sterilising Room</option>
+        </select>
+        <div>
+          <video id="photoVideo" class="w-full max-w-xs mx-auto mb-2 hidden" autoplay playsinline></video>
+          <canvas id="photoCanvas" class="hidden"></canvas>
+          <img id="productPhotoPreview" class="w-full max-w-xs mx-auto mb-2 hidden" alt="Product Photo Preview">
+          <button id="capturePhotoBtn" class="bg-purple-500 text-white p-2 rounded hover:bg-purple-600">Capture Photo</button>
+          <button id="takePhotoBtn" class="hidden bg-green-500 text-white p-2 rounded hover:bg-green-600">Take Photo</button>
+          <button id="cancelPhotoBtn" class="hidden bg-red-500 text-white p-2 rounded hover:bg-red-600">Cancel</button>
+        </div>
+        <button id="productSubmitBtn" class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Add Product</button>
+        <button id="cancelEditBtn" class="hidden bg-gray-500 text-white p-2 rounded hover:bg-gray-600">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Move Product -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+      <h2 class="text-xl font-semibold mb-4">Move Product</h2>
+      <div class="grid grid-cols-1 gap-4">
+        <input id="moveProductId" type="text" placeholder="Product ID (from QR/Barcode scan)" class="border p-2 rounded">
+        <select id="newLocation" class="border p-2 rounded">
+          <option value="Surgery 1">Surgery 1</option>
+          <option value="Surgery 2">Surgery 2</option>
+          <option value="Surgery 3">Surgery 3</option>
+          <option value="Lab">Lab</option>
+          <option value="Sterilising Room">Sterilising Room</option>
+        </select>
+        <button id="moveProductBtn" class="bg-yellow-500 text-white p-2 rounded hover:bg-yellow-600">Move Product</button>
+      </div>
+      <div class="mt-4">
+        <video id="moveVideo" class="w-full max-w-md mx-auto mb-4 hidden" autoplay playsinline></video>
+        <canvas id="moveCanvas" class="hidden"></canvas>
+        <button id="startMoveScannerBtn" class="bg-green-500 text-white p-2 rounded hover:bg-green-600">Start Scanner</button>
+        <button id="stopMoveScannerBtn" class="bg-red-500 text-white p-2 rounded hover:bg-red-600">Stop Scanner</button>
+        <p id="moveScanResult" class="mt-4 text-center"></p>
+      </div>
+    </div>
+
+    <!-- Add Supplier Form -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+      <h2 class="text-xl font-semibold mb-4">Add New Supplier</h2>
+      <div class="grid grid-cols-1 gap-4">
+        <input id="supplierName" type="text" placeholder="Supplier Name" class="border p-2 rounded">
+        <button id="addSupplierBtn" class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Add Supplier</button>
+      </div>
+      <h3 class="text-lg font-semibold mt-4">Suppliers</h3>
+      <ul id="supplierList" class="list-disc pl-5"></ul>
+    </div>
+
+    <!-- To Order Section -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+      <h2 class="text-xl font-semibold mb-4">Products to Order</h2>
+      <div class="mb-4">
+        <button id="generateOrderReportBtn" class="bg-purple-500 text-white p-2 rounded hover:bg-purple-600">Generate Order Report (PDF)</button>
+        <button id="emailOrderReportBtn" class="bg-indigo-500 text-white p-2 rounded hover:bg-indigo-600 ml-2">Email Order Report</button>
+      </div>
+      <table class="w-full border-collapse">
+        <thead>
+          <tr class="bg-red-200">
+            <th class="border p-2">ID</th>
+            <th class="border p-2">Name</th>
+            <th class="border p-2">Quantity</th>
+            <th class="border p-2">Minimum Quantity</th>
+            <th class="border p-2">Supplier</th>
+          </tr>
+        </thead>
+        <tbody id="toOrderTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Inventory Table -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+      <h2 class="text-xl font-semibold mb-4">Inventory</h2>
+      <div class="mb-4">
+        <button id="generateQRCodePDFBtn" class="bg-purple-500 text-white p-2 rounded hover:bg-purple-600">Generate QR Codes PDF</button>
+      </div>
+      <table class="w-full border-collapse">
+        <thead>
+          <tr class="bg-gray-200">
+            <th class="border p-2">ID</th>
+            <th class="border p-2">Name</th>
+            <th class="border p-2">Quantity</th>
+            <th class="border p-2">Min Quantity</th>
+            <th class="border p-2">Cost ($)</th>
+            <th class="border p-2">Supplier</th>
+            <th class="border p-2">Location</th>
+            <th class="border p-2">Photo</th>
+            <th class="border p-2">QR Code</th>
+            <th class="border p-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="inventoryTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

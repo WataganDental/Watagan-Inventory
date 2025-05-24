@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>jsPDF Test</title>
+  <!-- Test the local script -->
+  <script src="/js/jspdf.umd.min.js"></script>
+  <!-- Test the fallback CDN -->
+  <!-- <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script> -->
+</head>
+<body>
+  <h1>jsPDF Test</h1>
+  <button onclick="testJsPDF()">Test jsPDF</button>
+  <p id="result"></p>
+  <script>
+    console.log('Initial window.jsPDF:', window.jsPDF);
+    function testJsPDF() {
+      try {
+        console.log('window.jsPDF after load:', window.jsPDF);
+        if (typeof window.jsPDF === 'function') {
+          const doc = new window.jsPDF();
+          doc.text('Hello, jsPDF!', 10, 10);
+          doc.save('test.pdf');
+          document.getElementById('result').textContent = 'jsPDF works! PDF downloaded.';
+          console.log('jsPDF works!');
+        } else {
+          throw new Error('window.jsPDF is not defined');
+        }
+      } catch (error) {
+        console.error('jsPDF test failed:', error);
+        document.getElementById('result').textContent = 'jsPDF failed: ' + error.message;
+      }
+    }
+  </script>
+</body>
+</html>
