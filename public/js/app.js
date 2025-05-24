@@ -2,9 +2,36 @@ let stream = null;
 let photoStream = null;
 let inventory = [];
 let suppliers = [];
+let locations = []; // Added for location management
 let batchUpdates = [];
 let db; // Declare db globally
 let storage; // Declare storage globally
+
+// Dark Mode Toggle Functionality
+const userPreference = localStorage.getItem('darkMode');
+const systemPreference = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+const applyDarkMode = () => {
+  document.documentElement.classList.add('dark');
+  localStorage.setItem('darkMode', 'enabled');
+};
+
+const removeDarkMode = () => {
+  document.documentElement.classList.remove('dark');
+  localStorage.setItem('darkMode', 'disabled');
+};
+
+const initialDarkModeCheck = () => {
+  if (userPreference === 'enabled') {
+    applyDarkMode();
+  } else if (userPreference === 'disabled') {
+    removeDarkMode();
+  } else if (systemPreference) {
+    applyDarkMode(); // Apply if system preference is dark and no user preference
+  } else {
+    removeDarkMode(); // Default to light if no preference and no system preference for dark
+  }
+};
 
 // Firebase Initialization
 const firebaseConfig = {
@@ -107,6 +134,24 @@ function generateUUID() {
   });
 }
 
+function ensureQRCodeIsAvailable(timeout = 5000) {
+  return new Promise((resolve, reject) => {
+    const startTime = Date.now();
+    const checkQRCode = () => {
+      if (typeof window.QRCode === 'function') {
+        console.log('QRCode library is available.');
+        resolve();
+      } else if (Date.now() - startTime > timeout) {
+        console.error('QRCode library did not load within timeout.');
+        reject(new Error('QRCode library failed to load in time.'));
+      } else {
+        setTimeout(checkQRCode, 100); // Check every 100ms
+      }
+    };
+    checkQRCode();
+  });
+}
+
 // Supplier Management
 async function addSupplier() {
   const name = document.getElementById('supplierName').value.trim();
@@ -164,8 +209,8 @@ function updateSupplierList() {
   supplierList.innerHTML = '';
   suppliers.forEach(supplier => {
     const li = document.createElement('li');
-    li.className = 'flex justify-between items-center';
-    li.innerHTML = `${supplier} <button data-supplier="${supplier}" class="deleteSupplierBtn text-red-500 hover:text-red-700">Delete</button>`;
+    li.className = 'flex justify-between items-center'; // Text color should be inherited
+    li.innerHTML = `${supplier} <button data-supplier="${supplier}" class="deleteSupplierBtn text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">Delete</button>`;
     supplierList.appendChild(li);
   });
   console.log('Supplier list updated, items:', supplierList.children.length);
@@ -175,16 +220,128 @@ function updateSupplierList() {
 }
 
 function updateSupplierDropdown() {
-  const supplierDropdown = document.getElementById('productSupplier');
-  console.log('Updating supplier dropdown with:', suppliers);
-  supplierDropdown.innerHTML = '<option value="">Select Supplier</option>';
-  suppliers.forEach(supplier => {
-    const option = document.createElement('option');
-    option.value = supplier;
-    option.textContent = supplier;
-    supplierDropdown.appendChild(option);
+  const productSupplierDropdown = document.getElementById('productSupplier');
+  const filterSupplierDropdown = document.getElementById('filterSupplier');
+
+  const populate = (dropdown, includeAllOption) => {
+    if (!dropdown) return;
+    const currentValue = dropdown.value;
+    dropdown.innerHTML = includeAllOption ? '<option value="">All Suppliers</option>' : '<option value="">Select Supplier</option>';
+    suppliers.forEach(supplier => {
+      const option = document.createElement('option');
+      option.value = supplier;
+      option.textContent = supplier;
+      dropdown.appendChild(option);
+    });
+    // Try to restore previously selected value if it still exists
+    if (suppliers.includes(currentValue)) {
+      dropdown.value = currentValue;
+    }
+  };
+
+  populate(productSupplierDropdown, false);
+  populate(filterSupplierDropdown, true);
+  console.log('Supplier dropdowns updated.');
+}
+
+// Location Management
+async function loadLocations() {
+  try {
+    console.log('Fetching locations from Firestore...');
+    const snapshot = await db.collection('locations').orderBy('name').get(); // Assuming 'name' field for ordering
+    locations = snapshot.docs.map(doc => doc.data()); // Store full location object
+    console.log('Locations loaded:', locations);
+    updateLocationList();
+    updateLocationDropdowns();
+  } catch (error) {
+    console.error('Error loading locations:', error);
+    alert('Failed to load locations: ' + error.message);
+  }
+}
+
+function updateLocationList() {
+  const locationList = document.getElementById('locationList');
+  if (!locationList) return;
+  locationList.innerHTML = '';
+  locations.forEach(location => {
+    const li = document.createElement('li');
+    li.className = 'flex justify-between items-center dark:text-gray-200'; // Ensure text is visible in dark mode
+    li.innerHTML = `${location.name} <button data-location-name="${location.name}" class="deleteLocationBtn text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">Delete</button>`;
+    locationList.appendChild(li);
   });
-  console.log('Supplier dropdown updated, options:', supplierDropdown.options.length);
+  document.querySelectorAll('.deleteLocationBtn').forEach(button => {
+    button.addEventListener('click', () => deleteLocation(button.getAttribute('data-location-name')));
+  });
+}
+
+async function addLocation() {
+  const nameInput = document.getElementById('locationName');
+  if (!nameInput) return;
+  const name = nameInput.value.trim();
+  if (!name) {
+    alert('Please enter a location name.');
+    return;
+  }
+  if (locations.some(loc => loc.name.toLowerCase() === name.toLowerCase())) {
+    alert('Location already exists.');
+    return;
+  }
+  try {
+    await db.collection('locations').doc(name).set({ name });
+    nameInput.value = '';
+    await loadLocations();
+  } catch (error) {
+    console.error('Error adding location:', error);
+    alert('Failed to add location: ' + error.message);
+  }
+}
+
+async function deleteLocation(locationName) {
+  try {
+    // Check if location is in use
+    const productsQuery = await db.collection('inventory').where('location', '==', locationName).get();
+    if (!productsQuery.empty) {
+      alert(`Cannot delete location "${locationName}": it is currently in use by ${productsQuery.size} product(s).`);
+      return;
+    }
+    if (confirm(`Are you sure you want to delete location "${locationName}"?`)) {
+      await db.collection('locations').doc(locationName).delete();
+      await loadLocations();
+    }
+  } catch (error) {
+    console.error('Error deleting location:', error);
+    alert('Failed to delete location: ' + error.message);
+  }
+}
+
+function updateLocationDropdowns() {
+  const productLocationDropdown = document.getElementById('productLocation');
+  const newLocationDropdown = document.getElementById('newLocation');
+  const filterLocationDropdown = document.getElementById('filterLocation');
+
+  const populate = (dropdown, includeAllOption) => {
+    if (!dropdown) return;
+    const currentValue = dropdown.value;
+    dropdown.innerHTML = includeAllOption ? '<option value="">All Locations</option>' : '<option value="">Select Location</option>';
+    locations.forEach(location => {
+      const option = document.createElement('option');
+      option.value = location.name;
+      option.textContent = location.name;
+      dropdown.appendChild(option);
+    });
+    if (locations.some(loc => loc.name === currentValue)) {
+      dropdown.value = currentValue;
+    }
+     // Optional: default to first location for productLocation if no selection and locations exist
+     else if (dropdown.id === 'productLocation' && !currentValue && locations.length > 0 && !includeAllOption) {
+      // dropdown.value = locations[0].name; 
+     }
+  };
+
+  populate(productLocationDropdown, false);
+  populate(newLocationDropdown, false); // Typically, specific selection is desired here too
+  populate(filterLocationDropdown, true);
+  console.log('Location dropdowns updated.');
 }
 
 // Product Photo Capture
@@ -270,7 +427,7 @@ async function submitProduct() {
         photo: photoUrl 
       });
       resetProductForm();
-      await loadInventory();
+      await loadInventory(); // loadInventory now calls updateToOrderTable internally
     } catch (error) {
       console.error('Error submitting product:', error);
       alert('Failed to submit product: ' + error.message);
@@ -342,13 +499,13 @@ function addBatchEntry() {
   const entryDiv = document.createElement('div');
   entryDiv.className = 'flex gap-2 items-center';
   entryDiv.innerHTML = `
-    <input id="${entryId}-id" type="text" placeholder="Product ID (from scan)" class="border p-2 rounded flex-1">
-    <input id="${entryId}-quantity" type="number" placeholder="Quantity" class="border p-2 rounded w-24">
-    <select id="${entryId}-action" class="border p-2 rounded w-32">
+    <input id="${entryId}-id" type="text" placeholder="Product ID (from scan)" class="border dark:border-gray-600 p-2 rounded flex-1 dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
+    <input id="${entryId}-quantity" type="number" placeholder="Quantity" class="border dark:border-gray-600 p-2 rounded w-24 dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
+    <select id="${entryId}-action" class="border dark:border-gray-600 p-2 rounded w-32 dark:bg-slate-700 dark:text-gray-200">
       <option value="add">Add</option>
       <option value="remove">Remove</option>
     </select>
-    <button data-entry-id="${entryId}" class="removeBatchEntryBtn text-red-500 hover:text-red-700">Remove</button>
+    <button data-entry-id="${entryId}" class="removeBatchEntryBtn text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">Remove</button>
   `;
   batchUpdatesDiv.appendChild(entryDiv);
   batchUpdates.push(entryId);
@@ -434,33 +591,61 @@ async function loadInventory() {
     console.log('Inventory snapshot:', snapshot.size, 'documents');
     inventory = snapshot.docs.map(doc => doc.data());
     console.log('Inventory loaded:', inventory);
-    updateInventoryTable();
+    // updateInventoryTable(); // OLD CALL
+    applyAndRenderInventoryFilters(); // NEW CALL - this will render the table
+    await updateToOrderTable(); // Ensure "To Order" table is updated after initial load and filtering
   } catch (error) {
     console.error('Error loading inventory:', error);
     alert('Failed to load inventory: ' + error.message);
   }
 }
 
-function updateInventoryTable() {
+function applyAndRenderInventoryFilters() {
+  const supplierFilter = document.getElementById('filterSupplier') ? document.getElementById('filterSupplier').value : '';
+  const locationFilter = document.getElementById('filterLocation') ? document.getElementById('filterLocation').value : '';
+
+  let filteredInventory = inventory; // Start with the full inventory
+
+  if (supplierFilter) {
+    filteredInventory = filteredInventory.filter(item => item.supplier === supplierFilter);
+  }
+  if (locationFilter) {
+    filteredInventory = filteredInventory.filter(item => item.location === locationFilter);
+  }
+  updateInventoryTable(filteredInventory);
+}
+
+
+function updateInventoryTable(itemsToDisplay) {
   const tableBody = document.getElementById('inventoryTable');
-  console.log('Updating inventory table with:', inventory);
+  console.log('Updating inventory table with:', itemsToDisplay);
   tableBody.innerHTML = '';
-  inventory.forEach(item => {
+
+  if (!itemsToDisplay || itemsToDisplay.length === 0) {
+    const row = tableBody.insertRow();
+    const cell = row.insertCell();
+    cell.colSpan = 10; // Number of columns in your inventory table
+    cell.textContent = 'No products found matching your criteria.';
+    cell.className = 'text-center p-4 dark:text-gray-400';
+    return;
+  }
+
+  itemsToDisplay.forEach(item => {
     const row = document.createElement('tr');
-    row.className = item.quantity <= item.minQuantity ? 'bg-red-100' : '';
+    row.className = item.quantity <= item.minQuantity ? 'bg-red-100 dark:bg-red-800/60' : '';
     row.innerHTML = `
-      <td class="border p-2">${item.id}</td>
-      <td class="border p-2">${item.name}</td>
-      <td class="border p-2">${item.quantity}</td>
-      <td class="border p-2">${item.minQuantity}</td>
-      <td class="border p-2">${item.cost.toFixed(2)}</td>
-      <td class="border p-2">${item.supplier}</td>
-      <td class="border p-2">${item.location}</td>
-      <td class="border p-2">${item.photo ? `<img src="${item.photo}" class="w-16 h-16 object-cover mx-auto" alt="Product Photo">` : 'No Photo'}</td>
-      <td class="border p-2"><div id="qrcode-${item.id}" class="mx-auto w-24 h-24"></div></td>
-      <td class="border p-2">
-        <button data-id="${item.id}" class="editProductBtn text-blue-500 hover:text-blue-700 mr-2">Edit</button>
-        <button data-id="${item.id}" class="deleteProductBtn text-red-500 hover:text-red-700">Delete</button>
+      <td class="border dark:border-slate-600 p-2">${item.id}</td>
+      <td class="border dark:border-slate-600 p-2">${item.name}</td>
+      <td class="border dark:border-slate-600 p-2">${item.quantity}</td>
+      <td class="border dark:border-slate-600 p-2">${item.minQuantity}</td>
+      <td class="border dark:border-slate-600 p-2">${item.cost.toFixed(2)}</td>
+      <td class="border dark:border-slate-600 p-2">${item.supplier}</td>
+      <td class="border dark:border-slate-600 p-2">${item.location}</td>
+      <td class="border dark:border-slate-600 p-2">${item.photo ? `<img src="${item.photo}" class="w-16 h-16 object-cover mx-auto" alt="Product Photo">` : 'No Photo'}</td>
+      <td class="border dark:border-slate-600 p-2"><div id="qrcode-${item.id}" class="mx-auto w-24 h-24"></div></td>
+      <td class="border dark:border-slate-600 p-2">
+        <button data-id="${item.id}" class="editProductBtn text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 mr-2">Edit</button>
+        <button data-id="${item.id}" class="deleteProductBtn text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">Delete</button>
       </td>
     `;
     tableBody.appendChild(row);
@@ -481,7 +666,7 @@ function updateInventoryTable() {
       });
     } catch (error) {
       console.error('QR Code generation failed for ID', item.id, ':', error);
-      qrCodeDiv.innerHTML = `<p class="text-red-500">QR Code generation failed: ${error.message}</p>`;
+      qrCodeDiv.innerHTML = `<p class="text-red-500 dark:text-red-400">QR Code generation failed: ${error.message}</p>`;
     }
   });
   console.log('Inventory table updated, rows:', tableBody.children.length);
@@ -503,12 +688,15 @@ async function updateToOrderTable() {
   }
   toOrderItems.forEach(item => {
     const row = document.createElement('tr');
+    // Row background will be default (likely dark:bg-slate-800 from parent container), text inherited.
+    // Highlighted low-stock rows in the main inventory table are handled by `updateInventoryTable`.
+    // This table just lists items to order, so no special row.className needed here for dark mode beyond cell borders.
     row.innerHTML = `
-      <td class="border p-2">${item.id}</td>
-      <td class="border p-2">${item.name}</td>
-      <td class="border p-2">${item.quantity}</td>
-      <td class="border p-2">${item.minQuantity}</td>
-      <td class="border p-2">${item.supplier}</td>
+      <td class="border dark:border-slate-600 p-2">${item.id}</td>
+      <td class="border dark:border-slate-600 p-2">${item.name}</td>
+      <td class="border dark:border-slate-600 p-2">${item.quantity}</td>
+      <td class="border dark:border-slate-600 p-2">${item.minQuantity}</td>
+      <td class="border dark:border-slate-600 p-2">${item.supplier}</td>
     `;
     toOrderTable.appendChild(row);
   });
@@ -777,15 +965,34 @@ function stopUpdateScanner() {
 }
 
 // Initialize and Bind Events
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   console.log('DOMContentLoaded fired');
-  console.log('Button element:', document.getElementById('generateQRCodePDFBtn'));
+  initialDarkModeCheck(); // Apply dark mode preferences early
 
-  loadSuppliers();
-  loadInventory();
-  addBatchEntry();
+  try {
+    await ensureQRCodeIsAvailable(); // Wait for QRCode to be ready
+    // Initialize parts of the app that depend on QRCode
+    // loadInventory will call applyAndRenderInventoryFilters, which calls updateInventoryTable
+    loadInventory(); 
+    
+    // Other initializations that don't depend on QRCode can be here or remain
+    loadSuppliers(); // This will also populate filterSupplier dropdown
+    loadLocations(); // This will also populate filterLocation dropdown
+    addBatchEntry(); 
 
-  document.getElementById('addBatchEntryBtn').addEventListener('click', addBatchEntry);
+    // Event Listeners
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    if (darkModeToggle) {
+      darkModeToggle.addEventListener('click', () => {
+        if (document.documentElement.classList.contains('dark')) {
+          removeDarkMode();
+        } else {
+          applyDarkMode();
+        }
+      });
+    }
+    // Bind other events (these are fine as they are user-triggered)
+    document.getElementById('addBatchEntryBtn').addEventListener('click', addBatchEntry);
   document.getElementById('submitBatchUpdatesBtn').addEventListener('click', submitBatchUpdates);
   document.getElementById('startUpdateScannerBtn').addEventListener('click', startUpdateScanner);
   document.getElementById('stopUpdateScannerBtn').addEventListener('click', stopUpdateScanner);
@@ -798,6 +1005,30 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('startMoveScannerBtn').addEventListener('click', startMoveScanner);
   document.getElementById('stopMoveScannerBtn').addEventListener('click', stopMoveScanner);
   document.getElementById('addSupplierBtn').addEventListener('click', addSupplier);
+  const addLocationBtn = document.getElementById('addLocationBtn');
+  if (addLocationBtn) {
+    addLocationBtn.addEventListener('click', addLocation);
+  }
+
+  // Inventory Filter Event Listeners
+  const filterSupplierEl = document.getElementById('filterSupplier');
+  const filterLocationEl = document.getElementById('filterLocation');
+  const clearInventoryFiltersBtnEl = document.getElementById('clearInventoryFiltersBtn');
+
+  if (filterSupplierEl) {
+    filterSupplierEl.addEventListener('change', applyAndRenderInventoryFilters);
+  }
+  if (filterLocationEl) {
+    filterLocationEl.addEventListener('change', applyAndRenderInventoryFilters);
+  }
+  if (clearInventoryFiltersBtnEl) {
+    clearInventoryFiltersBtnEl.addEventListener('click', () => {
+      if (filterSupplierEl) filterSupplierEl.value = '';
+      if (filterLocationEl) filterLocationEl.value = '';
+      applyAndRenderInventoryFilters();
+    });
+  }
+  
   document.getElementById('generateOrderReportBtn').addEventListener('click', generateOrderReport);
   document.getElementById('emailOrderReportBtn').addEventListener('click', emailOrderReport);
 
@@ -806,5 +1037,24 @@ document.addEventListener('DOMContentLoaded', () => {
     qrCodePDFBtn.addEventListener('click', generateQRCodePDF);
   } else {
     console.warn('QR Code PDF button not found in DOM');
+  }
+
+  // Log button element after all initializations
+  console.log('Button element (generateQRCodePDFBtn):', document.getElementById('generateQRCodePDFBtn'));
+
+  } catch (error) {
+    console.error('Initialization failed:', error);
+    // Optionally, display an error message to the user in the UI
+    const body = document.querySelector('body');
+    if (body) {
+      const errorDiv = document.createElement('div');
+      errorDiv.textContent = 'Critical error: QRCode library failed to load. Some features might not work. Please refresh or check your internet connection.';
+      errorDiv.style.color = 'red';
+      errorDiv.style.backgroundColor = 'white';
+      errorDiv.style.padding = '10px';
+      errorDiv.style.textAlign = 'center';
+      errorDiv.style.border = '1px solid red';
+      body.prepend(errorDiv);
+    }
   }
 });

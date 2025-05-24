@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PDF Test with Output Capture</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <!-- jsPDF is loaded dynamically by app.js's waitForJsPDF -->
+
+    <!-- Minimal DOM elements that might be touched by app.js -->
+    <div id="inventoryTable" style="display:none;"></div>
+    <div id="toOrderTable" style="display:none;"></div>
+    <select id="productSupplier" style="display:none;"></select>
+    <input type="text" id="supplierName" style="display:none;">
+    <input type="text" id="productId" style="display:none;">
+    <input type="text" id="productName" style="display:none;">
+    <input type_ignored type="number" id="productQuantity" style="display:none;">
+    <input type_ignored type="number" id="productCost" style="display:none;">
+    <input type_ignored type="number" id="productMinQuantity" style="display:none;">
+    <select id="productLocation" style="display:none;"><option value="Surgery 1">Surgery 1</option></select>
+    <img id="productPhotoPreview" class="hidden" style="display:none;">
+    <div id="productFormTitle" style="display:none;"></div>
+    <button id="productSubmitBtn" style="display:none;"></button>
+    <button id="cancelEditBtn" class="hidden" style="display:none;"></button>
+    <div id="batchUpdates" style="display:none;"></div>
+    <input type="text" id="moveProductId" style="display:none;">
+    <select id="newLocation" style="display:none;"><option value="Surgery 1">Surgery 1</option></select>
+
+</head>
+<body>
+    <h1>PDF Test Output</h1>
+    <pre id="output" style="white-space: pre-wrap; border: 1px solid #ccc; padding: 10px; min-height: 200px;"></pre>
+    <script src="js/app.js"></script>
+    <script>
+        (async function() {
+            const output = document.getElementById('output');
+            function logToPage(type, args) {
+                const message = Array.from(args).map(arg => {
+                    if (typeof arg === 'object' && arg !== null) {
+                        try {
+                            // Attempt to stringify, but handle circular references or errors
+                            let cache = [];
+                            let str = JSON.stringify(arg, (key, value) => {
+                                if (typeof value === 'object' && value !== null) {
+                                    if (cache.includes(value)) return '[Circular]';
+                                    cache.push(value);
+                                }
+                                return value;
+                            }, 2);
+                            cache = null; // Enable garbage collection
+                            return str;
+                        } catch (e) {
+                            return arg.toString() + ' (Unserializable: ' + e.message + ')';
+                        }
+                    }
+                    return String(arg);
+                }).join(' ');
+                output.textContent += `[${type.toUpperCase()}] ${message}\n`;
+            }
+
+            const originalConsoleLog = console.log;
+            const originalConsoleError = console.error;
+            const originalConsoleWarn = console.warn;
+
+            console.log = (...args) => { originalConsoleLog.apply(console, args); logToPage('log', args); };
+            console.error = (...args) => { originalConsoleError.apply(console, args); logToPage('error', args); };
+            console.warn = (...args) => { originalConsoleWarn.apply(console, args); logToPage('warn', args); };
+
+            // Add a global error handler to catch unhandled promise rejections or other errors
+            window.addEventListener('error', event => {
+                console.error('[GLOBAL ERROR]', event.message, event.filename, event.lineno, event.colno, event.error);
+            });
+            window.addEventListener('unhandledrejection', event => {
+                console.error('[UNHANDLED REJECTION]', event.reason);
+            });
+
+
+            console.log('[TestRunner] Starting tests in output_test.html...');
+
+            // Wait for prerequisites
+            let checks = 0;
+            const maxChecks = 300; // Max 30 seconds (300 * 100ms)
+            console.log('[TestRunner] Waiting for prerequisites (Firebase, QRCode, inventory, suppliers)...');
+            while (checks < maxChecks) {
+                if (typeof window.db !== 'undefined' && 
+                    typeof window.storage !== 'undefined' && 
+                    typeof window.QRCode === 'function' && 
+                    firebase.apps.length > 0 &&
+                    typeof window.inventory !== 'undefined' && // inventory is set by loadInventory called in app.js's DOMContentLoaded
+                    typeof window.suppliers !== 'undefined') { // suppliers is set by loadSuppliers
+                    console.log('[TestRunner] Prerequisites met after ' + (checks * 100) + 'ms.');
+                    break;
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+                checks++;
+            }
+
+            if (checks >= maxChecks) {
+                console.error('[TestRunner] Prerequisites did not initialize in time.');
+                console.error(`  window.db available: ${typeof window.db !== 'undefined'}`);
+                console.error(`  window.storage available: ${typeof window.storage !== 'undefined'}`);
+                console.error(`  window.QRCode available: ${typeof window.QRCode === 'function'}`);
+                console.error(`  firebase.apps.length: ${firebase.apps.length}`);
+                console.error(`  window.inventory available: ${typeof window.inventory !== 'undefined'}`);
+                console.error(`  window.suppliers available: ${typeof window.suppliers !== 'undefined'}`);
+                console.log('[TestRunner] Tests cannot reliably continue if core dependencies are missing.');
+                // Still try to run them to see what specific errors occur
+            }
+            
+            try {
+                console.log('[TestRunner] Ensuring jsPDF is loaded via waitForJsPDF()...');
+                await waitForJsPDF(); 
+                console.log('[TestRunner] waitForJsPDF() completed. window.jsPDF should be available.');
+                if(typeof window.jsPDF !== 'function') {
+                    console.error('[TestRunner] window.jsPDF is NOT a function after waitForJsPDF.');
+                }
+            } catch (e) {
+                console.error('[TestRunner] Error calling waitForJsPDF():', e.message, e.stack);
+            }
+
+            console.log('[TestRunner] --- Testing generateQRCodePDF ---');
+            try {
+                await generateQRCodePDF(); // This function is global in app.js
+                console.log('[TestRunner] generateQRCodePDF() call sequence completed.');
+            } catch (e) {
+                console.error('[TestRunner] Error during generateQRCodePDF() call sequence:', e.message, e.stack);
+            }
+
+            console.log('[TestRunner] --- Testing generateOrderReportPDF ---');
+            try {
+                await generateOrderReportPDF(); // This function is global in app.js
+                console.log('[TestRunner] generateOrderReportPDF() call sequence completed.');
+            } catch (e) {
+                console.error('[TestRunner] Error during generateOrderReportPDF() call sequence:', e.message, e.stack);
+            }
+
+            console.log('[TestRunner] All tests finished. Final output below.');
+            // Add a clear marker that tests are done, useful for parsing the output.
+            output.textContent += "\n[ALL_SCRIPTED_TESTS_COMPLETE]\n";
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Minimal PDF Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <!-- jsPDF is loaded dynamically by app.js's waitForJsPDF -->
+
+    <!-- Create minimal DOM elements required by app.js initialization or PDF functions -->
+    <div id="inventoryTable"></div> <!-- Used by updateInventoryTable, which generates QR codes -->
+    <div id="toOrderTable"></div>   <!-- Used by updateToOrderTable -->
+    <select id="productSupplier"></select> <!-- Used by updateSupplierDropdown -->
+</head>
+<body>
+    <h1>Minimal PDF Test</h1>
+    <script src="js/app.js"></script>
+    <script>
+        async function runPdfTests() {
+            console.log('[MinimalTest] Starting PDF tests...');
+
+            // Wait for Firebase, QRCode, and essential app.js initializations.
+            // app.js's DOMContentLoaded handles ensureQRCodeIsAvailable and loadInventory.
+            // We need to wait for db, QRCode, and inventory to be defined.
+            let checks = 0;
+            const maxChecks = 200; // Max 20 seconds (200 * 100ms)
+            while (checks < maxChecks) {
+                if (typeof window.db !== 'undefined' && 
+                    typeof window.storage !== 'undefined' && 
+                    typeof window.QRCode === 'function' && 
+                    firebase.apps.length > 0 &&
+                    typeof window.inventory !== 'undefined' && // inventory is set by loadInventory
+                    typeof window.suppliers !== 'undefined') { // suppliers is set by loadSuppliers
+                    console.log('[MinimalTest] Prerequisites met after ' + (checks * 100) + 'ms.');
+                    break;
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+                checks++;
+            }
+
+            if (checks >= maxChecks) {
+                console.error('[MinimalTest] Prerequisites (Firebase, QRCode, inventory, suppliers) did not initialize in time.');
+                if (typeof window.db === 'undefined') console.error('[MinimalTest] window.db is undefined.');
+                if (typeof window.storage === 'undefined') console.error('[MinimalTest] window.storage is undefined.');
+                if (typeof window.QRCode !== 'function') console.error('[MinimalTest] window.QRCode is not a function.');
+                if (!firebase.apps.length) console.error('[MinimalTest] Firebase app not initialized.');
+                if (typeof window.inventory === 'undefined') console.error('[MinimalTest] window.inventory is undefined.');
+                if (typeof window.suppliers === 'undefined') console.error('[MinimalTest] window.suppliers is undefined.');
+                return;
+            }
+
+            console.log('[MinimalTest] Attempting to generate QRCode PDF...');
+            try {
+                await generateQRCodePDF(); // This function is global in app.js
+                console.log('[MinimalTest] generateQRCodePDF() either completed or called doc.save().');
+            } catch (e) {
+                console.error('[MinimalTest] Error during generateQRCodePDF():', e.message, e.stack);
+            }
+
+            console.log('[MinimalTest] Attempting to generate Order Report PDF...');
+            try {
+                await generateOrderReportPDF(); // This function is global in app.js
+                console.log('[MinimalTest] generateOrderReportPDF() either completed or called doc.save().');
+            } catch (e) {
+                console.error('[MinimalTest] Error during generateOrderReportPDF():', e.message, e.stack);
+            }
+            console.log('[MinimalTest] PDF tests finished.');
+        }
+
+        // Automatically run tests after a short delay for app.js to do its initial DOMContentLoaded setup.
+        // The DOMContentLoaded in app.js is async, so test needs to wait for its critical parts.
+        setTimeout(runPdfTests, 2000); // Wait 2s for app.js DOMContentLoaded to kick off its async tasks.
+
+    </script>
+</body>
+</html>

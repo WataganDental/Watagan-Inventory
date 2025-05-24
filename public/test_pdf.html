@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PDF Test</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script> <!-- Changed to CDN path -->
+    <!-- jsPDF will be loaded dynamically by app.js -->
+</head>
+<body>
+    <h1>Testing PDF Generation</h1>
+    <div id="inventoryTable"></div>
+    <div id="toOrderTable"></div>
+    <div id="supplierList"></div>
+    <select id="productSupplier"></select>
+    <input type="text" id="supplierName">
+    <input type="text" id="productId">
+    <input type="text" id="productName">
+    <input type="number" id="productQuantity">
+    <input type="number" id="productCost">
+    <input type="number" id="productMinQuantity">
+    <select id="productLocation"><option value="Surgery 1">Surgery 1</option></select>
+    <img id="productPhotoPreview" class="hidden">
+    <div id="productFormTitle"></div>
+    <button id="productSubmitBtn"></button>
+    <button id="cancelEditBtn" class="hidden"></button>
+    <div id="batchUpdates"></div>
+    <input type="text" id="moveProductId">
+    <select id="newLocation"><option value="Surgery 1">Surgery 1</option></select>
+    <div id="moveScanResult"></div>
+    <video id="moveVideo" class="hidden"></video>
+    <div id="updateScanResult"></div>
+    <video id="updateVideo" class="hidden"></video>
+    <video id="photoVideo" class="hidden"></video>
+    <canvas id="photoCanvas" class="hidden"></canvas>
+    <button id="capturePhotoBtn"></button>
+    <button id="takePhotoBtn" class="hidden"></button>
+    <button id="cancelPhotoBtn" class="hidden"></button>
+
+    <button id="addBatchEntryBtn">Add Batch Entry</button>
+    <button id="submitBatchUpdatesBtn">Submit Batch Updates</button>
+    <button id="startUpdateScannerBtn">Start Update Scanner</button>
+    <button id="stopUpdateScannerBtn">Stop Update Scanner</button>
+    <button id="moveProductBtn">Move Product</button>
+    <button id="startMoveScannerBtn">Start Move Scanner</button>
+    <button id="stopMoveScannerBtn">Stop Move Scanner</button>
+    <button id="addSupplierBtn">Add Supplier</button>
+    <button id="generateOrderReportBtn">Generate Order Report</button>
+    <button id="emailOrderReportBtn">Email Order Report</button>
+    <button id="generateQRCodePDFBtn">Generate QR Code PDF</button>
+
+    <script src="js/app.js"></script> <!-- Changed to relative path -->
+    <script>
+        async function testPdfFunctions() {
+            console.log('testPdfFunctions started.');
+
+            // Wait for DOMContentLoaded
+            await new Promise(resolve => {
+                if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                    resolve();
+                } else {
+                    window.addEventListener('DOMContentLoaded', resolve, { once: true });
+                }
+            });
+            console.log('DOMContentLoaded event has fired.');
+
+            // Wait for Firebase and other app.js initializations (ensureQRCodeIsAvailable, loadInventory, etc.)
+            // Specifically wait for db and storage to be available, and QRCode.
+            let checks = 0;
+            const maxChecks = 150; // Max 15 seconds (150 * 100ms)
+            while ((typeof window.db === 'undefined' || typeof window.storage === 'undefined' || typeof window.QRCode !== 'function' || !firebase.apps.length) && checks < maxChecks) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                checks++;
+            }
+
+            if (checks >= maxChecks) {
+                console.error('Critical dependencies (Firebase DB/Storage, QRCode) did not initialize in time.');
+                if (typeof window.db === 'undefined') console.error('window.db is undefined.');
+                if (typeof window.storage === 'undefined') console.error('window.storage is undefined.');
+                if (typeof window.QRCode !== 'function') console.error('window.QRCode is not a function.');
+                if (!firebase.apps.length) console.error('Firebase app not initialized.');
+                return; // Stop further execution
+            }
+            console.log('Firebase, QRCode, and app.js initial setup seem complete after ' + (checks * 100) + 'ms.');
+            
+            // Ensure loadInventory has run at least once, which populates `inventory` array
+            // generateQRCodePDF relies on `inventory` being populated (even if empty from DB)
+            // and generateOrderReportPDF also relies on it.
+            // The `DOMContentLoaded` in app.js calls `loadInventory`. We need to ensure it has completed.
+            // We can check if `window.inventory` is defined (it's a global in app.js)
+            checks = 0;
+            while (typeof window.inventory === 'undefined' && checks < 50) { // Max 5 seconds
+                 await new Promise(resolve => setTimeout(resolve, 100));
+                 checks++;
+            }
+            if (typeof window.inventory === 'undefined') {
+                console.warn('window.inventory is still undefined after waiting. PDF functions might operate on empty/stale data or fail if they expect it.');
+            } else {
+                console.log('window.inventory is defined. Proceeding with PDF tests.');
+            }
+
+
+            console.log('Testing generateQRCodePDF()...');
+            try {
+                await window.generateQRCodePDF(); // Call with window context
+                console.log('generateQRCodePDF() call completed. Check console for "doc.save" or errors.');
+            } catch (e) {
+                console.error('Error directly calling generateQRCodePDF():', e.message, e.stack);
+            }
+
+            console.log('Testing generateOrderReportPDF()...');
+            try {
+                await window.generateOrderReportPDF(); // Call with window context
+                console.log('generateOrderReportPDF() call completed. Check console for "doc.save" or errors.');
+            } catch (e) {
+                console.error('Error directly calling generateOrderReportPDF():', e.message, e.stack);
+            }
+            console.log('testPdfFunctions finished.');
+        }
+        // testPdfFunctions(); // Will be called by Puppeteer
+    </script>
+</body>
+</html>
