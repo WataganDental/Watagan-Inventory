@@ -1,0 +1,20 @@
+/* Collapsible Section Toggle Indicators */
+h2[id^="toggle"] {
+  position: relative; /* Ensures proper positioning of the pseudo-element */
+  padding-left: 25px; /* Make space for the indicator */
+}
+
+h2[id^="toggle"]::before {
+  content: '+';
+  position: absolute;
+  left: 5px; /* Align to the start of the padding */
+  top: 50%;
+  transform: translateY(-50%); /* Vertically center */
+  font-weight: bold;
+  font-size: 1.2em; /* Make the indicator slightly larger */
+  line-height: 1; /* Ensure consistent line height for the indicator */
+}
+
+h2[id^="toggle"].active::before {
+  content: '-';
+}
