@@ -833,6 +833,7 @@ async function generateQRCodePDF() {
     
     const generationDate = new Date().toLocaleDateString();
     const locationNames = Object.keys(productGroups); // Already sorted from previous step
+    let firstQRCodeAppended = false; // Flag for appending only the first QR code
 
     for (let i = 0; i < locationNames.length; i++) {
       const locationName = locationNames[i];
@@ -880,6 +881,21 @@ async function generateQRCodePDF() {
             colorLight: '#ffffff',
             correctLevel: window.QRCode.CorrectLevel.L
           });
+
+          if (!firstQRCodeAppended) {
+            const qrImageForTest = canvas.toDataURL('image/png');
+            const imgElement = document.createElement('img');
+            imgElement.src = qrImageForTest;
+            imgElement.style.border = "2px solid red"; // Make it easy to spot
+            imgElement.style.position = "fixed"; // Keep it in view
+            imgElement.style.top = "10px";
+            imgElement.style.left = "10px";
+            imgElement.style.zIndex = "9999"; // Ensure it's on top
+            document.body.appendChild(imgElement);
+            firstQRCodeAppended = true;
+            console.log("Appended test QR code to body. Check if visible.");
+          }
+
           const qrImage = canvas.toDataURL('image/png');
           doc.addImage(qrImage, 'PNG', x, y, QR_SIZE, QR_SIZE);
         } catch (qrError) {
