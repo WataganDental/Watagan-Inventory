@@ -55,34 +55,53 @@ try {
   console.error('Firebase initialization failed:', error);
 }
 
-// Utility to load jsPDF dynamically
-async function loadJsPDF() {
+// Utility to load jsPDF dynamically with polling
+async function loadJsPDF(scriptSrc = '/js/jspdf.umd.min.js') {
   return new Promise((resolve, reject) => {
+    // Check if already loaded (covers cases where script might have been loaded by other means or previous attempts)
+    if (window.jspdf && typeof window.jspdf.jsPDF === 'function') {
+      console.log(`jsPDF already available at window.jspdf.jsPDF (when trying to load ${scriptSrc})`);
+      resolve(window.jspdf.jsPDF);
+      return;
+    }
     if (typeof window.jsPDF === 'function') {
-      console.log('jsPDF already loaded');
+      console.log(`jsPDF already available at window.jsPDF (when trying to load ${scriptSrc})`);
       resolve(window.jsPDF);
       return;
     }
 
-    console.log('Dynamically loading jsPDF...');
+    console.log(`Dynamically loading jsPDF from ${scriptSrc}...`);
     const script = document.createElement('script');
-    script.src = '/js/jspdf.umd.min.js';
+    script.src = scriptSrc;
     script.async = true;
 
     script.onload = () => {
-      console.log('jsPDF script loaded successfully');
-      if (typeof window.jsPDF === 'function') {
-        console.log('window.jsPDF defined:', window.jsPDF);
-        resolve(window.jsPDF);
-      } else {
-        console.error('jsPDF script loaded but window.jsPDF is not defined');
-        reject(new Error('jsPDF script loaded but window.jsPDF is not defined'));
-      }
+      console.log(`jsPDF script from ${scriptSrc} onload event fired.`);
+      let startTime = Date.now();
+      const maxWaitTime = 2000; // 2 seconds
+      const pollInterval = 50; // 50 milliseconds
+
+      const intervalId = setInterval(() => {
+        console.log(`Polling for jsPDF library (from ${scriptSrc})...`);
+        if (window.jspdf && typeof window.jspdf.jsPDF === 'function') {
+          console.log(`Found jsPDF constructor at window.jspdf.jsPDF (polling from ${scriptSrc})`);
+          clearInterval(intervalId);
+          resolve(window.jspdf.jsPDF);
+        } else if (typeof window.jsPDF === 'function') {
+          console.log(`Found jsPDF constructor at window.jsPDF (polling from ${scriptSrc})`);
+          clearInterval(intervalId);
+          resolve(window.jsPDF);
+        } else if (Date.now() - startTime > maxWaitTime) {
+          console.error(`jsPDF library not found after polling timeout for ${scriptSrc}.`);
+          clearInterval(intervalId);
+          reject(new Error(`jsPDF library not found after polling timeout for ${scriptSrc}`));
+        }
+      }, pollInterval);
     };
 
     script.onerror = (error) => {
-      console.error('Failed to load jsPDF script:', error);
-      reject(new Error('Failed to load jsPDF script from /js/jspdf.umd.min.js'));
+      console.error(`Failed to load jsPDF script from ${scriptSrc}:`, error);
+      reject(new Error(`Failed to load jsPDF script from ${scriptSrc}`));
     };
 
     document.head.appendChild(script);
@@ -91,38 +110,26 @@ async function loadJsPDF() {
 
 // Utility to wait for jsPDF to be available
 async function waitForJsPDF() {
+  const localScriptPath = '/js/jspdf.umd.min.js';
+  const cdnUrl = 'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js';
+
   try {
-    // First, attempt to load the script
-    const JsPDF = await loadJsPDF();
+    console.log(`Attempting to load jsPDF from local path: ${localScriptPath}`);
+    const JsPDF = await loadJsPDF(localScriptPath);
+    console.log('jsPDF loaded successfully from local path.');
     return JsPDF;
   } catch (error) {
-    console.warn('Initial jsPDF load failed:', error.message);
-    console.log('Attempting to load jsPDF from fallback CDN...');
-    
-    // Fallback: Load from CDN
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js';
-      script.async = true;
-
-      script.onload = () => {
-        console.log('jsPDF fallback script loaded successfully');
-        if (typeof window.jsPDF === 'function') {
-          console.log('window.jsPDF defined (fallback):', window.jsPDF);
-          resolve(window.jsPDF);
-        } else {
-          console.error('jsPDF fallback script loaded but window.jsPDF is not defined');
-          reject(new Error('jsPDF fallback script loaded but window.jsPDF is not defined'));
-        }
-      };
-
-      script.onerror = (error) => {
-        console.error('Failed to load jsPDF fallback script:', error);
-        reject(new Error('Failed to load jsPDF from fallback CDN'));
-      };
-
-      document.head.appendChild(script);
-    });
+    console.warn(`Initial jsPDF load from ${localScriptPath} failed:`, error.message);
+    console.log(`Attempting to load jsPDF from fallback CDN: ${cdnUrl}...`);
+    try {
+      const JsPDF = await loadJsPDF(cdnUrl);
+      console.log('jsPDF loaded successfully from CDN fallback.');
+      return JsPDF;
+    } catch (cdnError) {
+      console.error(`Failed to load jsPDF from CDN fallback (${cdnUrl}):`, cdnError.message);
+      // Re-throw the CDN error or a more generic error
+      throw new Error(`Failed to load jsPDF from both local path and CDN: ${cdnError.message}`);
+    }
   }
 }
 
