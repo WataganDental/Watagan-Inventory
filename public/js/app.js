@@ -1293,7 +1293,7 @@ async function startMoveScanner() {
 
   const video = document.getElementById('moveVideo');
   const canvasElement = document.createElement('canvas'); // Create canvas dynamically
-  const canvas = canvasElement.getContext('2d');
+  const canvas = canvasElement.getContext('2d', { willReadFrequently: true });
   let animationFrameId; // To store the requestAnimationFrame ID
 
   // Function to continuously scan for QR codes
@@ -1381,7 +1381,7 @@ async function startUpdateScanner() {
 
   const video = document.getElementById('updateVideo');
   const canvasElement = document.createElement('canvas'); // Create canvas dynamically
-  const canvas = canvasElement.getContext('2d');
+  const canvas = canvasElement.getContext('2d', { willReadFrequently: true });
   let animationFrameId; // To store the requestAnimationFrame ID
 
   // Function to continuously scan for QR codes
@@ -1466,6 +1466,7 @@ function stopUpdateScanner() {
 }
 
 async function startEditScanner() {
+  console.log('[EditScanner] Starting startEditScanner...');
   if (typeof jsQR === 'undefined' && typeof window.jsQR === 'undefined') {
     console.error('jsQR library not found.');
     alert('QR code scanning library (jsQR) is not available. Please check the console for errors.');
@@ -1482,6 +1483,7 @@ async function startEditScanner() {
   const stopBtn = document.getElementById('stopEditScannerBtn');
   const startBtn = document.getElementById('scanToEditBtn');
   const scanResultP = document.getElementById('editScanResult');
+  console.log('[EditScanner] DOM elements obtained:', { video, stopBtn, startBtn, scanResultP });
 
   // Dynamically create canvas, it's not in HTML for this scanner
   const canvasElement = document.createElement('canvas'); 
@@ -1489,22 +1491,27 @@ async function startEditScanner() {
 
 
   function scanEditQR() {
+    console.log('[EditScanner Loop] scanEditQR called. Video readyState:', video.readyState, 'videoWidth:', video.videoWidth);
     if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
       canvasElement.height = video.videoHeight;
       canvasElement.width = video.videoWidth;
+      console.log('[EditScanner Loop] Drawing to canvas. Canvas dimensions:', canvasElement.width, 'x', canvasElement.height);
       canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
       const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
-      
+      console.log('[EditScanner Loop] Getting image data and calling jsQR.');
       const code = qrScanner(imageData.data, imageData.width, imageData.height, {
         inversionAttempts: 'dontInvert',
       });
 
       if (code && code.data) {
+        console.log('[EditScanner Loop] QR code detected:', code);
         if (scanResultP) scanResultP.textContent = `Scanned Code: ${code.data}`;
         editProduct(code.data); // Call existing function to populate form
         stopEditScanner(); // Stop scanner, cleanup, and UI reset
         // No need to explicitly cancel animationFrameId here as stopEditScanner will handle it.
         return; // Exit loop
+      } else {
+        console.log('[EditScanner Loop] No QR code found in this frame.');
       }
     }
     // Continue loop if no code or video not ready
@@ -1512,10 +1519,14 @@ async function startEditScanner() {
   }
 
   try {
+    console.log('[EditScanner] Requesting camera access...');
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    console.log('[EditScanner] Camera access granted. Stream:', stream);
     video.srcObject = stream;
+    console.log('[EditScanner] Video properties before play:', { srcObject: video.srcObject, videoWidth: video.videoWidth, videoHeight: video.videoHeight, readyState: video.readyState });
     video.setAttribute('playsinline', true); // For iOS
-    await video.play(); // Wait for play to start to ensure videoWidth/Height are available
+    video.play(); // Wait for play to start to ensure videoWidth/Height are available
+    console.log('[EditScanner] video.play() resolved. Video properties after play:', { videoWidth: video.videoWidth, videoHeight: video.videoHeight, readyState: video.readyState });
 
     // Update UI
     video.classList.remove('hidden');
@@ -1528,7 +1539,7 @@ async function startEditScanner() {
     window.editScannerAnimationFrameId = requestAnimationFrame(scanEditQR);
 
   } catch (err) {
-    console.error('Error accessing camera or starting scanner for edit:', err);
+    console.error('[EditScanner] Error during scanner setup or operation:', err, 'Error name:', err.name, 'Error message:', err.message);
     alert('Error starting QR scanner: ' + err.message);
     // Ensure cleanup if error occurs during setup
     if (window.editScannerAnimationFrameId) {
