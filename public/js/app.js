@@ -1465,6 +1465,113 @@ function stopUpdateScanner() {
   // Quagga.stop(); // Quagga is no longer used here.
 }
 
+async function startEditScanner() {
+  if (typeof jsQR === 'undefined' && typeof window.jsQR === 'undefined') {
+    console.error('jsQR library not found.');
+    alert('QR code scanning library (jsQR) is not available. Please check the console for errors.');
+    return;
+  }
+  const qrScanner = typeof jsQR !== 'undefined' ? jsQR : window.jsQR;
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('Camera access not supported by this browser.');
+    return;
+  }
+
+  const video = document.getElementById('editVideo');
+  const stopBtn = document.getElementById('stopEditScannerBtn');
+  const startBtn = document.getElementById('scanToEditBtn');
+  const scanResultP = document.getElementById('editScanResult');
+
+  // Dynamically create canvas, it's not in HTML for this scanner
+  const canvasElement = document.createElement('canvas'); 
+  const canvas = canvasElement.getContext('2d', { willReadFrequently: true });
+
+
+  function scanEditQR() {
+    if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
+      canvasElement.height = video.videoHeight;
+      canvasElement.width = video.videoWidth;
+      canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+      const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+      
+      const code = qrScanner(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'dontInvert',
+      });
+
+      if (code && code.data) {
+        if (scanResultP) scanResultP.textContent = `Scanned Code: ${code.data}`;
+        editProduct(code.data); // Call existing function to populate form
+        stopEditScanner(); // Stop scanner, cleanup, and UI reset
+        // No need to explicitly cancel animationFrameId here as stopEditScanner will handle it.
+        return; // Exit loop
+      }
+    }
+    // Continue loop if no code or video not ready
+    window.editScannerAnimationFrameId = requestAnimationFrame(scanEditQR);
+  }
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = stream;
+    video.setAttribute('playsinline', true); // For iOS
+    await video.play(); // Wait for play to start to ensure videoWidth/Height are available
+
+    // Update UI
+    video.classList.remove('hidden');
+    if (stopBtn) stopBtn.classList.remove('hidden');
+    if (startBtn) startBtn.classList.add('hidden');
+    if (scanResultP) scanResultP.textContent = 'Scanning...';
+
+
+    // Start the scanning loop
+    window.editScannerAnimationFrameId = requestAnimationFrame(scanEditQR);
+
+  } catch (err) {
+    console.error('Error accessing camera or starting scanner for edit:', err);
+    alert('Error starting QR scanner: ' + err.message);
+    // Ensure cleanup if error occurs during setup
+    if (window.editScannerAnimationFrameId) {
+      cancelAnimationFrame(window.editScannerAnimationFrameId);
+    }
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      stream = null;
+    }
+    video.classList.add('hidden');
+    if (stopBtn) stopBtn.classList.add('hidden');
+    if (startBtn) startBtn.classList.remove('hidden'); // Show start button again
+    if (scanResultP) scanResultP.textContent = 'Error starting scanner.';
+  }
+}
+
+function stopEditScanner() {
+  if (window.editScannerAnimationFrameId) {
+    cancelAnimationFrame(window.editScannerAnimationFrameId);
+    window.editScannerAnimationFrameId = null;
+  }
+
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+    stream = null;
+  }
+
+  const video = document.getElementById('editVideo');
+  const stopBtn = document.getElementById('stopEditScannerBtn');
+  const startBtn = document.getElementById('scanToEditBtn');
+  const scanResultP = document.getElementById('editScanResult');
+
+  if (video) {
+    video.srcObject = null;
+    video.classList.add('hidden');
+  }
+  if (stopBtn) stopBtn.classList.add('hidden');
+  if (startBtn) startBtn.classList.remove('hidden'); // Show the start button again
+  // Optionally clear the scan result text, or leave it showing the last scan
+  if (scanResultP) scanResultP.textContent = ''; 
+}
+
+
 // Initialize and Bind Events
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('DOMContentLoaded fired');
@@ -1521,6 +1628,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('moveProductBtn').addEventListener('click', moveProduct);
   document.getElementById('startMoveScannerBtn').addEventListener('click', startMoveScanner);
   document.getElementById('stopMoveScannerBtn').addEventListener('click', stopMoveScanner);
+  document.getElementById('scanToEditBtn').addEventListener('click', startEditScanner);
+  document.getElementById('stopEditScannerBtn').addEventListener('click', stopEditScanner);
   document.getElementById('addSupplierBtn').addEventListener('click', addSupplier);
   const addLocationBtn = document.getElementById('addLocationBtn');
   if (addLocationBtn) {
