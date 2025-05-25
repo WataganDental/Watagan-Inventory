@@ -56,6 +56,7 @@
         <input id="productMinQuantity" type="number" placeholder="Minimum Quantity" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
         <input id="productQuantityOrdered" type="number" placeholder="Quantity Ordered (Optional)" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
         <input id="productQuantityBackordered" type="number" placeholder="Quantity Backordered (Optional)" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
+        <input id="productReorderQuantity" type="number" placeholder="Reorder Quantity (Optional)" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
         <select id="productSupplier" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200">
           <option value="">Select Supplier</option>
         </select>
@@ -136,20 +137,22 @@
     <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md dark:shadow-slate-700 mb-6">
       <h2 id="toggleToOrderTableBtn" class="text-xl font-semibold mb-4 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-md p-2">Products to Order</h2>
       <div id="toOrderTableContent" class="hidden">
-        <div class="mb-4">
+        <div class="mb-4 flex gap-2">
           <button id="generateOrderReportBtn" class="bg-purple-500 hover:bg-purple-600 text-white p-2 rounded dark:bg-purple-700 dark:hover:bg-purple-600">Generate Order Report (PDF)</button>
-          <button id="emailOrderReportBtn" class="bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded dark:bg-indigo-700 dark:hover:bg-indigo-600 ml-2">Email Order Report</button>
+          <button id="emailOrderReportBtn" class="bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded dark:bg-indigo-700 dark:hover:bg-indigo-600">Email Order Report</button>
+          <button id="toggleToOrderIDColumnBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded dark:bg-gray-700 dark:hover:bg-gray-600">Show IDs</button>
         </div>
         <table class="w-full border-collapse">
           <thead>
             <tr class="bg-red-200 dark:bg-red-800/75 dark:text-red-100">
-              <th class="border dark:border-slate-600 p-2">ID</th>
+              <th class="border dark:border-slate-600 p-2 to-order-id-column hidden">ID</th>
               <th class="border dark:border-slate-600 p-2">Name</th>
               <th class="border dark:border-slate-600 p-2">Quantity</th>
               <th class="border dark:border-slate-600 p-2">Minimum Quantity</th>
               <th class="border dark:border-slate-600 p-2">Supplier</th>
               <th class="border dark:border-slate-600 p-2">Qty Ordered</th>
               <th class="border dark:border-slate-600 p-2">Qty Backordered</th>
+              <th class="border dark:border-slate-600 p-2">Reorder Qty</th>
             </tr>
           </thead>
           <tbody id="toOrderTable"></tbody>
@@ -161,8 +164,9 @@
     <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md dark:shadow-slate-700">
       <h2 id="toggleInventoryTableBtn" class="text-xl font-semibold mb-4 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-md p-2">Inventory</h2>
       <div id="inventoryTableContent" class="hidden">
-        <div class="mb-4">
+        <div class="mb-4 flex gap-2">
           <button id="generateQRCodePDFBtn" class="bg-purple-500 hover:bg-purple-600 text-white p-2 rounded dark:bg-purple-700 dark:hover:bg-purple-600">Generate QR Codes PDF</button>
+          <button id="toggleInventoryIDColumnBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded dark:bg-gray-700 dark:hover:bg-gray-600">Show IDs</button>
         </div>
 
         <!-- Filters Section -->
@@ -181,7 +185,7 @@
         <table class="w-full border-collapse">
           <thead>
             <tr class="bg-gray-200 dark:bg-slate-700">
-              <th class="border dark:border-slate-600 p-2">ID</th>
+              <th class="border dark:border-slate-600 p-2 id-column hidden">ID</th>
               <th class="border dark:border-slate-600 p-2">Name</th>
               <th class="border dark:border-slate-600 p-2">Quantity</th>
               <th class="border dark:border-slate-600 p-2">Min Quantity</th>
@@ -190,6 +194,7 @@
               <th class="border dark:border-slate-600 p-2">Location</th>
               <th class="border dark:border-slate-600 p-2">Qty Ordered</th>
               <th class="border dark:border-slate-600 p-2">Qty Backordered</th>
+              <th class="border dark:border-slate-600 p-2">Reorder Qty</th>
               <th class="border dark:border-slate-600 p-2">Photo</th>
               <th class="border dark:border-slate-600 p-2">QR Code</th>
               <th class="border dark:border-slate-600 p-2">Actions</th>
