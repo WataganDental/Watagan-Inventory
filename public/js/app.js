@@ -869,70 +869,93 @@ async function generateQRCodePDF() {
           continue;
         }
         
-        // Create a temporary canvas for QR code
-        const canvas = document.createElement('canvas');
-        // Set canvas dimensions explicitly for ALL QR codes
-        canvas.width = QR_SIZE;
-        canvas.height = QR_SIZE;
-        
+        // Create a temporary, off-screen div for QRCode.js to render into
+        const tempDiv = document.createElement('div');
+        tempDiv.id = `temp-qr-div-${product.id}`;
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        tempDiv.style.top = '-9999px';
+        tempDiv.style.width = QR_SIZE + 'px';
+        tempDiv.style.height = QR_SIZE + 'px';
+        document.body.appendChild(tempDiv);
+
+        let qrImageFromCanvas = ''; // To store the data URI
+
         try {
-          // Options are defined inside the 'if' block below for logging the first QR
-          
-          if (!firstQRCodeAppended) { // The condition '&& j === 0 && i === 0' could be added for truly first QR if needed, but current logic is fine.
-            console.log('Temporary canvas element for QR code (first QR) BEFORE QRCode.js: width=' + canvas.width + ', height=' + canvas.height, canvas);
-            
-            // Part 1: Test Basic Canvas Drawing - This section is now removed/commented out for Part 2
-            // const ctx = canvas.getContext('2d');
-            // ctx.fillStyle = 'green'; // Choose a visible color
-            // ctx.fillRect(0, 0, canvas.width, canvas.height); // Fill the entire canvas
-            // console.log('Filled canvas with a green square for basic draw test (first QR).');
-
-            // Part 2: Re-enable QRCode.js with simplified options for the first QR code
-            const qrOptions = {
-                text: product.id, // Keep using the actual product ID
-                width: QR_SIZE,
-                height: QR_SIZE,
-                colorDark: '#000000', // Explicitly set, though default
-                colorLight: '#ffffff'  // Explicitly set, though default
-                // Temporarily remove: correctLevel: window.QRCode.CorrectLevel.L
-            };
-            console.log('QRCode.js options for PDF canvas (first QR - simplified):', qrOptions);
-            
-            new window.QRCode(canvas, qrOptions); // Use defined (simplified) options
-
-            console.log('Canvas dimensions after QRCode.js (first QR - simplified): width=' + canvas.width + ', height=' + canvas.height); // Should reflect QR_SIZE
-
-            const qrImageForTest = canvas.toDataURL('image/png');
-            console.log('Generated Data URI for test image (first QR - simplified QRCode.js):', qrImageForTest.substring(0, 100) + '...');
-            
-            const imgElement = document.createElement('img');
-            imgElement.src = qrImageForTest;
-            imgElement.style.border = "2px solid red"; // Make it easy to spot
-            imgElement.style.position = "fixed"; // Keep it in view
-            imgElement.style.top = "10px";
-            imgElement.style.left = "10px";
-            imgElement.style.zIndex = "9999"; // Ensure it's on top
-            document.body.appendChild(imgElement);
-            firstQRCodeAppended = true;
-            console.log("Appended test QR code to body (first QR). Check if visible.");
-          } else {
-            // For subsequent QR codes, just generate them without extra logging
-            new window.QRCode(canvas, {
+          const qrOptions = {
               text: product.id,
               width: QR_SIZE,
               height: QR_SIZE,
               colorDark: '#000000',
               colorLight: '#ffffff',
-              correctLevel: window.QRCode.CorrectLevel.L
-            });
+              correctLevel: window.QRCode.CorrectLevel.L // Using full options now
+          };
+
+          new window.QRCode(tempDiv, qrOptions); // QRCode.js will append a canvas (or img) to tempDiv
+
+          const qrCanvas = tempDiv.querySelector('canvas');
+          
+          if (qrCanvas) {
+            if (!firstQRCodeAppended && i === 0 && j === 0) { // Log only for the very first product of the first location
+                 console.log('Found canvas in tempDiv (first QR):', qrCanvas);
+                 console.log('Dimensions of canvas in tempDiv (first QR): width=' + qrCanvas.width + ', height=' + qrCanvas.height);
+                 console.log('QRCode.js options for PDF canvas (first QR - DOM method):', qrOptions);
+            }
+            qrImageFromCanvas = qrCanvas.toDataURL('image/png');
+          } else {
+            const qrImgTag = tempDiv.querySelector('img');
+            if (qrImgTag) {
+                if (!firstQRCodeAppended && i === 0 && j === 0) {
+                    console.warn('QRCode.js created an IMG tag directly (first QR). Using its src for test, but PDF might fail.');
+                    console.log('IMG tag found in tempDiv (first QR):', qrImgTag);
+                }
+                // Attempting to use img.src directly might be problematic for jsPDF if it's not a data URI
+                // or if jsPDF expects raw image data from a canvas.
+                // For now, this path will likely lead to an error in jsPDF or an empty image.
+                console.error('QRCode.js did not create a canvas, found img instead. Image data extraction from img.src needs review for jsPDF compatibility.');
+                qrImageFromCanvas = qrImgTag.src; // This is a placeholder; might not work as expected with jsPDF
+                                                 // If this path is taken, the test image on body might work, but PDF might not.
+            } else {
+                console.error('QRCode.js did not create a canvas or img in tempDiv for product: ' + product.id);
+                // Clean up div and continue (skip this product's QR code)
+                document.body.removeChild(tempDiv);
+                continue; 
+            }
           }
 
-          const qrImage = canvas.toDataURL('image/png');
-          doc.addImage(qrImage, 'PNG', x, y, QR_SIZE, QR_SIZE);
+          // Logic for appending the first QR code image to the body for visual testing
+          if (!firstQRCodeAppended && qrImageFromCanvas) { 
+            if (i === 0 && j === 0) { // Ensure this logging and appending happens only for the true first QR
+                console.log('Generated Data URI for test image (first QR - DOM method):', qrImageFromCanvas.substring(0, 100) + '...');
+            }
+            const imgElement = document.createElement('img');
+            imgElement.src = qrImageFromCanvas; // Use the extracted data URI
+            imgElement.style.border = "2px solid red";
+            imgElement.style.position = "fixed";
+            imgElement.style.top = "10px";
+            imgElement.style.left = "10px";
+            imgElement.style.zIndex = "9999";
+            document.body.appendChild(imgElement);
+            firstQRCodeAppended = true;
+            console.log("Appended test QR code to body (first QR - DOM method). Check if visible.");
+          }
+          
+          if (qrImageFromCanvas) { // Only add image to PDF if we successfully got a data URI
+            doc.addImage(qrImageFromCanvas, 'PNG', x, y, QR_SIZE, QR_SIZE);
+          } else {
+            // Optionally draw a placeholder or error message in the PDF for this missing QR code
+            console.warn(`Skipping addImage for product ${product.id} due to missing QR image data.`);
+          }
+
         } catch (qrError) {
-          console.error('Error generating QR code for product ID', product.id, ':', qrError);
+          console.error('Error generating QR code for product ID', product.id, ' (DOM method):', qrError);
           doc.setFontSize(8);
           doc.text('QR Error', x + QR_SIZE / 2, y + QR_SIZE / 2, { align: 'center' });
+        } finally {
+            // Ensure tempDiv is always removed
+            if (tempDiv.parentElement === document.body) {
+                document.body.removeChild(tempDiv);
+            }
         }
 
         // Add product name below QR code
