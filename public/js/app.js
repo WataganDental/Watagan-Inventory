@@ -133,6 +133,34 @@ async function waitForJsPDF() {
   }
 }
 
+// Collapsible Section Functionality
+function setupCollapsibleSection(buttonId, contentId, isInitiallyExpanded) {
+  const button = document.getElementById(buttonId);
+  const content = document.getElementById(contentId);
+
+  if (!button) {
+    console.error(`Collapsible section button not found for ID: ${buttonId}`);
+    return;
+  }
+  if (!content) {
+    console.error(`Collapsible section content not found for ID: ${contentId}`);
+    return;
+  }
+
+  button.addEventListener('click', () => {
+    button.classList.toggle('active');
+    content.classList.toggle('hidden');
+  });
+
+  if (isInitiallyExpanded) {
+    content.classList.remove('hidden');
+    button.classList.add('active');
+  } else {
+    content.classList.add('hidden');
+    button.classList.remove('active');
+  }
+}
+
 // Utility to Generate UUID
 function generateUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
