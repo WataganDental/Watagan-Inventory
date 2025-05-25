@@ -54,6 +54,8 @@
         <input id="productQuantity" type="number" placeholder="Quantity" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
         <input id="productCost" type="number" step="0.01" placeholder="Cost per Unit ($)" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
         <input id="productMinQuantity" type="number" placeholder="Minimum Quantity" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
+        <input id="productQuantityOrdered" type="number" placeholder="Quantity Ordered (Optional)" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
+        <input id="productQuantityBackordered" type="number" placeholder="Quantity Backordered (Optional)" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
         <select id="productSupplier" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200">
           <option value="">Select Supplier</option>
         </select>
@@ -146,6 +148,8 @@
               <th class="border dark:border-slate-600 p-2">Quantity</th>
               <th class="border dark:border-slate-600 p-2">Minimum Quantity</th>
               <th class="border dark:border-slate-600 p-2">Supplier</th>
+              <th class="border dark:border-slate-600 p-2">Qty Ordered</th>
+              <th class="border dark:border-slate-600 p-2">Qty Backordered</th>
             </tr>
           </thead>
           <tbody id="toOrderTable"></tbody>
@@ -184,6 +188,8 @@
               <th class="border dark:border-slate-600 p-2">Cost ($)</th>
               <th class="border dark:border-slate-600 p-2">Supplier</th>
               <th class="border dark:border-slate-600 p-2">Location</th>
+              <th class="border dark:border-slate-600 p-2">Qty Ordered</th>
+              <th class="border dark:border-slate-600 p-2">Qty Backordered</th>
               <th class="border dark:border-slate-600 p-2">Photo</th>
               <th class="border dark:border-slate-600 p-2">QR Code</th>
               <th class="border dark:border-slate-600 p-2">Actions</th>
