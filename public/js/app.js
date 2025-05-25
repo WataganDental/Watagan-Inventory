@@ -61,16 +61,23 @@ const chevronDownIcon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" 
 
 // Function to set up a collapsible section
 function setupCollapsibleSection(buttonId, contentId, defaultExpanded = true) {
+  console.log(`Setting up collapsible section: buttonId=${buttonId}, contentId=${contentId}, defaultExpanded=${defaultExpanded}`);
   const button = document.getElementById(buttonId);
   const content = document.getElementById(contentId);
+  console.log('Found button:', button);
+  console.log('Found content element:', content);
 
-  if (!button || !content) {
-    console.warn(`Collapsible section setup failed: Button or content not found for ${buttonId}, ${contentId}`);
+  if (!button) {
+    console.error(`Collapsible section button not found: ${buttonId}`);
+    return;
+  }
+  if (!content) {
+    console.error(`Collapsible section content not found: ${contentId}`);
     return;
   }
 
   // Set initial state
-  const isExpanded = defaultExpanded;
+  // const isExpanded = defaultExpanded; // This variable 'isExpanded' is declared but never read.
   if (defaultExpanded) {
     content.classList.remove('hidden');
     button.innerHTML = chevronDownIcon;
@@ -82,7 +89,12 @@ function setupCollapsibleSection(buttonId, contentId, defaultExpanded = true) {
   }
 
   button.addEventListener('click', () => {
-    const currentlyExpanded = content.classList.toggle('hidden');
+    console.log(`Button clicked: ${button.id}`);
+    console.log(`Current content hidden state: ${content.classList.contains('hidden')}`);
+    console.log(`Current aria-expanded: ${button.getAttribute('aria-expanded')}`);
+    
+    content.classList.toggle('hidden'); // Toggle first
+    
     if (content.classList.contains('hidden')) {
       button.innerHTML = chevronRightIcon;
       button.setAttribute('aria-expanded', 'false');
@@ -90,6 +102,8 @@ function setupCollapsibleSection(buttonId, contentId, defaultExpanded = true) {
       button.innerHTML = chevronDownIcon;
       button.setAttribute('aria-expanded', 'true');
     }
+    console.log(`New content hidden state: ${content.classList.contains('hidden')}`);
+    console.log(`New aria-expanded: ${button.getAttribute('aria-expanded')}`);
   });
 }
 
@@ -1071,26 +1085,54 @@ async function generateQRCodePDFWithPdfLib() {
             colorLight: '#ffffff',
             correctLevel: QRCode.CorrectLevel.L
           });
-          
+
+          // DEBUG: Log tempQrDiv and its content
+          console.log(`[Debug QR ${product.id}] tempQrDiv element:`, tempQrDiv);
+          console.log(`[Debug QR ${product.id}] tempQrDiv.innerHTML after QRCode instantiation:`, tempQrDiv.innerHTML);
+
+          // TEMPORARY DELAY FOR DIAGNOSIS
+          await new Promise(resolve => setTimeout(resolve, 100)); 
+          console.log(`[Debug QR ${product.id}] After 100ms delay`);
+
           const canvas = tempQrDiv.querySelector('canvas');
+          // DEBUG: Log found canvas
+          console.log(`[Debug QR ${product.id}] Found canvas element:`, canvas);
+
           if (canvas) {
-            const pngDataUrl = canvas.toDataURL('image/png');
-            const pngImage = await pdfDoc.embedPng(pngDataUrl);
-            
-            page.drawImage(pngImage, {
-              x: currentX,
-              y: currentY - qrSize,
-              width: qrSize,
-              height: qrSize,
-            });
+            try {
+              const pngDataUrl = canvas.toDataURL('image/png');
+              // DEBUG: Log PNG Data URL
+              console.log(`[Debug QR ${product.id}] PNG Data URL (first 100 chars):`, pngDataUrl ? pngDataUrl.substring(0, 100) : 'null or empty');
+
+              if (!pngDataUrl || pngDataUrl === 'data:,') {
+                console.error(`[Debug QR ${product.id}] Canvas toDataURL returned empty or invalid data.`);
+                throw new Error('Canvas toDataURL returned empty data.');
+              }
+
+              const pngImage = await pdfDoc.embedPng(pngDataUrl);
+              // DEBUG: Log embedded PNG image object
+              console.log(`[Debug QR ${product.id}] Embedded PNG image object:`, pngImage);
+
+              if (pngImage) {
+                page.drawImage(pngImage, {
+                  x: currentX,
+                  y: currentY - qrSize,
+                  width: qrSize,
+                  height: qrSize,
+                });
+                console.log(`[Debug QR ${product.id}] QR Code image drawn.`);
+              } else {
+                throw new Error('Failed to embed PNG image.');
+              }
+            } catch (embedError) {
+              console.error(`[Debug QR ${product.id}] Error processing or embedding QR code image:`, embedError);
+              page.drawRectangle({ x: currentX, y: currentY - qrSize, width: qrSize, height: qrSize, borderColor: rgb(1, 0, 0), borderWidth: 1 });
+              page.drawText("Embed Err", { x: currentX + 5, y: currentY - qrSize / 2, size: 8, color: rgb(1, 0, 0) });
+            }
           } else {
-            console.error('Canvas for QR code not found for product:', product.id);
-            // Optionally draw a placeholder if canvas fails
-            page.drawRectangle({
-                x: currentX, y: currentY - qrSize, width: qrSize, height: qrSize,
-                borderColor: rgb(1,0,0), borderWidth: 1
-            });
-            page.drawText("QR Error", {x: currentX + 5, y: currentY - qrSize/2, size: 10, color: rgb(1,0,0)});
+            console.error(`[Debug QR ${product.id}] Canvas element not found for product ID: ${product.id}`);
+            page.drawRectangle({ x: currentX, y: currentY - qrSize, width: qrSize, height: qrSize, borderColor: rgb(1, 0, 0), borderWidth: 1 });
+            page.drawText("No Canvas", { x: currentX + 5, y: currentY - qrSize / 2, size: 8, color: rgb(1, 0, 0) });
           }
 
           // Draw product name
@@ -1208,75 +1250,151 @@ async function generateOrderReport() {
       }
 
       // Supplier Header
-      doc.setFontSize(14); 
-      doc.setFontStyle('bold');
-      doc.text(supplierName, margin, yPosition);
-      yPosition += lineHeight + (lineHeight / 2); 
-      doc.setFontStyle('normal');
+      page.drawText(supplierName, { 
+        x: margin, 
+        y: yPosition, 
+        font: boldFont, // Use boldFont
+        size: headerFontSize 
+      });
+      yPosition -= (headerFontSize + 5);
 
       // Column Headers for items
-      doc.setFontSize(10);
-      doc.setFontStyle('bold');
-      doc.text('ID', margin, yPosition);
-      doc.text('Name', margin + 80, yPosition); 
-      doc.text('Qty', margin + 300, yPosition, {align: 'right'});
-      doc.text('Min Qty', margin + 350, yPosition, {align: 'right'});
-      yPosition += lineHeight;
-      doc.setLineWidth(0.5);
-      doc.line(margin, yPosition - 2, pageWidth - margin, yPosition - 2); 
-      yPosition += 5; 
-      doc.setFontStyle('normal');
+      page.drawText("ID", { x: margin, y: yPosition, font: boldFont, size: regularFontSize }); // Use boldFont
+      page.drawText("Name", { x: margin + 80, y: yPosition, font: boldFont, size: regularFontSize }); // Use boldFont
+      page.drawText("Qty", { x: margin + 350, y: yPosition, font: boldFont, size: regularFontSize }); // Use boldFont, adjusted x for alignment
+      page.drawText("Min Qty", { x: margin + 400, y: yPosition, font: boldFont, size: regularFontSize }); // Use boldFont, adjusted x for alignment
+      yPosition -= (lineHeight + 2);
+      page.drawLine({
+          start: { x: margin, y: yPosition },
+          end: { x: width - margin, y: yPosition },
+          thickness: 0.5,
+          color: rgb(0, 0, 0),
+      });
+      yPosition -= (lineHeight / 2);
+
 
       // List items for the current supplier
       for (const item of items) {
-        if (checkAndAddPage(lineHeight)) { 
-          doc.setFontSize(14);
-          doc.setFontStyle('bold');
-          doc.text(`${supplierName} (continued)`, margin, yPosition);
-          yPosition += lineHeight + (lineHeight / 2);
-          doc.setFontStyle('normal');
+        if (checkAndAddPage(lineHeight * (nameLines ? nameLines.length : 1) )) { // Adjust height for potential wrapped names
+          // If new page was added, re-print supplier header and column headers
+          page.drawText(`${supplierName} (continued)`, { 
+            x: margin, 
+            y: yPosition, 
+            font: boldFont, // Use boldFont
+            size: headerFontSize 
+          });
+          yPosition -= (headerFontSize + 5);
 
-          doc.setFontSize(10);
-          doc.setFontStyle('bold');
-          doc.text('ID', margin, yPosition);
-          doc.text('Name', margin + 80, yPosition);
-          doc.text('Qty', margin + 300, yPosition, {align: 'right'});
-          doc.text('Min Qty', margin + 350, yPosition, {align: 'right'});
-          yPosition += lineHeight;
-          doc.setLineWidth(0.5);
-          doc.line(margin, yPosition - 2, pageWidth - margin, yPosition - 2);
-          yPosition += 5;
-          doc.setFontStyle('normal');
+          page.drawText("ID", { x: margin, y: yPosition, font: boldFont, size: regularFontSize }); // Use boldFont
+          page.drawText("Name", { x: margin + 80, y: yPosition, font: boldFont, size: regularFontSize }); // Use boldFont
+          page.drawText("Qty", { x: margin + 350, y: yPosition, font: boldFont, size: regularFontSize }); // Use boldFont
+          page.drawText("Min Qty", { x: margin + 400, y: yPosition, font: boldFont, size: regularFontSize }); // Use boldFont
+          yPosition -= (lineHeight + 2);
+          page.drawLine({
+              start: { x: margin, y: yPosition },
+              end: { x: width - margin, y: yPosition },
+              thickness: 0.5,
+              color: rgb(0, 0, 0),
+          });
+          yPosition -= (lineHeight/2);
         }
 
-        doc.setFontSize(10);
         let itemName = item.name;
-        try {
-            const maxNameWidth = 210; 
-            if (doc.getTextWidth(itemName) > maxNameWidth) {
-                let splitText = doc.splitTextToSize(itemName, maxNameWidth);
-                itemName = Array.isArray(splitText) ? splitText[0] : splitText;
-                if (itemName.length < item.name.length && !itemName.endsWith("...")) {
-                    itemName = itemName.trim() + "...";
+        const maxNameWidth = 250; 
+        const nameLines = [];
+        
+        if (font.widthOfTextAtSize(itemName, regularFontSize) > maxNameWidth) {
+            let currentLine = '';
+            const words = itemName.split(' ');
+            for (const word of words) {
+                if (font.widthOfTextAtSize(currentLine + word, regularFontSize) > maxNameWidth) {
+                    if(currentLine.trim() !== '') nameLines.push(currentLine.trim());
+                    currentLine = word + ' ';
+                } else {
+                    currentLine += word + ' ';
                 }
             }
-        } catch(e) {
-            console.warn("Error processing item name for PDF: ", item.name, e);
+            if(currentLine.trim() !== '') nameLines.push(currentLine.trim());
+            if(nameLines.length === 0 && currentLine.trim() !== '') nameLines.push(currentLine.trim()); // case where first word itself is too long
+        } else {
+            nameLines.push(itemName);
+        }
+        
+        let nameYOffset = yPosition;
+        nameLines.forEach((line, index) => {
+            if (index > 0) nameYOffset -= lineHeight; // Adjust y for subsequent lines of the same item
+             if (nameYOffset < margin + lineHeight) { // Check page boundary for each line
+                page = pdfDoc.addPage(PageSizes.A4);
+                yPosition = height - margin; // Reset y
+                nameYOffset = yPosition;
+                // Add necessary headers again if needed
+                 page.drawText(`Watagan Dental Order Report (pdf-lib) - Page ${pdfDoc.getPageCount()} (cont.)`, { 
+                    x: margin, y: yPosition, font: boldFont, size: titleFontSize 
+                });
+                yPosition -= (titleFontSize + 10);
+                nameYOffset = yPosition; // update nameYOffset after potential page break
+            }
+            page.drawText(line, { x: margin + 80, y: nameYOffset, font: font, size: regularFontSize });
+        });
+        
+        page.drawText(item.id, { x: margin, y: yPosition, font: font, size: regularFontSize });
+        page.drawText(item.quantity.toString(), { x: margin + 350, y: yPosition, font: font, size: regularFontSize }); // Use font
+        page.drawText(item.minQuantity.toString(), { x: margin + 400, y: yPosition, font: font, size: regularFontSize }); // Use font
+        
+        yPosition -= (lineHeight * nameLines.length); // Adjust y based on how many lines the name took
+        
+        // Add a small buffer after each item if multiple lines were drawn for the name
+        if (nameLines.length > 1) {
+            yPosition -= (lineHeight / 2);
         }
 
-        doc.text(item.id, margin, yPosition);
-        doc.text(itemName, margin + 80, yPosition);
-        doc.text(item.quantity.toString(), margin + 300, yPosition, {align: 'right'});
-        doc.text(item.minQuantity.toString(), margin + 350, yPosition, {align: 'right'});
-        yPosition += lineHeight;
+        // Final check for page overflow after drawing item
+        if (yPosition < margin) {
+             page = pdfDoc.addPage(PageSizes.A4);
+             yPosition = height - margin;
+             // Add necessary headers again if needed
+             page.drawText(`Watagan Dental Order Report (pdf-lib) - Page ${pdfDoc.getPageCount()} (cont.)`, { 
+                x: margin, y: yPosition, font: boldFont, size: titleFontSize 
+            });
+            yPosition -= (titleFontSize + 10);
+        }
+
+        // Old try-catch for item name processing, simplified above
+        // try {
+            // const maxNameWidth = 210; 
+            // if (doc.getTextWidth(itemName) > maxNameWidth) {
+            //     let splitText = doc.splitTextToSize(itemName, maxNameWidth);
+            //     itemName = Array.isArray(splitText) ? splitText[0] : splitText;
+            //     if (itemName.length < item.name.length && !itemName.endsWith("...")) {
+            //         itemName = itemName.trim() + "...";
+            //     }
+            // }
+        // } catch(e) {
+        //     console.warn("Error processing item name for PDF: ", item.name, e);
+        // }
+
+        // doc.text(item.id, margin, yPosition);
+        // doc.text(itemName, margin + 80, yPosition);
+        // doc.text(item.quantity.toString(), margin + 300, yPosition, {align: 'right'});
+        // doc.text(item.minQuantity.toString(), margin + 350, yPosition, {align: 'right'});
+        // yPosition += lineHeight;
       }
-      yPosition += sectionSpacing; 
+      yPosition -= (lineHeight); // Extra space after a supplier's items
     }
 
-    doc.save('Watagan_Dental_Order_Report_By_Supplier.pdf');
+    const pdfBytes = await pdfDoc.save();
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'Watagan_Dental_Order_Report_Alternative.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+
   } catch (error) {
-    console.error('Failed to generate Order Report PDF by Supplier:', error.message, error.stack);
-    alert('Failed to generate Order Report PDF by Supplier: ' + error.message);
+    console.error('Failed to generate Order Report PDF with pdf-lib:', error.message, error.stack);
+    alert('Failed to generate Order Report PDF with pdf-lib: ' + error.message);
   }
 }
 
@@ -1614,6 +1732,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     addBatchEntry(); 
 
     // Setup collapsible sections
+    console.log('Initializing collapsible sections...');
     // Forms collapsed by default
     setupCollapsibleSection('toggleProductFormBtn', 'productFormContent', false);
     setupCollapsibleSection('toggleSupplierFormBtn', 'supplierFormContent', false);
