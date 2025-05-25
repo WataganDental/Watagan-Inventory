@@ -10,7 +10,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 </head>
 <body class="bg-gray-100 dark:bg-slate-900 font-sans dark:text-gray-200">
@@ -33,7 +32,7 @@
       <div class="mt-4">
         <video id="updateVideo" class="w-full max-w-md mx-auto mb-4 hidden" autoplay playsinline></video>
         <canvas id="updateCanvas" class="hidden"></canvas>
-        <button id="startUpdateScannerBtn" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded dark:bg-green-700 dark:hover:bg-green-600">Start Scanner</button>
+        <button id="startUpdateScannerBtn" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded dark:bg-green-700 dark:hover:bg-green-600">Scan QR Code</button>
         <button id="stopUpdateScannerBtn" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded dark:bg-red-700 dark:hover:bg-red-600">Stop Scanner</button>
         <p id="updateScanResult" class="mt-4 text-center"></p>
       </div>
@@ -89,7 +88,7 @@
         <div class="mt-4">
           <video id="moveVideo" class="w-full max-w-md mx-auto mb-4 hidden" autoplay playsinline></video>
           <canvas id="moveCanvas" class="hidden"></canvas>
-          <button id="startMoveScannerBtn" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded dark:bg-green-700 dark:hover:bg-green-600">Start Scanner</button>
+          <button id="startMoveScannerBtn" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded dark:bg-green-700 dark:hover:bg-green-600">Scan QR Code</button>
           <button id="stopMoveScannerBtn" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded dark:bg-red-700 dark:hover:bg-red-600">Stop Scanner</button>
           <p id="moveScanResult" class="mt-4 text-center"></p>
         </div>

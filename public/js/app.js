@@ -1279,106 +1279,190 @@ async function emailOrderReport() {
 
 // Barcode Scanning
 async function startMoveScanner() {
+  if (typeof jsQR === 'undefined' && typeof window.jsQR === 'undefined') {
+    console.error('jsQR library not found.');
+    alert('QR code scanning library (jsQR) is not available. Please check the console for errors.');
+    return;
+  }
+  const qrScanner = typeof jsQR !== 'undefined' ? jsQR : window.jsQR;
+
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     alert('Camera access not supported by this browser.');
     return;
   }
+
+  const video = document.getElementById('moveVideo');
+  const canvasElement = document.createElement('canvas'); // Create canvas dynamically
+  const canvas = canvasElement.getContext('2d');
+  let animationFrameId; // To store the requestAnimationFrame ID
+
+  // Function to continuously scan for QR codes
+  function scanMoveQR() {
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvasElement.height = video.videoHeight;
+      canvasElement.width = video.videoWidth;
+      canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+      const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+      
+      // Use the correctly referenced jsQR
+      const code = qrScanner(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'dontInvert', // Optional: speeds up scanning if codes are not inverted
+      });
+
+      if (code) {
+        document.getElementById('moveProductId').value = code.data;
+        document.getElementById('moveScanResult').textContent = `Scanned Code: ${code.data}`;
+        stopMoveScanner(); // Call stopMoveScanner to clean up and stop the loop
+        // No need to explicitly cancel animationFrameId here as stopMoveScanner will handle it
+      } else {
+        // If no code is found, continue the loop
+        animationFrameId = requestAnimationFrame(scanMoveQR);
+      }
+    } else {
+      // If video data is not ready, try again on the next frame
+      animationFrameId = requestAnimationFrame(scanMoveQR);
+    }
+  }
+
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    const video = document.getElementById('moveVideo');
     video.srcObject = stream;
     video.classList.remove('hidden');
+    video.setAttribute('playsinline', true); // Important for iOS to play inline
     video.play();
-    Quagga.init({
-      inputStream: {
-        name: 'Live',
-        type: 'LiveStream',
-        target: video,
-        constraints: { facingMode: 'environment' }
-      },
-      decoder: { readers: ['code_128_reader', 'qrcode_reader'] }
-    }, function(err) {
-      if (err) {
-        console.error('Error initializing scanner:', err);
-        alert('Error initializing scanner: ' + err.message);
-        return;
-      }
-      Quagga.start();
-    });
-    Quagga.onDetected(function(result) {
-      const code = result.codeResult.code;
-      document.getElementById('moveScanResult').textContent = `Scanned Code: ${code}`;
-      document.getElementById('moveProductId').value = code;
-      Quagga.stop();
-      stopMoveScanner();
-    });
+    // Start the scanning loop
+    animationFrameId = requestAnimationFrame(scanMoveQR); 
+    // Store animationFrameId globally or in a way stopMoveScanner can access it
+    window.moveScannerAnimationFrameId = animationFrameId; 
   } catch (err) {
     console.error('Error accessing camera:', err);
     alert('Error accessing camera: ' + err.message);
+    if (animationFrameId) { // Ensure to cancel frame if error occurs after starting
+        cancelAnimationFrame(animationFrameId);
+    }
   }
 }
 
 function stopMoveScanner() {
+  // Cancel the animation frame loop using the stored ID
+  if (window.moveScannerAnimationFrameId) {
+    cancelAnimationFrame(window.moveScannerAnimationFrameId);
+    window.moveScannerAnimationFrameId = null; // Clear the ID
+  }
+
   if (stream) {
     stream.getTracks().forEach(track => track.stop());
-    stream = null;
-    document.getElementById('moveVideo').srcObject = null;
-    document.getElementById('moveVideo').classList.add('hidden');
-    document.getElementById('moveScanResult').textContent = '';
+    stream = null; // Clear the stream reference
+    const video = document.getElementById('moveVideo');
+    if (video) {
+        video.srcObject = null;
+        video.classList.add('hidden');
+    }
+    const scanResult = document.getElementById('moveScanResult');
+    if (scanResult) {
+        scanResult.textContent = ''; // Clear the scan result text
+    }
   }
-  Quagga.stop();
+  // Quagga.stop(); // Quagga is no longer used in this function, so this line is removed.
 }
 
 async function startUpdateScanner() {
+  if (typeof jsQR === 'undefined' && typeof window.jsQR === 'undefined') {
+    console.error('jsQR library not found.');
+    alert('QR code scanning library (jsQR) is not available. Please check the console for errors.');
+    return;
+  }
+  const qrScanner = typeof jsQR !== 'undefined' ? jsQR : window.jsQR;
+
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     alert('Camera access not supported by this browser.');
     return;
   }
+
+  const video = document.getElementById('updateVideo');
+  const canvasElement = document.createElement('canvas'); // Create canvas dynamically
+  const canvas = canvasElement.getContext('2d');
+  let animationFrameId; // To store the requestAnimationFrame ID
+
+  // Function to continuously scan for QR codes
+  function scanUpdateQR() {
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvasElement.height = video.videoHeight;
+      canvasElement.width = video.videoWidth;
+      canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+      const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+      
+      const code = qrScanner(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'dontInvert',
+      });
+
+      if (code) {
+        document.getElementById('updateScanResult').textContent = `Scanned Code: ${code.data}`;
+        
+        // Call addBatchEntry() first. It internally modifies `batchUpdates` array 
+        // and sets up the HTML structure. The new entry's ID will be based on the new length.
+        addBatchEntry(); 
+        
+        // `addBatchEntry` creates an ID like `batch-${batchUpdates.length}` *before* pushing the new ID to batchUpdates.
+        // So, after `addBatchEntry` has run and `batchUpdates.push(entryId)` has happened,
+        // the ID of the input field for the *just added* entry is `batch-${batchUpdates[batchUpdates.length - 1]}-id`.
+        // However, `addBatchEntry` internally generates `entryId = batch-${batchUpdates.length}` (old length).
+        // Let's re-check addBatchEntry logic.
+        // `const entryId = batch-${batchUpdates.length};` then `batchUpdates.push(entryId);`
+        // So the ID for the input is indeed `batch-${batchUpdates.length -1}-id` if we refer to the array *after* push.
+        // Or, more robustly, get the ID that `addBatchEntry` *just created*.
+        // The `addBatchEntry` function creates an input with ID like `${entryId}-id`.
+        // `batchUpdates` stores `entryId`. So the last one is `batchUpdates[batchUpdates.length - 1]`.
+        // The input field ID is `batchUpdates[batchUpdates.length - 1] + '-id'`.
+        const lastEntryArrayId = batchUpdates[batchUpdates.length - 1]; // This is something like "batch-0", "batch-1"
+        const targetInputId = `${lastEntryArrayId}-id`; // This constructs "batch-0-id", "batch-1-id" etc.
+        document.getElementById(targetInputId).value = code.data;
+        
+        stopUpdateScanner(); // Clean up and stop the loop
+      } else {
+        animationFrameId = requestAnimationFrame(scanUpdateQR);
+      }
+    } else {
+      animationFrameId = requestAnimationFrame(scanUpdateQR);
+    }
+  }
+
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    const video = document.getElementById('updateVideo');
     video.srcObject = stream;
     video.classList.remove('hidden');
+    video.setAttribute('playsinline', true);
     video.play();
-    Quagga.init({
-      inputStream: {
-        name: 'Live',
-        type: 'LiveStream',
-        target: video,
-        constraints: { facingMode: 'environment' }
-      },
-      decoder: { readers: ['code_128_reader', 'qrcode_reader'] }
-    }, function(err) {
-      if (err) {
-        console.error('Error initializing scanner:', err);
-        alert('Error initializing scanner: ' + err.message);
-        return;
-      }
-      Quagga.start();
-    });
-    Quagga.onDetected(function(result) {
-      const code = result.codeResult.code;
-      document.getElementById('updateScanResult').textContent = `Scanned Code: ${code}`;
-      addBatchEntry();
-      document.getElementById(`batch-${batchUpdates.length - 1}-id`).value = code;
-      Quagga.stop();
-      stopUpdateScanner();
-    });
+    animationFrameId = requestAnimationFrame(scanUpdateQR);
+    window.updateScannerAnimationFrameId = animationFrameId;
   } catch (err) {
     console.error('Error accessing camera:', err);
     alert('Error accessing camera: ' + err.message);
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+    }
   }
 }
 
 function stopUpdateScanner() {
+  if (window.updateScannerAnimationFrameId) {
+    cancelAnimationFrame(window.updateScannerAnimationFrameId);
+    window.updateScannerAnimationFrameId = null;
+  }
   if (stream) {
     stream.getTracks().forEach(track => track.stop());
     stream = null;
-    document.getElementById('updateVideo').srcObject = null;
-    document.getElementById('updateVideo').classList.add('hidden');
-    document.getElementById('updateScanResult').textContent = '';
+    const video = document.getElementById('updateVideo');
+    if (video) {
+        video.srcObject = null;
+        video.classList.add('hidden');
+    }
+    const scanResult = document.getElementById('updateScanResult');
+    if (scanResult) {
+        scanResult.textContent = '';
+    }
   }
-  Quagga.stop();
+  // Quagga.stop(); // Quagga is no longer used here.
 }
 
 // Initialize and Bind Events
