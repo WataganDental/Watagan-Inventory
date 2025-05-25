@@ -444,6 +444,8 @@ async function submitProduct() {
   const quantity = parseInt(document.getElementById('productQuantity').value) || 0;
   const cost = parseFloat(document.getElementById('productCost').value) || 0;
   const minQuantity = parseInt(document.getElementById('productMinQuantity').value) || 0;
+  const quantityOrdered = parseInt(document.getElementById('productQuantityOrdered').value) || 0;
+  const quantityBackordered = parseInt(document.getElementById('productQuantityBackordered').value) || 0;
   const supplier = document.getElementById('productSupplier').value;
   const location = document.getElementById('productLocation').value;
   const photoData = document.getElementById('productPhotoPreview').src;
@@ -456,7 +458,9 @@ async function submitProduct() {
         name, 
         quantity, 
         cost, 
-        minQuantity, 
+        minQuantity,
+        quantityOrdered,
+        quantityBackordered,
         supplier, 
         location, 
         photo: photoUrl 
@@ -481,6 +485,8 @@ async function editProduct(id) {
     document.getElementById('productQuantity').value = product.quantity;
     document.getElementById('productCost').value = product.cost;
     document.getElementById('productMinQuantity').value = product.minQuantity;
+    document.getElementById('productQuantityOrdered').value = product.quantityOrdered || 0;
+    document.getElementById('productQuantityBackordered').value = product.quantityBackordered || 0;
     document.getElementById('productSupplier').value = product.supplier;
     document.getElementById('productLocation').value = product.location;
     if (product.photo) {
@@ -499,6 +505,8 @@ function resetProductForm() {
   document.getElementById('productQuantity').value = '';
   document.getElementById('productCost').value = '';
   document.getElementById('productMinQuantity').value = '';
+  document.getElementById('productQuantityOrdered').value = '';
+  document.getElementById('productQuantityBackordered').value = '';
   document.getElementById('productSupplier').value = '';
   document.getElementById('productLocation').value = 'Surgery 1';
   document.getElementById('productPhotoPreview').src = '';
@@ -659,7 +667,7 @@ function updateInventoryTable(itemsToDisplay) {
   if (!itemsToDisplay || itemsToDisplay.length === 0) {
     const row = tableBody.insertRow();
     const cell = row.insertCell();
-    cell.colSpan = 10; // Number of columns in your inventory table
+    cell.colSpan = 12; // Number of columns in your inventory table
     cell.textContent = 'No products found matching your criteria.';
     cell.className = 'text-center p-4 dark:text-gray-400';
     return;
@@ -676,6 +684,8 @@ function updateInventoryTable(itemsToDisplay) {
       <td class="border dark:border-slate-600 p-2">${item.cost.toFixed(2)}</td>
       <td class="border dark:border-slate-600 p-2">${item.supplier}</td>
       <td class="border dark:border-slate-600 p-2">${item.location}</td>
+      <td class="border dark:border-slate-600 p-2">${item.quantityOrdered || 0}</td>
+      <td class="border dark:border-slate-600 p-2">${item.quantityBackordered || 0}</td>
       <td class="border dark:border-slate-600 p-2">${item.photo ? `<img src="${item.photo}" class="w-16 h-16 object-cover mx-auto" alt="Product Photo">` : 'No Photo'}</td>
       <td class="border dark:border-slate-600 p-2"><div id="qrcode-${item.id}" class="mx-auto w-24 h-24"></div></td>
       <td class="border dark:border-slate-600 p-2">
@@ -732,6 +742,8 @@ async function updateToOrderTable() {
       <td class="border dark:border-slate-600 p-2">${item.quantity}</td>
       <td class="border dark:border-slate-600 p-2">${item.minQuantity}</td>
       <td class="border dark:border-slate-600 p-2">${item.supplier}</td>
+      <td class="border dark:border-slate-600 p-2">${item.quantityOrdered || 0}</td>
+      <td class="border dark:border-slate-600 p-2">${item.quantityBackordered || 0}</td>
     `;
     toOrderTable.appendChild(row);
   });
@@ -977,9 +989,11 @@ async function generateOrderReport() {
 
     // Define x-coordinates for columns
     let xQr = margin;
-    let xName = xQr + QR_CODE_SIZE_IN_PDF + 10;
-    let xQty = xName + 120; // Adjusted for potentially longer names
-    let xSupplier = xQty + 30; // Adjusted for Qty
+    let xName = xQr + QR_CODE_SIZE_IN_PDF + 5; // Slightly reduced for more space overall
+    let xQty = xName + 100; // Shorter space for name
+    let xQtyOrdered = xQty + 25; // Space for Qty
+    let xQtyBackordered = xQtyOrdered + 45; // Space for Qty Ordered (short title "Qty Ord")
+    let xSupplier = xQtyBackordered + 50; // Space for Qty Backordered (short title "Qty BO")
 
     let y = margin + 20; // Initial y position
 
@@ -995,6 +1009,8 @@ async function generateOrderReport() {
         docInstance.text('QR Code', xQr, currentY);
         docInstance.text('Name', xName, currentY);
         docInstance.text('Qty', xQty, currentY, { align: 'right' });
+        docInstance.text('Qty Ord', xQtyOrdered, currentY, { align: 'right' });
+        docInstance.text('Qty BO', xQtyBackordered, currentY, { align: 'right' });
         docInstance.text('Supplier', xSupplier, currentY);
         docInstance.setFont("helvetica", "normal");
         
@@ -1096,8 +1112,10 @@ async function generateOrderReport() {
             // Calculate y position for text to be vertically centered with QR code
             const textY = y + (QR_CODE_SIZE_IN_PDF / 2) + (TEXT_FONT_SIZE / 3); // Approximation for vertical centering
 
-            doc.text(item.name, xName, textY, {maxWidth: xQty - xName - 5}); // 5 points padding
-            doc.text(item.quantity.toString(), xQty, textY, { align: 'right' });
+            doc.text(item.name, xName, textY, {maxWidth: xQty - xName - 5}); 
+            doc.text((item.quantity || 0).toString(), xQty, textY, { align: 'right' });
+            doc.text((item.quantityOrdered || 0).toString(), xQtyOrdered, textY, { align: 'right' });
+            doc.text((item.quantityBackordered || 0).toString(), xQtyBackordered, textY, { align: 'right' });
             doc.text(item.supplier || 'N/A', xSupplier, textY, {maxWidth: pageWidth - xSupplier - margin});
             
             y += ROW_HEIGHT;
@@ -1328,11 +1346,11 @@ async function emailOrderReport() {
 
     for (const supplierName of sortedSupplierNames) {
       emailBody += `--- ${supplierName} ---\n`;
-      emailBody += 'Name | Qty | Supplier\n'; // Removed Min Qty
-      emailBody += '--------------------------------\n'; // Adjusted separator
+      emailBody += 'Name | Qty | Qty Ordered | Qty Backordered | Supplier\n';
+      emailBody += '---------------------------------------------------------------\n'; // Adjusted separator
       const items = itemsBySupplier[supplierName];
       items.forEach(item => {
-        emailBody += `${item.name} | Qty: ${item.quantity} | Supp: ${item.supplier}\n`; // Removed Min Qty
+        emailBody += `${item.name} | Qty: ${item.quantity} | Ordered: ${item.quantityOrdered || 0} | Backordered: ${item.quantityBackordered || 0} | Supp: ${item.supplier}\n`;
       });
       emailBody += '\n'; // Add a blank line between supplier groups
     }
