@@ -1255,6 +1255,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadLocations(); // This will also populate filterLocation dropdown
     addBatchEntry(); 
 
+    console.log('DOMContentLoaded: About to schedule collapsible section initialization.');
+    // Setup collapsible sections
+    setTimeout(() => {
+        console.log('Initializing collapsible sections (after small delay)...');
+        // Forms collapsed by default
+        setupCollapsibleSection('toggleProductFormBtn', 'productFormContent', false);
+        setupCollapsibleSection('toggleSupplierFormBtn', 'supplierFormContent', false);
+        setupCollapsibleSection('toggleLocationFormBtn', 'locationFormContent', false);
+        setupCollapsibleSection('toggleMoveProductFormBtn', 'moveProductFormContent', false);
+        
+        // Tables expanded by default
+        setupCollapsibleSection('toggleInventoryTableBtn', 'inventoryTableContent', true);
+        setupCollapsibleSection('toggleToOrderTableBtn', 'toOrderTableContent', true);
+    }, 0);
+
+
     // Event Listeners
     const darkModeToggle = document.getElementById('darkModeToggle');
     if (darkModeToggle) {
