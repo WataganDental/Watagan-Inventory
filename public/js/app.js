@@ -873,17 +873,31 @@ async function generateQRCodePDF() {
         const canvas = document.createElement('canvas');
         
         try {
-          new window.QRCode(canvas, {
-            text: product.id,
-            width: QR_SIZE, // Use the defined QR_SIZE
-            height: QR_SIZE, // Use the defined QR_SIZE
-            colorDark: '#000000',
-            colorLight: '#ffffff',
-            correctLevel: window.QRCode.CorrectLevel.L
-          });
-
+          // Options are defined inside the 'if' block below for logging the first QR
+          
           if (!firstQRCodeAppended) {
+            console.log('Temporary canvas element for QR code (first QR):', canvas);
+            // Note: Canvas dimensions are typically 0x0 until QRCode.js draws on it or they are set manually.
+            // QRCode.js itself sets the canvas width/height based on its options.
+            // We'll log them after QRCode.js has potentially modified them.
+
+            const qrOptions = {
+                text: product.id,
+                width: QR_SIZE,
+                height: QR_SIZE,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: window.QRCode.CorrectLevel.L
+            };
+            console.log('QRCode.js options for PDF canvas (first QR):', qrOptions);
+            
+            new window.QRCode(canvas, qrOptions); // Use defined options
+
+            console.log('Canvas dimensions after QRCode.js (first QR): width=' + canvas.width + ', height=' + canvas.height);
+
             const qrImageForTest = canvas.toDataURL('image/png');
+            console.log('Generated Data URI for test image (first QR):', qrImageForTest.substring(0, 100) + '...');
+            
             const imgElement = document.createElement('img');
             imgElement.src = qrImageForTest;
             imgElement.style.border = "2px solid red"; // Make it easy to spot
@@ -893,7 +907,17 @@ async function generateQRCodePDF() {
             imgElement.style.zIndex = "9999"; // Ensure it's on top
             document.body.appendChild(imgElement);
             firstQRCodeAppended = true;
-            console.log("Appended test QR code to body. Check if visible.");
+            console.log("Appended test QR code to body (first QR). Check if visible.");
+          } else {
+            // For subsequent QR codes, just generate them without extra logging
+            new window.QRCode(canvas, {
+              text: product.id,
+              width: QR_SIZE,
+              height: QR_SIZE,
+              colorDark: '#000000',
+              colorLight: '#ffffff',
+              correctLevel: window.QRCode.CorrectLevel.L
+            });
           }
 
           const qrImage = canvas.toDataURL('image/png');
