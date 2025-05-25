@@ -960,32 +960,54 @@ async function generateOrderReport() {
       return;
     }
 
-    const JsPDF = await waitForJsPDF(); // Ensure JsPDF is loaded - THIS IS THE CORRECT ONE TO KEEP
+    await ensureQRCodeIsAvailable(); // Ensure QRCode library is ready
+    const JsPDF = await waitForJsPDF(); // Ensure JsPDF is loaded
     const doc = new JsPDF();
-    doc.setFontSize(16);
-    doc.text('Watagan Dental Order Report', 10, 10);
-    doc.setFontSize(12);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, 10, 20);
 
-    let y = 30; 
-    // Column Headers
-    doc.setFont("helvetica", "bold");
-    doc.text('ID', 10, y);
-    doc.text('Name', 40, y);
-    doc.text('Qty', 120, y, { align: 'right' });
-    doc.text('Min Qty', 150, y, { align: 'right' });
-    doc.text('Supplier', 180, y);
-    doc.setFont("helvetica", "normal");
-    
-    y += 7; 
-    doc.setLineWidth(0.5);
-    doc.line(10, y, 200, y); 
-    y += 10; 
-
-    const pageHeight = doc.internal.pageSize.height;
+    const margin = 20; // Page margin
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     const bottomMargin = 20;
+    const QR_CODE_SIZE_IN_PDF = 30; // points
+    const ROW_HEIGHT = QR_CODE_SIZE_IN_PDF + 15; // Estimated row height (QR + padding)
+    const TEXT_FONT_SIZE = 10;
+    const HEADER_FONT_SIZE = 12;
+    const SUPPLIER_HEADER_FONT_SIZE = 14;
 
-    // Apply supplier filter if selected (as done in updateToOrderTable)
+
+    // Define x-coordinates for columns
+    let xQr = margin;
+    let xName = xQr + QR_CODE_SIZE_IN_PDF + 10;
+    let xQty = xName + 120; // Adjusted for potentially longer names
+    let xSupplier = xQty + 30; // Adjusted for Qty
+
+    let y = margin + 20; // Initial y position
+
+    function drawPageHeaders(docInstance, currentY) {
+        docInstance.setFontSize(16);
+        docInstance.text('Watagan Dental Order Report', margin, margin);
+        docInstance.setFontSize(TEXT_FONT_SIZE);
+        docInstance.text(`Date: ${new Date().toLocaleDateString()}`, margin, margin + 10);
+        
+        currentY = margin + 30;
+        docInstance.setFont("helvetica", "bold");
+        docInstance.setFontSize(HEADER_FONT_SIZE);
+        docInstance.text('QR Code', xQr, currentY);
+        docInstance.text('Name', xName, currentY);
+        docInstance.text('Qty', xQty, currentY, { align: 'right' });
+        docInstance.text('Supplier', xSupplier, currentY);
+        docInstance.setFont("helvetica", "normal");
+        
+        currentY += 7;
+        docInstance.setLineWidth(0.5);
+        docInstance.line(margin, currentY, pageWidth - margin, currentY);
+        currentY += 10;
+        return currentY;
+    }
+
+    y = drawPageHeaders(doc, y);
+
+    // Apply supplier filter if selected
     const filterToOrderSupplierDropdown = document.getElementById('filterToOrderSupplier');
     const selectedSupplierFilter = filterToOrderSupplierDropdown ? filterToOrderSupplierDropdown.value : "";
     if (selectedSupplierFilter) {
@@ -1009,54 +1031,81 @@ async function generateOrderReport() {
 
         if (y + 20 > pageHeight - bottomMargin) { // Check for page break before supplier header
             doc.addPage();
-            y = 20; // Reset y for new page
-            doc.setFont("helvetica", "bold");
-            doc.text('ID', 10, y);
-            doc.text('Name', 40, y);
-            doc.text('Qty', 120, y, { align: 'right' });
-            doc.text('Min Qty', 150, y, { align: 'right' });
-            doc.text('Supplier', 180, y);
-            doc.setFont("helvetica", "normal");
-            y += 7;
-            doc.setLineWidth(0.5);
-            doc.line(10, y, 200, y);
-            y += 10;
+            y = drawPageHeaders(doc, margin + 30); // Redraw headers on new page
         }
         
         doc.setFont("helvetica", "bold");
-        doc.text(supplierName, 10, y);
-        y += 15; 
+        doc.setFontSize(SUPPLIER_HEADER_FONT_SIZE);
+        doc.text(supplierName, margin, y);
+        y += SUPPLIER_HEADER_FONT_SIZE; 
         doc.setFont("helvetica", "normal");
+        doc.setFontSize(TEXT_FONT_SIZE);
 
-        items.forEach(item => {
-            if (y > pageHeight - bottomMargin) { 
+        for (const item of items) {
+            if (y + ROW_HEIGHT > pageHeight - bottomMargin) { // Check space for the next item
                 doc.addPage();
-                y = 20; 
+                y = drawPageHeaders(doc, margin + 30);
                 doc.setFont("helvetica", "bold");
-                doc.text('ID', 10, y);
-                doc.text('Name', 40, y);
-                doc.text('Qty', 120, y, { align: 'right' });
-                doc.text('Min Qty', 150, y, { align: 'right' });
-                doc.text('Supplier', 180, y);
-                y += 7;
-                doc.setLineWidth(0.5);
-                doc.line(10, y, 200, y);
-                y += 10;
-                doc.text(`${supplierName} (continued)`, 10, y);
-                y += 15;
+                doc.setFontSize(SUPPLIER_HEADER_FONT_SIZE);
+                doc.text(`${supplierName} (continued)`, margin, y);
+                y += SUPPLIER_HEADER_FONT_SIZE;
                 doc.setFont("helvetica", "normal");
+                doc.setFontSize(TEXT_FONT_SIZE);
             }
-            doc.text(item.id, 10, y);
-            doc.text(item.name, 40, y, {maxWidth: 75}); 
-            doc.text(item.quantity.toString(), 120, y, { align: 'right' });
-            doc.text(item.minQuantity.toString(), 150, y, { align: 'right' });
-            doc.text(item.supplier || 'N/A', 180, y);
-            y += 10;
-        });
-        y += 5; 
+
+            // Generate QR Code
+            const tempDivId = `temp-qr-order-${item.id}`;
+            const tempDiv = document.createElement('div');
+            tempDiv.id = tempDivId;
+            tempDiv.style.position = 'absolute';
+            tempDiv.style.left = '-9999px'; // Off-screen
+            tempDiv.style.width = `${QR_CODE_SIZE_IN_PDF}px`;
+            tempDiv.style.height = `${QR_CODE_SIZE_IN_PDF}px`;
+            document.body.appendChild(tempDiv);
+
+            let qrImageFromCanvas = '';
+            try {
+                new window.QRCode(tempDiv, {
+                    text: item.id,
+                    width: QR_CODE_SIZE_IN_PDF,
+                    height: QR_CODE_SIZE_IN_PDF,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: window.QRCode.CorrectLevel.L
+                });
+                const qrCanvas = tempDiv.querySelector('canvas');
+                if (qrCanvas) {
+                    qrImageFromCanvas = qrCanvas.toDataURL('image/png');
+                } else {
+                     console.error('QR Canvas not found for item:', item.id);
+                     doc.text('QR Error', xQr + QR_CODE_SIZE_IN_PDF / 2, y + QR_CODE_SIZE_IN_PDF / 2, { align: 'center' });
+                }
+            } catch (qrError) {
+                console.error('Error generating QR code for order report, item ID', item.id, ':', qrError);
+                doc.text('QR Error', xQr + QR_CODE_SIZE_IN_PDF / 2, y + QR_CODE_SIZE_IN_PDF / 2, { align: 'center' });
+            } finally {
+                if (document.getElementById(tempDivId)) {
+                    document.body.removeChild(tempDiv);
+                }
+            }
+            
+            if (qrImageFromCanvas) {
+                doc.addImage(qrImageFromCanvas, 'PNG', xQr, y, QR_CODE_SIZE_IN_PDF, QR_CODE_SIZE_IN_PDF);
+            }
+
+            // Calculate y position for text to be vertically centered with QR code
+            const textY = y + (QR_CODE_SIZE_IN_PDF / 2) + (TEXT_FONT_SIZE / 3); // Approximation for vertical centering
+
+            doc.text(item.name, xName, textY, {maxWidth: xQty - xName - 5}); // 5 points padding
+            doc.text(item.quantity.toString(), xQty, textY, { align: 'right' });
+            doc.text(item.supplier || 'N/A', xSupplier, textY, {maxWidth: pageWidth - xSupplier - margin});
+            
+            y += ROW_HEIGHT;
+        }
+        y += 10; // Extra space between supplier groups
     }
 
-    doc.save('Watagan_Dental_Order_Report.pdf');
+    doc.save('Watagan_Dental_Order_Report_With_QR.pdf');
   } catch (error) {
     console.error('Failed to generate Order Report PDF (jsPDF):', error.message, error.stack);
     alert('Failed to generate Order Report PDF (jsPDF): ' + error.message);
@@ -1263,11 +1312,30 @@ async function emailOrderReport() {
 
     let emailBody = 'Watagan Dental Order Report\n\n';
     emailBody += `Date: ${new Date().toLocaleDateString()}\n\n`;
-    emailBody += 'ID | Name | Quantity | Min Quantity | Supplier\n';
-    emailBody += '----------------------------------------\n';
-    toOrderItems.forEach(item => {
-      emailBody += `${item.id} | ${item.name} | ${item.quantity} | ${item.minQuantity} | ${item.supplier}\n`;
-    });
+    emailBody += 'QR Codes are included in the PDF version of this report.\n\n';
+
+    // Group items by supplier
+    const itemsBySupplier = toOrderItems.reduce((acc, item) => {
+      const supplierName = item.supplier || 'Supplier Not Assigned';
+      if (!acc[supplierName]) {
+        acc[supplierName] = [];
+      }
+      acc[supplierName].push(item);
+      return acc;
+    }, {});
+
+    const sortedSupplierNames = Object.keys(itemsBySupplier).sort();
+
+    for (const supplierName of sortedSupplierNames) {
+      emailBody += `--- ${supplierName} ---\n`;
+      emailBody += 'Name | Qty | Supplier\n'; // Removed Min Qty
+      emailBody += '--------------------------------\n'; // Adjusted separator
+      const items = itemsBySupplier[supplierName];
+      items.forEach(item => {
+        emailBody += `${item.name} | Qty: ${item.quantity} | Supp: ${item.supplier}\n`; // Removed Min Qty
+      });
+      emailBody += '\n'; // Add a blank line between supplier groups
+    }
 
     const subject = encodeURIComponent('Watagan Dental Order Report');
     const body = encodeURIComponent(emailBody);
