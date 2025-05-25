@@ -881,31 +881,29 @@ async function generateQRCodePDF() {
           if (!firstQRCodeAppended) { // The condition '&& j === 0 && i === 0' could be added for truly first QR if needed, but current logic is fine.
             console.log('Temporary canvas element for QR code (first QR) BEFORE QRCode.js: width=' + canvas.width + ', height=' + canvas.height, canvas);
             
-            // Part 1: Test Basic Canvas Drawing
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = 'green'; // Choose a visible color
-            ctx.fillRect(0, 0, canvas.width, canvas.height); // Fill the entire canvas
-            console.log('Filled canvas with a green square for basic draw test (first QR).');
+            // Part 1: Test Basic Canvas Drawing - This section is now removed/commented out for Part 2
+            // const ctx = canvas.getContext('2d');
+            // ctx.fillStyle = 'green'; // Choose a visible color
+            // ctx.fillRect(0, 0, canvas.width, canvas.height); // Fill the entire canvas
+            // console.log('Filled canvas with a green square for basic draw test (first QR).');
 
-            // Temporarily comment out QRCode.js call and related logs for the first QR code
-            /*
+            // Part 2: Re-enable QRCode.js with simplified options for the first QR code
             const qrOptions = {
-                text: product.id,
+                text: product.id, // Keep using the actual product ID
                 width: QR_SIZE,
                 height: QR_SIZE,
-                colorDark: '#000000',
-                colorLight: '#ffffff',
-                correctLevel: window.QRCode.CorrectLevel.L
+                colorDark: '#000000', // Explicitly set, though default
+                colorLight: '#ffffff'  // Explicitly set, though default
+                // Temporarily remove: correctLevel: window.QRCode.CorrectLevel.L
             };
-            console.log('QRCode.js options for PDF canvas (first QR):', qrOptions);
+            console.log('QRCode.js options for PDF canvas (first QR - simplified):', qrOptions);
             
-            new window.QRCode(canvas, qrOptions); // Use defined options
+            new window.QRCode(canvas, qrOptions); // Use defined (simplified) options
 
-            console.log('Canvas dimensions after QRCode.js (first QR): width=' + canvas.width + ', height=' + canvas.height); // Should reflect QR_SIZE
-            */
+            console.log('Canvas dimensions after QRCode.js (first QR - simplified): width=' + canvas.width + ', height=' + canvas.height); // Should reflect QR_SIZE
 
             const qrImageForTest = canvas.toDataURL('image/png');
-            console.log('Generated Data URI for test image (first QR - should be green square):', qrImageForTest.substring(0, 100) + '...');
+            console.log('Generated Data URI for test image (first QR - simplified QRCode.js):', qrImageForTest.substring(0, 100) + '...');
             
             const imgElement = document.createElement('img');
             imgElement.src = qrImageForTest;
