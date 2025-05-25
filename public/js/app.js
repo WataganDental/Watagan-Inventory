@@ -802,15 +802,15 @@ async function generateQRCodePDF() {
 // Order Reports
 async function generateOrderReport() {
   try {
-    const JsPDF = await waitForJsPDF();
+    // const JsPDF = await waitForJsPDF(); // This was the duplicate, removed.
     const snapshot = await db.collection('inventory').get();
-    const toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity);
+    let toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity); // toOrderItems should be mutable for filtering
     if (toOrderItems.length === 0) {
       alert('No products need reordering.');
       return;
     }
 
-    const JsPDF = await waitForJsPDF(); // Ensure JsPDF is loaded
+    const JsPDF = await waitForJsPDF(); // Ensure JsPDF is loaded - THIS IS THE CORRECT ONE TO KEEP
     const doc = new JsPDF();
     doc.setFontSize(16);
     doc.text('Watagan Dental Order Report', 10, 10);
