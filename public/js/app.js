@@ -880,9 +880,15 @@ async function generateQRCodePDF() {
           
           if (!firstQRCodeAppended) { // The condition '&& j === 0 && i === 0' could be added for truly first QR if needed, but current logic is fine.
             console.log('Temporary canvas element for QR code (first QR) BEFORE QRCode.js: width=' + canvas.width + ', height=' + canvas.height, canvas);
-            // QRCode.js itself sets the canvas width/height based on its options if they differ,
-            // but we've preset them to QR_SIZE.
+            
+            // Part 1: Test Basic Canvas Drawing
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'green'; // Choose a visible color
+            ctx.fillRect(0, 0, canvas.width, canvas.height); // Fill the entire canvas
+            console.log('Filled canvas with a green square for basic draw test (first QR).');
 
+            // Temporarily comment out QRCode.js call and related logs for the first QR code
+            /*
             const qrOptions = {
                 text: product.id,
                 width: QR_SIZE,
@@ -896,9 +902,10 @@ async function generateQRCodePDF() {
             new window.QRCode(canvas, qrOptions); // Use defined options
 
             console.log('Canvas dimensions after QRCode.js (first QR): width=' + canvas.width + ', height=' + canvas.height); // Should reflect QR_SIZE
+            */
 
             const qrImageForTest = canvas.toDataURL('image/png');
-            console.log('Generated Data URI for test image (first QR):', qrImageForTest.substring(0, 100) + '...');
+            console.log('Generated Data URI for test image (first QR - should be green square):', qrImageForTest.substring(0, 100) + '...');
             
             const imgElement = document.createElement('img');
             imgElement.src = qrImageForTest;
