@@ -1,89 +1,202 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Welcome to Firebase Hosting</title>
-
-    <!-- update the version number as needed -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watagan Dental Inventory</title>
+    <link href="https://unpkg.com/tailwindcss@^2.0/dist/tailwind.min.css" rel="stylesheet">
     <script defer src="/__/firebase/11.8.1/firebase-app-compat.js"></script>
-    <!-- include only the Firebase features as you need -->
-    <script defer src="/__/firebase/11.8.1/firebase-auth-compat.js"></script>
-    <script defer src="/__/firebase/11.8.1/firebase-database-compat.js"></script>
     <script defer src="/__/firebase/11.8.1/firebase-firestore-compat.js"></script>
-    <script defer src="/__/firebase/11.8.1/firebase-functions-compat.js"></script>
-    <script defer src="/__/firebase/11.8.1/firebase-messaging-compat.js"></script>
     <script defer src="/__/firebase/11.8.1/firebase-storage-compat.js"></script>
-    <script defer src="/__/firebase/11.8.1/firebase-analytics-compat.js"></script>
-    <script defer src="/__/firebase/11.8.1/firebase-remote-config-compat.js"></script>
-    <script defer src="/__/firebase/11.8.1/firebase-performance-compat.js"></script>
-    <!-- 
-      initialize the SDK after all desired features are loaded, set useEmulator to false
-      to avoid connecting the SDK to running emulators.
-    -->
     <script defer src="/__/firebase/init.js?useEmulator=true"></script>
+    <script src="/js/qrcode.min.js"></script> 
+    <script src="/js/jspdf.umd.min.js"></script>
+    <script src="/js/quagga.min.js"></script>
+</head>
+<body class="bg-gray-100 dark:bg-slate-900 text-gray-900 dark:text-gray-100">
 
-    <style media="screen">
-      body { background: #ECEFF1; color: rgba(0,0,0,0.87); font-family: Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
-      #message { background: white; max-width: 360px; margin: 100px auto 16px; padding: 32px 24px; border-radius: 3px; }
-      #message h2 { color: #ffa100; font-weight: bold; font-size: 16px; margin: 0 0 8px; }
-      #message h1 { font-size: 22px; font-weight: 300; color: rgba(0,0,0,0.6); margin: 0 0 16px;}
-      #message p { line-height: 140%; margin: 16px 0 24px; font-size: 14px; }
-      #message a { display: block; text-align: center; background: #039be5; text-transform: uppercase; text-decoration: none; color: white; padding: 16px; border-radius: 4px; }
-      #message, #message a { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); }
-      #load { color: rgba(0,0,0,0.4); text-align: center; font-size: 13px; }
-      @media (max-width: 600px) {
-        body, #message { margin-top: 0; background: white; box-shadow: none; }
-        body { border-top: 16px solid #ffa100; }
-      }
-    </style>
-  </head>
-  <body>
-    <div id="message">
-      <h2>Welcome</h2>
-      <h1>Firebase Hosting Setup Complete</h1>
-      <p>You're seeing this because you've successfully setup Firebase Hosting. Now it's time to go build something extraordinary!</p>
-      <a target="_blank" href="https://firebase.google.com/docs/hosting/">Open Hosting Documentation</a>
-    </div>
-    <p id="load">Firebase SDK Loading&hellip;</p>
+    <nav class="bg-blue-600 dark:bg-slate-800 p-4 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-semibold text-white">Watagan Dental Inventory</h1>
+            <button id="darkModeToggle" class="text-white p-2 rounded hover:bg-blue-700 dark:hover:bg-slate-700">
+                Toggle Dark Mode
+            </button>
+        </div>
+    </nav>
 
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        const loadEl = document.querySelector('#load');
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
-        // // The Firebase SDK is initialized and available here!
-        //
-        // firebase.auth().onAuthStateChanged(user => { });
-        // firebase.database().ref('/path/to/ref').on('value', snapshot => { });
-        // firebase.firestore().doc('/foo/bar').get().then(() => { });
-        // firebase.functions().httpsCallable('yourFunction')().then(() => { });
-        // firebase.messaging().requestPermission().then(() => { });
-        // firebase.storage().ref('/path/to/ref').getDownloadURL().then(() => { });
-        // firebase.analytics(); // call to activate
-        // firebase.analytics().logEvent('tutorial_completed');
-        // firebase.performance(); // call to activate
-        //
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+    <main class="container mx-auto p-4 mt-4">
+        
+        <!-- Product Management Section -->
+        <section id="productManagement" class="mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
+            <h2 class="text-2xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">Product Management</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Product Form -->
+                <div id="productFormContainer" class="p-4 border dark:border-slate-700 rounded-md">
+                    <h3 id="productFormTitle" class="text-xl mb-3">Add New Product</h3>
+                    <input type="hidden" id="productId">
+                    <div class="space-y-3">
+                        <input type="text" id="productName" placeholder="Product Name" class="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:placeholder-gray-400">
+                        <input type="number" id="productQuantity" placeholder="Quantity" class="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:placeholder-gray-400">
+                        <input type="number" id="productCost" placeholder="Cost" step="0.01" class="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:placeholder-gray-400">
+                        <input type="number" id="productMinQuantity" placeholder="Minimum Quantity" class="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:placeholder-gray-400">
+                        <select id="productSupplier" class="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700">
+                            <option value="">Select Supplier</option>
+                        </select>
+                        <select id="productLocation" class="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700">
+                            <option value="">Select Location</option>
+                        </select>
+                        <div>
+                            <button id="capturePhotoBtn" class="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white p-2 rounded mr-2">Capture Photo</button>
+                            <button id="takePhotoBtn" class="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white p-2 rounded hidden mr-2 mt-2 sm:mt-0">Take Photo</button>
+                            <button id="cancelPhotoBtn" class="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white p-2 rounded hidden mt-2 sm:mt-0">Cancel Photo</button>
+                        </div>
+                        <video id="photoVideo" class="hidden w-full rounded border dark:border-slate-600 mt-2"></video>
+                        <canvas id="photoCanvas" class="hidden"></canvas>
+                        <img id="productPhotoPreview" class="hidden w-32 h-32 object-cover rounded border dark:border-slate-600 mt-2" alt="Product Preview">
+                    </div>
+                    <div class="mt-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                        <button id="productSubmitBtn" class="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white p-2 rounded">Add Product</button>
+                        <button id="cancelEditBtn" class="w-full sm:w-auto bg-gray-500 hover:bg-gray-600 text-white p-2 rounded hidden">Cancel Edit</button>
+                    </div>
+                </div>
 
-        try {
-          let app = firebase.app();
-          let features = [
-            'auth', 
-            'database', 
-            'firestore',
-            'functions',
-            'messaging', 
-            'storage', 
-            'analytics', 
-            'remoteConfig',
-            'performance',
-          ].filter(feature => typeof app[feature] === 'function');
-          loadEl.textContent = `Firebase SDK loaded with ${features.join(', ')}`;
-        } catch (e) {
-          console.error(e);
-          loadEl.textContent = 'Error loading the Firebase SDK, check the console.';
-        }
-      });
-    </script>
-  </body>
+                <!-- Supplier & Location Management -->
+                <div class="space-y-6">
+                    <div id="supplierManagementContainer" class="p-4 border dark:border-slate-700 rounded-md">
+                        <h3 class="text-xl mb-3">Manage Suppliers</h3>
+                        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mb-3">
+                            <input type="text" id="supplierName" placeholder="New Supplier Name" class="flex-grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:placeholder-gray-400">
+                            <button id="addSupplierBtn" class="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white p-2 rounded">Add Supplier</button>
+                        </div>
+                        <ul id="supplierList" class="list-disc pl-5 space-y-1 max-h-40 overflow-y-auto"></ul>
+                    </div>
+                    <div id="locationManagementContainer" class="p-4 border dark:border-slate-700 rounded-md">
+                        <h3 class="text-xl mb-3">Manage Locations</h3>
+                         <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mb-3">
+                            <input type="text" id="locationName" placeholder="New Location Name" class="flex-grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:placeholder-gray-400">
+                            <button id="addLocationBtn" class="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white p-2 rounded">Add Location</button>
+                        </div>
+                        <ul id="locationList" class="list-disc pl-5 space-y-1 max-h-40 overflow-y-auto"></ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Inventory Display Section -->
+        <section id="inventoryDisplay" class="mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
+            <h2 class="text-2xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">Current Inventory</h2>
+            <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                <select id="filterSupplier" class="w-full sm:w-auto p-2 border dark:border-slate-600 rounded dark:bg-slate-700">
+                    <option value="">All Suppliers</option>
+                </select>
+                <select id="filterLocation" class="w-full sm:w-auto p-2 border dark:border-slate-600 rounded dark:bg-slate-700">
+                    <option value="">All Locations</option>
+                </select>
+                <button id="clearInventoryFiltersBtn" class="w-full sm:w-auto bg-gray-500 hover:bg-gray-600 text-white p-2 rounded">Clear Filters</button>
+            </div>
+            <div class="overflow-x-auto shadow-md rounded-lg">
+                <table class="min-w-full w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-slate-700 dark:text-gray-300">
+                        <tr>
+                            <th scope="col" class="px-4 py-3">ID</th>
+                            <th scope="col" class="px-4 py-3">Name</th>
+                            <th scope="col" class="px-4 py-3 text-center">Qty</th>
+                            <th scope="col" class="px-4 py-3 text-center">Min.Qty</th>
+                            <th scope="col" class="px-4 py-3 text-right">Cost</th>
+                            <th scope="col" class="px-4 py-3">Supplier</th>
+                            <th scope="col" class="px-4 py-3">Location</th>
+                            <th scope="col" class="px-4 py-3 text-center">Photo</th>
+                            <th scope="col" class="px-4 py-3 text-center">QR Code</th>
+                            <th scope="col" class="px-4 py-3 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTable" class="divide-y dark:divide-slate-700">
+                        <!-- Rows will be added by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Batch Update & Move Product Section -->
+        <section id="batchActions" class="mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
+            <h2 class="text-2xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">Batch & Quick Actions</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Batch Updates -->
+                <div id="batchUpdateContainer" class="p-4 border dark:border-slate-700 rounded-md">
+                    <h3 class="text-xl mb-3">Batch Update Quantities</h3>
+                    <div id="batchUpdates" class="space-y-3 mb-3 max-h-60 overflow-y-auto">
+                        <!-- Batch entries will be added by JS -->
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <button id="addBatchEntryBtn" class="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white p-2 rounded">Add Entry</button>
+                        <button id="startUpdateScannerBtn" class="w-full sm:w-auto bg-purple-500 hover:bg-purple-600 text-white p-2 rounded">Scan for Batch</button>
+                        <button id="stopUpdateScannerBtn" class="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white p-2 rounded">Stop Scanner</button>
+                    </div>
+                    <video id="updateVideo" class="hidden w-full rounded border dark:border-slate-600 mt-2"></video>
+                    <p id="updateScanResult" class="mt-1 text-sm"></p>
+                    <button id="submitBatchUpdatesBtn" class="mt-4 w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white p-2 rounded">Submit Batch Updates</button>
+                </div>
+                
+                <!-- Move Product -->
+                <div id="moveProductContainer" class="p-4 border dark:border-slate-700 rounded-md">
+                    <h3 class="text-xl mb-3">Move Product</h3>
+                    <div class="space-y-3">
+                        <input type="text" id="moveProductId" placeholder="Product ID (Scan or Type)" class="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:placeholder-gray-400">
+                        <select id="newLocation" class="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700">
+                            <option value="">Select New Location</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2 mt-2">
+                         <button id="startMoveScannerBtn" class="w-full sm:w-auto bg-purple-500 hover:bg-purple-600 text-white p-2 rounded">Scan Product ID</button>
+                         <button id="stopMoveScannerBtn" class="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white p-2 rounded">Stop Scanner</button>
+                    </div>
+                    <video id="moveVideo" class="hidden w-full rounded border dark:border-slate-600 mt-2"></video>
+                    <p id="moveScanResult" class="mt-1 text-sm"></p>
+                    <button id="moveProductBtn" class="mt-4 w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white p-2 rounded">Move Product</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Reports Section -->
+        <section id="reports" class="mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
+            <h2 class="text-2xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">Reports</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div id="toOrderReportContainer" class="p-4 border dark:border-slate-700 rounded-md">
+                    <h3 class="text-xl mb-3">Products to Reorder</h3>
+                    <div class="overflow-x-auto shadow-md rounded-lg max-h-80">
+                        <table class="min-w-full w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-slate-700 dark:text-gray-300">
+                                <tr>
+                                    <th scope="col" class="px-4 py-3">ID</th>
+                                    <th scope="col" class="px-4 py-3">Name</th>
+                                    <th scope="col" class="px-4 py-3 text-center">Qty</th>
+                                    <th scope="col" class="px-4 py-3 text-center">Min.Qty</th>
+                                    <th scope="col" class="px-4 py-3">Supplier</th>
+                                </tr>
+                            </thead>
+                            <tbody id="toOrderTable" class="divide-y dark:divide-slate-700">
+                                <!-- Rows will be added by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4 flex flex-col sm:flex-row gap-2">
+                        <button id="generateOrderReportBtn" class="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white p-2 rounded">Generate PDF Report</button>
+                        <button id="emailOrderReportBtn" class="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white p-2 rounded">Email Report</button>
+                    </div>
+                </div>
+                <div id="qrCodeReportContainer" class="p-4 border dark:border-slate-700 rounded-md">
+                    <h3 class="text-xl mb-3">QR Code Generation</h3>
+                    <button id="generateQRCodePDFBtn" class="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white p-2 rounded">Generate All QR Codes PDF</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    
+    <footer class="text-center p-4 text-sm text-gray-600 dark:text-gray-400">
+        Watagan Dental Inventory Management &copy; <script>document.write(new Date().getFullYear())</script>
+    </footer>
+
+    <script src="/js/app.js"></script>
+</body>
 </html>
