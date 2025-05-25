@@ -55,6 +55,45 @@ try {
   console.error('Firebase initialization failed:', error);
 }
 
+// SVG Icons for collapsible sections
+const chevronRightIcon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>`;
+const chevronDownIcon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
+
+// Function to set up a collapsible section
+function setupCollapsibleSection(buttonId, contentId, defaultExpanded = true) {
+  const button = document.getElementById(buttonId);
+  const content = document.getElementById(contentId);
+
+  if (!button || !content) {
+    console.warn(`Collapsible section setup failed: Button or content not found for ${buttonId}, ${contentId}`);
+    return;
+  }
+
+  // Set initial state
+  const isExpanded = defaultExpanded;
+  if (defaultExpanded) {
+    content.classList.remove('hidden');
+    button.innerHTML = chevronDownIcon;
+    button.setAttribute('aria-expanded', 'true');
+  } else {
+    content.classList.add('hidden');
+    button.innerHTML = chevronRightIcon;
+    button.setAttribute('aria-expanded', 'false');
+  }
+
+  button.addEventListener('click', () => {
+    const currentlyExpanded = content.classList.toggle('hidden');
+    if (content.classList.contains('hidden')) {
+      button.innerHTML = chevronRightIcon;
+      button.setAttribute('aria-expanded', 'false');
+    } else {
+      button.innerHTML = chevronDownIcon;
+      button.setAttribute('aria-expanded', 'true');
+    }
+  });
+}
+
+
 // Utility to load jsPDF dynamically
 async function loadJsPDF() {
   return new Promise((resolve, reject) => {
@@ -70,19 +109,27 @@ async function loadJsPDF() {
     script.async = true;
 
     script.onload = () => {
-      console.log('jsPDF script loaded successfully');
-      if (typeof window.jsPDF === 'function') {
-        console.log('window.jsPDF defined:', window.jsPDF);
+      console.log('jsPDF script loaded successfully (local)');
+      console.log('typeof window.jsPDF:', typeof window.jsPDF);
+      console.log('window.jsPDF:', window.jsPDF);
+      console.log('typeof window.jspdf:', typeof window.jspdf);
+      console.log('window.jspdf:', window.jspdf);
+
+      if (window.jspdf && typeof window.jspdf.jsPDF === 'function') {
+        console.log('Found jsPDF constructor at window.jspdf.jsPDF (local)');
+        resolve(window.jspdf.jsPDF);
+      } else if (typeof window.jsPDF === 'function') {
+        console.log('Found jsPDF constructor at window.jsPDF (local)');
         resolve(window.jsPDF);
       } else {
-        console.error('jsPDF script loaded but window.jsPDF is not defined');
-        reject(new Error('jsPDF script loaded but window.jsPDF is not defined'));
+        console.error('jsPDF script loaded (local) but window.jsPDF or window.jspdf.jsPDF is not defined/not a function');
+        reject(new Error('jsPDF script loaded (local) but window.jsPDF or window.jspdf.jsPDF is not a function'));
       }
     };
 
     script.onerror = (error) => {
-      console.error('Failed to load jsPDF script:', error);
-      reject(new Error('Failed to load jsPDF script from /js/jspdf.umd.min.js'));
+      console.error('Failed to load jsPDF script (local):', error);
+      reject(new Error('Failed to load jsPDF script from /js/jspdf.umd.min.js (local)'));
     };
 
     document.head.appendChild(script);
@@ -106,18 +153,26 @@ async function waitForJsPDF() {
       script.async = true;
 
       script.onload = () => {
-        console.log('jsPDF fallback script loaded successfully');
-        if (typeof window.jsPDF === 'function') {
-          console.log('window.jsPDF defined (fallback):', window.jsPDF);
+        console.log('jsPDF fallback script loaded successfully (CDN)');
+        console.log('typeof window.jsPDF:', typeof window.jsPDF);
+        console.log('window.jsPDF:', window.jsPDF);
+        console.log('typeof window.jspdf:', typeof window.jspdf);
+        console.log('window.jspdf:', window.jspdf);
+
+        if (window.jspdf && typeof window.jspdf.jsPDF === 'function') {
+          console.log('Found jsPDF constructor at window.jspdf.jsPDF (CDN)');
+          resolve(window.jspdf.jsPDF);
+        } else if (typeof window.jsPDF === 'function') {
+          console.log('Found jsPDF constructor at window.jsPDF (CDN)');
           resolve(window.jsPDF);
         } else {
-          console.error('jsPDF fallback script loaded but window.jsPDF is not defined');
-          reject(new Error('jsPDF fallback script loaded but window.jsPDF is not defined'));
+          console.error('jsPDF fallback script loaded (CDN) but window.jsPDF or window.jspdf.jsPDF is not defined/not a function');
+          reject(new Error('jsPDF fallback script loaded (CDN) but window.jsPDF or window.jspdf.jsPDF is not a function'));
         }
       };
 
       script.onerror = (error) => {
-        console.error('Failed to load jsPDF fallback script:', error);
+        console.error('Failed to load jsPDF fallback script (CDN):', error);
         reject(new Error('Failed to load jsPDF from fallback CDN'));
       };
 
@@ -222,9 +277,15 @@ function updateSupplierList() {
 function updateSupplierDropdown() {
   const productSupplierDropdown = document.getElementById('productSupplier');
   const filterSupplierDropdown = document.getElementById('filterSupplier');
+  const filterToOrderSupplierDropdown = document.getElementById('filterToOrderSupplier'); // New dropdown
 
   const populate = (dropdown, includeAllOption) => {
-    if (!dropdown) return;
+    if (!dropdown) {
+      // It's possible filterToOrderSupplierDropdown might not exist on all pages if HTML isn't updated
+      // Or if this script is used elsewhere. So, just log a warning if a dropdown isn't found.
+      // console.warn('Attempted to populate a non-existent dropdown.');
+      return;
+    }
     const currentValue = dropdown.value;
     dropdown.innerHTML = includeAllOption ? '<option value="">All Suppliers</option>' : '<option value="">Select Supplier</option>';
     suppliers.forEach(supplier => {
@@ -241,6 +302,7 @@ function updateSupplierDropdown() {
 
   populate(productSupplierDropdown, false);
   populate(filterSupplierDropdown, true);
+  populate(filterToOrderSupplierDropdown, true); // Populate the new "To Order" supplier filter
   console.log('Supplier dropdowns updated.');
 }
 
@@ -680,27 +742,60 @@ function updateInventoryTable(itemsToDisplay) {
 }
 
 async function updateToOrderTable() {
-  const snapshot = await db.collection('inventory').get();
-  const toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity);
-  const toOrderTable = document.getElementById('toOrderTable');
-  toOrderTable.innerHTML = '';
-  if (toOrderItems.length > 0) {
-    alert(`Warning: ${toOrderItems.length} product(s) need reordering!`);
+  try {
+    const snapshot = await db.collection('inventory').get();
+    let toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity);
+    
+    const filterToOrderSupplierDropdown = document.getElementById('filterToOrderSupplier');
+    const selectedSupplier = filterToOrderSupplierDropdown ? filterToOrderSupplierDropdown.value : "";
+
+    if (selectedSupplier) {
+      toOrderItems = toOrderItems.filter(item => item.supplier === selectedSupplier);
+    }
+
+    const toOrderTable = document.getElementById('toOrderTable');
+    if (!toOrderTable) {
+        console.error("toOrderTable element not found");
+        return;
+    }
+    toOrderTable.innerHTML = ''; // Clear existing rows
+
+    // Only show alert if filtering by "All Suppliers" (initial view)
+    if (!selectedSupplier && toOrderItems.length > 0) {
+      // This alert might be too intrusive if shown every time the filter changes.
+      // Consider if this alert is still desired after filtering.
+      // For now, let's keep it but be mindful.
+      // alert(`Warning: ${toOrderItems.length} product(s) need reordering!`);
+      console.log(`Warning: ${toOrderItems.length} product(s) need reordering based on current filter!`);
+    }
+    
+    if (toOrderItems.length === 0) {
+        const row = toOrderTable.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = 5; // Number of columns in your "To Order" table
+        cell.textContent = 'No products need reordering for the selected supplier.';
+        cell.className = 'text-center p-4 dark:text-gray-400';
+        return;
+    }
+
+    toOrderItems.forEach(item => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td class="border dark:border-slate-600 p-2">${item.id}</td>
+        <td class="border dark:border-slate-600 p-2">${item.name}</td>
+        <td class="border dark:border-slate-600 p-2 text-center">${item.quantity}</td>
+        <td class="border dark:border-slate-600 p-2 text-center">${item.minQuantity}</td>
+        <td class="border dark:border-slate-600 p-2">${item.supplier || 'N/A'}</td>
+      `;
+      toOrderTable.appendChild(row);
+    });
+  } catch (error) {
+      console.error("Error updating To Order table:", error);
+      const toOrderTable = document.getElementById('toOrderTable');
+      if(toOrderTable) {
+        toOrderTable.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 p-4">Error loading data.</td></tr>';
+      }
   }
-  toOrderItems.forEach(item => {
-    const row = document.createElement('tr');
-    // Row background will be default (likely dark:bg-slate-800 from parent container), text inherited.
-    // Highlighted low-stock rows in the main inventory table are handled by `updateInventoryTable`.
-    // This table just lists items to order, so no special row.className needed here for dark mode beyond cell borders.
-    row.innerHTML = `
-      <td class="border dark:border-slate-600 p-2">${item.id}</td>
-      <td class="border dark:border-slate-600 p-2">${item.name}</td>
-      <td class="border dark:border-slate-600 p-2">${item.quantity}</td>
-      <td class="border dark:border-slate-600 p-2">${item.minQuantity}</td>
-      <td class="border dark:border-slate-600 p-2">${item.supplier}</td>
-    `;
-    toOrderTable.appendChild(row);
-  });
 }
 
 // QR Code PDF Generation
@@ -868,6 +963,179 @@ async function generateQRCodePDF() {
   }
 }
 
+async function generateQRCodePDFWithPdfLib() {
+  try {
+    await ensureQRCodeIsAvailable();
+    if (!window.PDFLib) {
+      alert('Error: PDFLib library is not loaded. Cannot generate QR Code PDF.');
+      console.error('PDFLib library not found on window object.');
+      return;
+    }
+    if (typeof window.QRCode !== 'function') {
+      alert('Error: QRCode library is not loaded. Cannot generate QR Code PDF.');
+      console.error('QRCode library not found on window object.');
+      return;
+    }
+
+    const { PDFDocument, StandardFonts, rgb, PageSizes } = window.PDFLib;
+
+    const snapshot = await db.collection('inventory').orderBy('location').get();
+    const products = snapshot.docs.map(doc => doc.data());
+
+    if (products.length === 0) {
+      alert('No products in inventory to generate QR codes for.');
+      return;
+    }
+
+    const productsByLocation = products.reduce((acc, product) => {
+      const location = product.location || 'Unassigned';
+      if (!acc[location]) {
+        acc[location] = [];
+      }
+      acc[location].push(product);
+      return acc;
+    }, {});
+
+    const pdfDoc = await PDFDocument.create();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    
+    const A4_WIDTH = PageSizes.A4[0];
+    const A4_HEIGHT = PageSizes.A4[1];
+    const margin = 40;
+    const qrSize = 90; // Slightly smaller for more items and text
+    const qrSpacing = 25;
+    const textHeight = 10; // For product name below QR
+    const productNameFontSize = 8;
+    const locationHeaderFontSize = 14;
+    const pageHeaderFontSize = 10;
+
+    const itemsPerRow = Math.floor((A4_WIDTH - 2 * margin + qrSpacing) / (qrSize + qrSpacing));
+    const itemsPerCol = Math.floor((A4_HEIGHT - 2 * margin - locationHeaderFontSize - pageHeaderFontSize) / (qrSize + textHeight + qrSpacing));
+    const itemsPerPage = itemsPerRow * itemsPerCol;
+    
+    let page = pdfDoc.addPage(PageSizes.A4);
+    let currentX = margin;
+    let currentY = A4_HEIGHT - margin - pageHeaderFontSize - 5;
+    let itemCountOnPage = 0;
+    let overallProductIndex = 0;
+    let firstLocation = true;
+
+    const drawPageHeader = (currentPage, locationName, pageNumber) => {
+        currentPage.drawText(`Watagan Dental QR Codes (pdf-lib) - Location: ${locationName} - Page ${pageNumber}`, {
+            x: margin,
+            y: A4_HEIGHT - margin,
+            font: boldFont,
+            size: pageHeaderFontSize,
+            color: rgb(0, 0, 0),
+        });
+    };
+
+
+    for (const locationName in productsByLocation) {
+      if (productsByLocation.hasOwnProperty(locationName)) {
+        const locationProducts = productsByLocation[locationName];
+        if (locationProducts.length === 0) continue;
+
+        if (!firstLocation || itemCountOnPage > 0) { // Add new page for new location unless it's the very first item overall
+          page = pdfDoc.addPage(PageSizes.A4);
+          itemCountOnPage = 0;
+        }
+        firstLocation = false;
+        
+        let locationPageNumber = 1;
+        drawPageHeader(page, locationName, locationPageNumber);
+        currentY = A4_HEIGHT - margin - pageHeaderFontSize - 5 - locationHeaderFontSize - 10;
+        currentX = margin;
+
+        for (let i = 0; i < locationProducts.length; i++) {
+          const product = locationProducts[i];
+
+          if (itemCountOnPage >= itemsPerPage || currentY - qrSize - textHeight < margin) {
+            page = pdfDoc.addPage(PageSizes.A4);
+            locationPageNumber++;
+            drawPageHeader(page, locationName, locationPageNumber);
+            currentY = A4_HEIGHT - margin - pageHeaderFontSize - 5 - locationHeaderFontSize - 10; // Reset Y for new page (after headers)
+            currentX = margin;
+            itemCountOnPage = 0;
+          }
+          
+          // Generate QR Code
+          const tempQrDiv = document.createElement('div');
+          // Ensure QRCode.js generates QR code synchronously for canvas access
+          new QRCode(tempQrDiv, {
+            text: product.id,
+            width: qrSize,
+            height: qrSize,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.L
+          });
+          
+          const canvas = tempQrDiv.querySelector('canvas');
+          if (canvas) {
+            const pngDataUrl = canvas.toDataURL('image/png');
+            const pngImage = await pdfDoc.embedPng(pngDataUrl);
+            
+            page.drawImage(pngImage, {
+              x: currentX,
+              y: currentY - qrSize,
+              width: qrSize,
+              height: qrSize,
+            });
+          } else {
+            console.error('Canvas for QR code not found for product:', product.id);
+            // Optionally draw a placeholder if canvas fails
+            page.drawRectangle({
+                x: currentX, y: currentY - qrSize, width: qrSize, height: qrSize,
+                borderColor: rgb(1,0,0), borderWidth: 1
+            });
+            page.drawText("QR Error", {x: currentX + 5, y: currentY - qrSize/2, size: 10, color: rgb(1,0,0)});
+          }
+
+          // Draw product name
+          const productName = product.name || 'Unnamed Product';
+          const nameWidth = font.widthOfTextAtSize(productName, productNameFontSize);
+          const centeredNameX = currentX + (qrSize - nameWidth) / 2;
+          page.drawText(productName, {
+            x: Math.max(currentX, centeredNameX), // Ensure text doesn't go off-left
+            y: currentY - qrSize - textHeight,
+            font: font,
+            size: productNameFontSize,
+            color: rgb(0.1, 0.1, 0.1),
+            maxWidth: qrSize // Basic text clipping
+          });
+
+          currentX += qrSize + qrSpacing;
+          if (currentX + qrSize > A4_WIDTH - margin) {
+            currentX = margin;
+            currentY -= (qrSize + textHeight + qrSpacing);
+          }
+          itemCountOnPage++;
+          overallProductIndex++;
+        }
+        // Reset for next location, ensure it gets a new page if needed by setting itemCountOnPage
+        itemCountOnPage = itemsPerPage; // This will force a new page if there's another location
+      }
+    }
+
+    const pdfBytes = await pdfDoc.save();
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'Watagan_Dental_QR_Codes_Alternative.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+
+  } catch (error) {
+    console.error('Failed to generate QR Code PDF with pdf-lib:', error.message, error.stack);
+    alert('Failed to generate QR Code PDF with pdf-lib: ' + error.message);
+  }
+}
+
+
 // Order Reports
 async function generateOrderReport() {
   try {
@@ -1011,6 +1279,193 @@ async function generateOrderReport() {
     alert('Failed to generate Order Report PDF by Supplier: ' + error.message);
   }
 }
+
+// Order Reports - Alternative PDF generation with pdf-lib.js
+async function generateOrderReportWithPdfLib() {
+  if (!window.PDFLib) {
+    alert('Error: PDFLib library is not loaded. Cannot generate PDF.');
+    console.error('PDFLib library not found on window object.');
+    return;
+  }
+
+  const { PDFDocument, StandardFonts, rgb, PageSizes } = window.PDFLib;
+
+  try {
+    const snapshot = await db.collection('inventory').get();
+    let toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity);
+
+    const filterToOrderSupplierDropdown = document.getElementById('filterToOrderSupplier');
+    const selectedSupplier = filterToOrderSupplierDropdown ? filterToOrderSupplierDropdown.value : "";
+
+    if (selectedSupplier) {
+      toOrderItems = toOrderItems.filter(item => item.supplier === selectedSupplier);
+    }
+    
+    if (toOrderItems.length === 0) {
+      alert('No products need reordering for the selected supplier (pdf-lib).');
+      return;
+    }
+
+    const itemsBySupplier = toOrderItems.reduce((acc, item) => {
+      const supplierName = item.supplier || 'Supplier Not Assigned';
+      if (!acc[supplierName]) {
+        acc[supplierName] = [];
+      }
+      acc[supplierName].push(item);
+      return acc;
+    }, {});
+
+    const pdfDoc = await PDFDocument.create();
+    let page = pdfDoc.addPage(PageSizes.A4);
+    const { width, height } = page.getSize();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+    const margin = 50;
+    let y = height - margin;
+    const lineHeight = 14; // For 12pt font + spacing
+    const titleFontSize = 18;
+    const headerFontSize = 14;
+    const regularFontSize = 10;
+
+    page.drawText('Watagan Dental Order Report (pdf-lib)', { 
+      x: margin, 
+      y: y, 
+      font: boldFont, 
+      size: titleFontSize 
+    });
+    y -= (titleFontSize + 10);
+
+    page.drawText(`Date: ${new Date().toLocaleDateString()}`, { 
+      x: margin, 
+      y: y, 
+      font: font, 
+      size: regularFontSize 
+    });
+    y -= (regularFontSize + 15);
+
+    const supplierNames = Object.keys(itemsBySupplier).sort();
+
+    for (const supplierName of supplierNames) {
+      const items = itemsBySupplier[supplierName];
+      if (items.length === 0) continue;
+
+      // Check if new page is needed for supplier header
+      if (y < margin + (headerFontSize + lineHeight * 2)) { // Supplier header + column headers + one item
+        page = pdfDoc.addPage(PageSizes.A4);
+        y = height - margin;
+         page.drawText(`Watagan Dental Order Report (pdf-lib) - Page ${pdfDoc.getPageCount()}`, { 
+            x: margin, y: y, font: boldFont, size: titleFontSize 
+        });
+        y -= (titleFontSize + 10);
+      }
+
+      page.drawText(supplierName, { 
+        x: margin, 
+        y: y, 
+        font: boldFont, 
+        size: headerFontSize 
+      });
+      y -= (headerFontSize + 5);
+
+      // Column Headers
+      page.drawText("ID", { x: margin, y: y, font: boldFont, size: regularFontSize });
+      page.drawText("Name", { x: margin + 80, y: y, font: boldFont, size: regularFontSize });
+      page.drawText("Qty", { x: margin + 350, y: y, font: boldFont, size: regularFontSize });
+      page.drawText("Min Qty", { x: margin + 400, y: y, font: boldFont, size: regularFontSize });
+      y -= (lineHeight + 2);
+      page.drawLine({
+          start: { x: margin, y: y },
+          end: { x: width - margin, y: y },
+          thickness: 0.5,
+          color: rgb(0, 0, 0),
+      });
+      y -= (lineHeight / 2);
+
+
+      for (const item of items) {
+        if (y < margin + lineHeight) { // Check if new page is needed for item
+          page = pdfDoc.addPage(PageSizes.A4);
+          y = height - margin;
+          // Optional: Repeat main title or page number on new page
+          page.drawText(`Watagan Dental Order Report (pdf-lib) - Page ${pdfDoc.getPageCount()} (cont.)`, { 
+            x: margin, y: y, font: boldFont, size: titleFontSize 
+          });
+          y -= (titleFontSize + 10);
+          page.drawText(`${supplierName} (continued)`, { 
+            x: margin, 
+            y: y, 
+            font: boldFont, 
+            size: headerFontSize 
+          });
+          y -= (headerFontSize + 5);
+          // Re-draw column headers
+          page.drawText("ID", { x: margin, y: y, font: boldFont, size: regularFontSize });
+          page.drawText("Name", { x: margin + 80, y: y, font: boldFont, size: regularFontSize });
+          page.drawText("Qty", { x: margin + 350, y: y, font: boldFont, size: regularFontSize });
+          page.drawText("Min Qty", { x: margin + 400, y: y, font: boldFont, size: regularFontSize });
+          y -= (lineHeight + 2);
+           page.drawLine({
+              start: { x: margin, y: y },
+              end: { x: width - margin, y: y },
+              thickness: 0.5,
+              color: rgb(0, 0, 0),
+          });
+          y -= (lineHeight/2);
+        }
+
+        page.drawText(item.id, { x: margin, y: y, font: font, size: regularFontSize });
+        
+        // Basic text wrapping for item name
+        let itemName = item.name;
+        const maxNameWidth = 250; // Approximate max width for name column
+        const nameLines = [];
+        if (font.widthOfTextAtSize(itemName, regularFontSize) > maxNameWidth) {
+            let currentLine = '';
+            const words = itemName.split(' ');
+            for (const word of words) {
+                if (font.widthOfTextAtSize(currentLine + word, regularFontSize) > maxNameWidth) {
+                    nameLines.push(currentLine.trim());
+                    currentLine = word + ' ';
+                } else {
+                    currentLine += word + ' ';
+                }
+            }
+            nameLines.push(currentLine.trim());
+        } else {
+            nameLines.push(itemName);
+        }
+
+        let nameYOffset = y;
+        nameLines.forEach(line => {
+            page.drawText(line, { x: margin + 80, y: nameYOffset, font: font, size: regularFontSize });
+            nameYOffset -= lineHeight; // Move Y for next line of the same item's name
+        });
+        
+        page.drawText(item.quantity.toString(), { x: margin + 350, y: y, font: font, size: regularFontSize });
+        page.drawText(item.minQuantity.toString(), { x: margin + 400, y: y, font: font, size: regularFontSize });
+        
+        y -= (lineHeight * nameLines.length); // Adjust y based on how many lines the name took
+      }
+      y -= (lineHeight); // Extra space after a supplier's items
+    }
+
+    const pdfBytes = await pdfDoc.save();
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'Watagan_Dental_Order_Report_Alternative.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+
+  } catch (error) {
+    console.error('Failed to generate Order Report PDF with pdf-lib:', error.message, error.stack);
+    alert('Failed to generate Order Report PDF with pdf-lib: ' + error.message);
+  }
+}
+
 
 async function emailOrderReport() {
   try {
@@ -1158,6 +1613,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadLocations(); // This will also populate filterLocation dropdown
     addBatchEntry(); 
 
+    // Setup collapsible sections
+    // Forms collapsed by default
+    setupCollapsibleSection('toggleProductFormBtn', 'productFormContent', false);
+    setupCollapsibleSection('toggleSupplierFormBtn', 'supplierFormContent', false);
+    setupCollapsibleSection('toggleLocationFormBtn', 'locationFormContent', false);
+    setupCollapsibleSection('toggleMoveProductFormBtn', 'moveProductFormContent', false);
+    
+    // Tables expanded by default
+    setupCollapsibleSection('toggleInventoryTableBtn', 'inventoryTableContent', true);
+    setupCollapsibleSection('toggleToOrderTableBtn', 'toOrderTableContent', true);
+
+
     // Event Listeners
     const darkModeToggle = document.getElementById('darkModeToggle');
     if (darkModeToggle) {
@@ -1192,6 +1659,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const filterSupplierEl = document.getElementById('filterSupplier');
   const filterLocationEl = document.getElementById('filterLocation');
   const clearInventoryFiltersBtnEl = document.getElementById('clearInventoryFiltersBtn');
+  const filterToOrderSupplierEl = document.getElementById('filterToOrderSupplier');
+
 
   if (filterSupplierEl) {
     filterSupplierEl.addEventListener('change', applyAndRenderInventoryFilters);
@@ -1203,22 +1672,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     clearInventoryFiltersBtnEl.addEventListener('click', () => {
       if (filterSupplierEl) filterSupplierEl.value = '';
       if (filterLocationEl) filterLocationEl.value = '';
+      // Also reset the "To Order" supplier filter if desired, or handle separately
+      // if (filterToOrderSupplierEl) filterToOrderSupplierEl.value = ''; 
       applyAndRenderInventoryFilters();
+      updateToOrderTable(); // Update "To Order" table if filters are cleared
     });
+  }
+  if (filterToOrderSupplierEl) {
+    filterToOrderSupplierEl.addEventListener('change', updateToOrderTable);
   }
   
   document.getElementById('generateOrderReportBtn').addEventListener('click', generateOrderReport);
+  const generateOrderReportPdfLibBtn = document.getElementById('generateOrderReportPdfLibBtn');
+  if (generateOrderReportPdfLibBtn) {
+      generateOrderReportPdfLibBtn.addEventListener('click', generateOrderReportWithPdfLib);
+  }
   document.getElementById('emailOrderReportBtn').addEventListener('click', emailOrderReport);
 
   const qrCodePDFBtn = document.getElementById('generateQRCodePDFBtn');
   if (qrCodePDFBtn) {
     qrCodePDFBtn.addEventListener('click', generateQRCodePDF);
   } else {
-    console.warn('QR Code PDF button not found in DOM');
+    console.warn('QR Code PDF button (jsPDF) not found in DOM');
+  }
+  
+  const qrCodePdfLibBtn = document.getElementById('generateQRCodePdfLibBtn');
+  if (qrCodePdfLibBtn) {
+    qrCodePdfLibBtn.addEventListener('click', generateQRCodePDFWithPdfLib);
+  } else {
+    console.warn('QR Code PDF button (pdf-lib) not found in DOM');
   }
 
   // Log button element after all initializations
-  console.log('Button element (generateQRCodePDFBtn):', document.getElementById('generateQRCodePDFBtn'));
+  // console.log('Button element (generateQRCodePDFBtn):', document.getElementById('generateQRCodePDFBtn'));
 
   } catch (error) {
     console.error('Initialization failed:', error);
