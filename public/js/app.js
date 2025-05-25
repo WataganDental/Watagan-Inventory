@@ -746,10 +746,46 @@ async function generateQRCodePDF() {
     }
 
     const JsPDF = await waitForJsPDF();
-    const snapshot = await db.collection('inventory').get();
-    const products = snapshot.docs.map(doc => doc.data());
-    if (products.length === 0) {
-      alert('No products in inventory to generate QR codes for.');
+
+    const filterLocationDropdown = document.getElementById('filterLocation');
+    const selectedLocationFilter = filterLocationDropdown ? filterLocationDropdown.value : '';
+    
+    let productGroups = {};
+    let productsToProcess = []; // Will hold the products for PDF generation
+
+    if (selectedLocationFilter) {
+      // Fetch products for the selected location
+      const snapshot = await db.collection('inventory').where('location', '==', selectedLocationFilter).get();
+      productsToProcess = snapshot.docs.map(doc => doc.data());
+      if (productsToProcess.length > 0) {
+        productGroups[selectedLocationFilter] = productsToProcess;
+      }
+    } else {
+      // Fetch all products and group them by location
+      const snapshot = await db.collection('inventory').get();
+      const allProducts = snapshot.docs.map(doc => doc.data());
+      if (allProducts.length > 0) {
+        productGroups = allProducts.reduce((acc, product) => {
+          const location = product.location || 'Unassigned'; // Handle products with no location
+          if (!acc[location]) {
+            acc[location] = [];
+          }
+          acc[location].push(product);
+          return acc;
+        }, {});
+
+        // Sort location names alphabetically for consistent PDF output
+        const sortedLocationNames = Object.keys(productGroups).sort();
+        const sortedProductGroups = {};
+        for (const locationName of sortedLocationNames) {
+          sortedProductGroups[locationName] = productGroups[locationName];
+        }
+        productGroups = sortedProductGroups;
+      }
+    }
+
+    if (Object.keys(productGroups).length === 0) {
+      alert('No products found for the selected location or in inventory to generate QR codes for.');
       return;
     }
 
@@ -759,74 +795,117 @@ async function generateQRCodePDF() {
       format: 'a4'
     });
 
-    // A4 dimensions: 595.28 x 841.89 pt
-    const pageWidth = 595.28;
-    const pageHeight = 841.89;
-    const margin = 40; // Margin around the page
-    const qrSize = 113.39; // ~40mm at 72 DPI
-    const qrSpacing = 20; // Space between QR codes
-    const textHeight = 20; // Space for product name
-    const cellWidth = (pageWidth - 2 * margin - 3 * qrSpacing) / 4; // 4 columns
-    const cellHeight = qrSize + textHeight + 10; // QR code + text + padding
-    const cols = 4;
-    const rows = 6;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
 
-    doc.setFontSize(16);
-    doc.text('Watagan Dental QR Codes', margin, 30);
-    doc.setFontSize(10);
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, margin, 50);
+    // Layout Constants
+    const COLS = 4;
+    const ROWS = 6;
+    const PRODUCTS_PER_PAGE = COLS * ROWS;
+    const MARGIN = 40; // points
+    const QR_SIZE = 60; // points, fixed size for QR code
+    const NAME_FONT_SIZE = 8;
+    const TEXT_AREA_HEIGHT = 20; // Space for product name below QR
+    const CELL_PADDING_VERTICAL = 10; // Space between product name and the QR code of the row below
 
-    let x, y, productIndex = 0;
+    const USABLE_WIDTH = pageWidth - 2 * MARGIN;
+    const QR_SPACING_HORIZONTAL = (USABLE_WIDTH - COLS * QR_SIZE) / (COLS - 1);
+    
+    // CELL_HEIGHT defines the total vertical space one item (QR + name) occupies
+    const CELL_HEIGHT = QR_SIZE + TEXT_AREA_HEIGHT + CELL_PADDING_VERTICAL; 
 
-    for (let i = 0; productIndex < products.length; i++) {
-      if (i > 0) {
-        doc.addPage();
-        doc.setFontSize(16);
-        doc.text(`Watagan Dental QR Codes (Page ${i + 1})`, margin, 30);
-        doc.setFontSize(10);
-        doc.text(`Generated: ${new Date().toLocaleDateString()}`, margin, 50);
+    let pageNumber = 0;
+    let overallProductIndex = 0; // For unique canvas IDs if needed, though not strictly necessary now
+
+    const drawPageHeaders = (docInstance, locationName, genDate) => {
+      docInstance.setFontSize(16);
+      docInstance.text('Watagan Dental QR Codes', MARGIN, MARGIN);
+      docInstance.setFontSize(10);
+      docInstance.text(`Generated: ${genDate}`, MARGIN, MARGIN + 15);
+      if (locationName) {
+        docInstance.setFontSize(12);
+        docInstance.setFont('helvetica', 'bold');
+        docInstance.text(`Location: ${locationName}`, MARGIN, MARGIN + 35);
+        docInstance.setFont('helvetica', 'normal');
       }
+      return MARGIN + 55; // Y offset for content start
+    };
+    
+    const generationDate = new Date().toLocaleDateString();
+    const locationNames = Object.keys(productGroups); // Already sorted from previous step
 
-      for (let row = 0; row < rows && productIndex < products.length; row++) {
-        for (let col = 0; col < cols && productIndex < products.length; col++) {
-          const product = products[productIndex];
-          if (!product.id || !product.name) {
-            console.warn('Invalid product data at index', productIndex, product);
-            productIndex++;
-            continue;
+    for (let i = 0; i < locationNames.length; i++) {
+      const locationName = locationNames[i];
+      const productsInLocation = productGroups[locationName];
+      let productCountInLocationOnPage = 0;
+      let currentYOffset = 0; // Will be set by drawPageHeaders
+
+      for (let j = 0; j < productsInLocation.length; j++) {
+        const product = productsInLocation[j];
+        overallProductIndex++;
+
+        if (productCountInLocationOnPage === 0) { // Start of a new page for this location or first product
+          pageNumber++;
+          if (pageNumber > 1) { // Add new page if not the very first page of PDF
+            doc.addPage();
           }
+          currentYOffset = drawPageHeaders(doc, locationName, generationDate);
+        }
 
-          x = margin + col * (qrSize + qrSpacing);
-          y = margin + 60 + row * cellHeight;
+        const col = productCountInLocationOnPage % COLS;
+        const row = Math.floor(productCountInLocationOnPage / COLS);
 
-          // Create a temporary canvas for QR code
-          const canvas = document.createElement('canvas');
-          canvas.width = qrSize;
-          canvas.height = qrSize;
-          const qrCode = new window.QRCode(canvas, {
+        const x = MARGIN + col * (QR_SIZE + QR_SPACING_HORIZONTAL);
+        const y = currentYOffset + row * CELL_HEIGHT;
+
+        if (!product.id || !product.name) {
+          console.warn('Skipping product with missing ID or name:', product);
+          // Optionally draw a placeholder or skip this cell
+          productCountInLocationOnPage++;
+          if (productCountInLocationOnPage >= PRODUCTS_PER_PAGE) {
+            productCountInLocationOnPage = 0;
+          }
+          continue;
+        }
+        
+        // Create a temporary canvas for QR code
+        const canvas = document.createElement('canvas');
+        // canvas.id = `qrCanvas-${overallProductIndex}`; // Unique ID if needed for debugging
+        // document.body.appendChild(canvas); // For debugging, makes canvas visible
+        
+        try {
+          new window.QRCode(canvas, {
             text: product.id,
-            width: qrSize,
-            height: qrSize,
+            width: QR_SIZE, // Use the defined QR_SIZE
+            height: QR_SIZE, // Use the defined QR_SIZE
             colorDark: '#000000',
             colorLight: '#ffffff',
             correctLevel: window.QRCode.CorrectLevel.L
           });
-
-          // Add QR code to PDF
           const qrImage = canvas.toDataURL('image/png');
-          doc.addImage(qrImage, 'PNG', x, y, qrSize, qrSize);
+          doc.addImage(qrImage, 'PNG', x, y, QR_SIZE, QR_SIZE);
+        } catch (qrError) {
+          console.error('Error generating QR code for product ID', product.id, ':', qrError);
+          doc.setFontSize(8);
+          doc.text('QR Error', x + QR_SIZE / 2, y + QR_SIZE / 2, { align: 'center' });
+        }
+        // canvas.remove(); // Clean up canvas if it was appended to body
 
-          // Add product name below QR code
-          doc.setFontSize(10);
-          const textWidth = doc.getTextWidth(product.name);
-          const textX = x + (qrSize - textWidth) / 2; // Center text
-          doc.text(product.name, textX, y + qrSize + 15);
+        // Add product name below QR code
+        doc.setFontSize(NAME_FONT_SIZE);
+        // Attempt to center text, handle potential multi-line with maxWidth
+        doc.text(product.name, x + QR_SIZE / 2, y + QR_SIZE + NAME_FONT_SIZE + 2, { 
+            align: 'center', 
+            maxWidth: QR_SIZE // Constrain name text to QR code width
+        });
 
-          productIndex++;
+        productCountInLocationOnPage++;
+        if (productCountInLocationOnPage >= PRODUCTS_PER_PAGE) {
+          productCountInLocationOnPage = 0; // Reset for the new page
+          // Next product will trigger new page creation if it exists
         }
       }
     }
-
     doc.save('Watagan_Dental_QR_Codes.pdf');
   } catch (error) {
     console.error('Failed to generate QR Code PDF:', error, error.stack);
