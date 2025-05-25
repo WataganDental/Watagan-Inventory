@@ -487,7 +487,7 @@ async function editProduct(id) {
       document.getElementById('productPhotoPreview').src = product.photo;
       document.getElementById('productPhotoPreview').classList.remove('hidden');
     }
-    document.getElementById('productFormTitle').textContent = 'Edit Product';
+    document.getElementById('toggleProductFormBtn').textContent = 'Edit Product'; // Updated ID
     document.getElementById('productSubmitBtn').textContent = 'Update Product';
     document.getElementById('cancelEditBtn').classList.remove('hidden');
   }
@@ -503,7 +503,7 @@ function resetProductForm() {
   document.getElementById('productLocation').value = 'Surgery 1';
   document.getElementById('productPhotoPreview').src = '';
   document.getElementById('productPhotoPreview').classList.add('hidden');
-  document.getElementById('productFormTitle').textContent = 'Add New Product';
+  document.getElementById('toggleProductFormBtn').textContent = 'Add New Product'; // Updated ID
   document.getElementById('productSubmitBtn').textContent = 'Add Product';
   document.getElementById('cancelEditBtn').classList.add('hidden');
   cancelPhoto();
