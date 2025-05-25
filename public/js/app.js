@@ -55,59 +55,6 @@ try {
   console.error('Firebase initialization failed:', error);
 }
 
-// SVG Icons for collapsible sections
-const chevronRightIcon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>`;
-const chevronDownIcon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
-
-// Function to set up a collapsible section
-function setupCollapsibleSection(buttonId, contentId, defaultExpanded = true) {
-  console.log(`Setting up collapsible section: buttonId=${buttonId}, contentId=${contentId}, defaultExpanded=${defaultExpanded}`);
-  const button = document.getElementById(buttonId);
-  const content = document.getElementById(contentId);
-  console.log('Found button:', button);
-  console.log('Found content element:', content);
-
-  if (!button) {
-    console.error(`Collapsible section button not found: ${buttonId}`);
-    return;
-  }
-  if (!content) {
-    console.error(`Collapsible section content not found: ${contentId}`);
-    return;
-  }
-
-  // Set initial state
-  // const isExpanded = defaultExpanded; // This variable 'isExpanded' is declared but never read.
-  if (defaultExpanded) {
-    content.classList.remove('hidden');
-    button.innerHTML = chevronDownIcon;
-    button.setAttribute('aria-expanded', 'true');
-  } else {
-    content.classList.add('hidden');
-    button.innerHTML = chevronRightIcon;
-    button.setAttribute('aria-expanded', 'false');
-  }
-
-  button.addEventListener('click', () => {
-    console.log(`Button clicked: ${button.id}`);
-    console.log(`Current content hidden state: ${content.classList.contains('hidden')}`);
-    console.log(`Current aria-expanded: ${button.getAttribute('aria-expanded')}`);
-    
-    content.classList.toggle('hidden'); // Toggle first
-    
-    if (content.classList.contains('hidden')) {
-      button.innerHTML = chevronRightIcon;
-      button.setAttribute('aria-expanded', 'false');
-    } else {
-      button.innerHTML = chevronDownIcon;
-      button.setAttribute('aria-expanded', 'true');
-    }
-    console.log(`New content hidden state: ${content.classList.contains('hidden')}`);
-    console.log(`New aria-expanded: ${button.getAttribute('aria-expanded')}`);
-  });
-}
-
-
 // Utility to load jsPDF dynamically
 async function loadJsPDF() {
   return new Promise((resolve, reject) => {
@@ -123,27 +70,19 @@ async function loadJsPDF() {
     script.async = true;
 
     script.onload = () => {
-      console.log('jsPDF script loaded successfully (local)');
-      console.log('typeof window.jsPDF:', typeof window.jsPDF);
-      console.log('window.jsPDF:', window.jsPDF);
-      console.log('typeof window.jspdf:', typeof window.jspdf);
-      console.log('window.jspdf:', window.jspdf);
-
-      if (window.jspdf && typeof window.jspdf.jsPDF === 'function') {
-        console.log('Found jsPDF constructor at window.jspdf.jsPDF (local)');
-        resolve(window.jspdf.jsPDF);
-      } else if (typeof window.jsPDF === 'function') {
-        console.log('Found jsPDF constructor at window.jsPDF (local)');
+      console.log('jsPDF script loaded successfully');
+      if (typeof window.jsPDF === 'function') {
+        console.log('window.jsPDF defined:', window.jsPDF);
         resolve(window.jsPDF);
       } else {
-        console.error('jsPDF script loaded (local) but window.jsPDF or window.jspdf.jsPDF is not defined/not a function');
-        reject(new Error('jsPDF script loaded (local) but window.jsPDF or window.jspdf.jsPDF is not a function'));
+        console.error('jsPDF script loaded but window.jsPDF is not defined');
+        reject(new Error('jsPDF script loaded but window.jsPDF is not defined'));
       }
     };
 
     script.onerror = (error) => {
-      console.error('Failed to load jsPDF script (local):', error);
-      reject(new Error('Failed to load jsPDF script from /js/jspdf.umd.min.js (local)'));
+      console.error('Failed to load jsPDF script:', error);
+      reject(new Error('Failed to load jsPDF script from /js/jspdf.umd.min.js'));
     };
 
     document.head.appendChild(script);
@@ -167,26 +106,18 @@ async function waitForJsPDF() {
       script.async = true;
 
       script.onload = () => {
-        console.log('jsPDF fallback script loaded successfully (CDN)');
-        console.log('typeof window.jsPDF:', typeof window.jsPDF);
-        console.log('window.jsPDF:', window.jsPDF);
-        console.log('typeof window.jspdf:', typeof window.jspdf);
-        console.log('window.jspdf:', window.jspdf);
-
-        if (window.jspdf && typeof window.jspdf.jsPDF === 'function') {
-          console.log('Found jsPDF constructor at window.jspdf.jsPDF (CDN)');
-          resolve(window.jspdf.jsPDF);
-        } else if (typeof window.jsPDF === 'function') {
-          console.log('Found jsPDF constructor at window.jsPDF (CDN)');
+        console.log('jsPDF fallback script loaded successfully');
+        if (typeof window.jsPDF === 'function') {
+          console.log('window.jsPDF defined (fallback):', window.jsPDF);
           resolve(window.jsPDF);
         } else {
-          console.error('jsPDF fallback script loaded (CDN) but window.jsPDF or window.jspdf.jsPDF is not defined/not a function');
-          reject(new Error('jsPDF fallback script loaded (CDN) but window.jsPDF or window.jspdf.jsPDF is not a function'));
+          console.error('jsPDF fallback script loaded but window.jsPDF is not defined');
+          reject(new Error('jsPDF fallback script loaded but window.jsPDF is not defined'));
         }
       };
 
       script.onerror = (error) => {
-        console.error('Failed to load jsPDF fallback script (CDN):', error);
+        console.error('Failed to load jsPDF fallback script:', error);
         reject(new Error('Failed to load jsPDF from fallback CDN'));
       };
 
@@ -291,15 +222,9 @@ function updateSupplierList() {
 function updateSupplierDropdown() {
   const productSupplierDropdown = document.getElementById('productSupplier');
   const filterSupplierDropdown = document.getElementById('filterSupplier');
-  const filterToOrderSupplierDropdown = document.getElementById('filterToOrderSupplier'); // New dropdown
 
   const populate = (dropdown, includeAllOption) => {
-    if (!dropdown) {
-      // It's possible filterToOrderSupplierDropdown might not exist on all pages if HTML isn't updated
-      // Or if this script is used elsewhere. So, just log a warning if a dropdown isn't found.
-      // console.warn('Attempted to populate a non-existent dropdown.');
-      return;
-    }
+    if (!dropdown) return;
     const currentValue = dropdown.value;
     dropdown.innerHTML = includeAllOption ? '<option value="">All Suppliers</option>' : '<option value="">Select Supplier</option>';
     suppliers.forEach(supplier => {
@@ -316,7 +241,6 @@ function updateSupplierDropdown() {
 
   populate(productSupplierDropdown, false);
   populate(filterSupplierDropdown, true);
-  populate(filterToOrderSupplierDropdown, true); // Populate the new "To Order" supplier filter
   console.log('Supplier dropdowns updated.');
 }
 
@@ -573,16 +497,15 @@ function addBatchEntry() {
   const batchUpdatesDiv = document.getElementById('batchUpdates');
   const entryId = `batch-${batchUpdates.length}`;
   const entryDiv = document.createElement('div');
-  // Stack vertically on small screens, row on sm and up. Items stretch to full width when stacked.
-  entryDiv.className = 'flex flex-col sm:flex-row gap-2 items-stretch sm:items-center mb-2'; 
+  entryDiv.className = 'flex gap-2 items-center';
   entryDiv.innerHTML = `
-    <input id="${entryId}-id" type="text" placeholder="Product ID (from scan)" class="w-full sm:flex-1 border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
-    <input id="${entryId}-quantity" type="number" placeholder="Quantity" class="w-full sm:w-24 border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
-    <select id="${entryId}-action" class="w-full sm:w-32 border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200">
+    <input id="${entryId}-id" type="text" placeholder="Product ID (from scan)" class="border dark:border-gray-600 p-2 rounded flex-1 dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
+    <input id="${entryId}-quantity" type="number" placeholder="Quantity" class="border dark:border-gray-600 p-2 rounded w-24 dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
+    <select id="${entryId}-action" class="border dark:border-gray-600 p-2 rounded w-32 dark:bg-slate-700 dark:text-gray-200">
       <option value="add">Add</option>
       <option value="remove">Remove</option>
     </select>
-    <button data-entry-id="${entryId}" class="removeBatchEntryBtn w-full sm:w-auto text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-2 rounded border dark:border-red-500 hover:bg-red-100 dark:hover:bg-red-700/50">Remove</button>
+    <button data-entry-id="${entryId}" class="removeBatchEntryBtn text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">Remove</button>
   `;
   batchUpdatesDiv.appendChild(entryDiv);
   batchUpdates.push(entryId);
@@ -756,88 +679,44 @@ function updateInventoryTable(itemsToDisplay) {
 }
 
 async function updateToOrderTable() {
-  try {
-    const snapshot = await db.collection('inventory').get();
-    let toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity);
-    
-    const filterToOrderSupplierDropdown = document.getElementById('filterToOrderSupplier');
-    const selectedSupplier = filterToOrderSupplierDropdown ? filterToOrderSupplierDropdown.value : "";
-
-    if (selectedSupplier) {
-      toOrderItems = toOrderItems.filter(item => item.supplier === selectedSupplier);
-    }
-
-    const toOrderTable = document.getElementById('toOrderTable');
-    if (!toOrderTable) {
-        console.error("toOrderTable element not found");
-        return;
-    }
-    toOrderTable.innerHTML = ''; // Clear existing rows
-
-    // Only show alert if filtering by "All Suppliers" (initial view)
-    if (!selectedSupplier && toOrderItems.length > 0) {
-      // This alert might be too intrusive if shown every time the filter changes.
-      // Consider if this alert is still desired after filtering.
-      // For now, let's keep it but be mindful.
-      // alert(`Warning: ${toOrderItems.length} product(s) need reordering!`);
-      console.log(`Warning: ${toOrderItems.length} product(s) need reordering based on current filter!`);
-    }
-    
-    if (toOrderItems.length === 0) {
-        const row = toOrderTable.insertRow();
-        const cell = row.insertCell();
-        cell.colSpan = 5; // Number of columns in your "To Order" table
-        cell.textContent = 'No products need reordering for the selected supplier.';
-        cell.className = 'text-center p-4 dark:text-gray-400';
-        return;
-    }
-
-    toOrderItems.forEach(item => {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td class="border dark:border-slate-600 p-2">${item.id}</td>
-        <td class="border dark:border-slate-600 p-2">${item.name}</td>
-        <td class="border dark:border-slate-600 p-2 text-center">${item.quantity}</td>
-        <td class="border dark:border-slate-600 p-2 text-center">${item.minQuantity}</td>
-        <td class="border dark:border-slate-600 p-2">${item.supplier || 'N/A'}</td>
-      `;
-      toOrderTable.appendChild(row);
-    });
-  } catch (error) {
-      console.error("Error updating To Order table:", error);
-      const toOrderTable = document.getElementById('toOrderTable');
-      if(toOrderTable) {
-        toOrderTable.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 p-4">Error loading data.</td></tr>';
-      }
+  const snapshot = await db.collection('inventory').get();
+  const toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity);
+  const toOrderTable = document.getElementById('toOrderTable');
+  toOrderTable.innerHTML = '';
+  if (toOrderItems.length > 0) {
+    alert(`Warning: ${toOrderItems.length} product(s) need reordering!`);
   }
+  toOrderItems.forEach(item => {
+    const row = document.createElement('tr');
+    // Row background will be default (likely dark:bg-slate-800 from parent container), text inherited.
+    // Highlighted low-stock rows in the main inventory table are handled by `updateInventoryTable`.
+    // This table just lists items to order, so no special row.className needed here for dark mode beyond cell borders.
+    row.innerHTML = `
+      <td class="border dark:border-slate-600 p-2">${item.id}</td>
+      <td class="border dark:border-slate-600 p-2">${item.name}</td>
+      <td class="border dark:border-slate-600 p-2">${item.quantity}</td>
+      <td class="border dark:border-slate-600 p-2">${item.minQuantity}</td>
+      <td class="border dark:border-slate-600 p-2">${item.supplier}</td>
+    `;
+    toOrderTable.appendChild(row);
+  });
 }
 
 // QR Code PDF Generation
 async function generateQRCodePDF() {
   try {
-    await ensureQRCodeIsAvailable(); // Ensure QRCode library is loaded
+    // Check if QRCode library is available
     if (typeof window.QRCode !== 'function') {
       throw new Error('QRCode library is not loaded');
     }
 
     const JsPDF = await waitForJsPDF();
-    const snapshot = await db.collection('inventory').orderBy('location').get(); // Order by location
+    const snapshot = await db.collection('inventory').get();
     const products = snapshot.docs.map(doc => doc.data());
-
     if (products.length === 0) {
       alert('No products in inventory to generate QR codes for.');
       return;
     }
-
-    // Group products by location
-    const productsByLocation = products.reduce((acc, product) => {
-      const location = product.location || 'Unassigned'; // Handle products with no location
-      if (!acc[location]) {
-        acc[location] = [];
-      }
-      acc[location].push(product);
-      return acc;
-    }, {});
 
     const doc = new JsPDF({
       orientation: 'portrait',
@@ -847,352 +726,124 @@ async function generateQRCodePDF() {
 
     // A4 dimensions: 595.28 x 841.89 pt
     const pageWidth = 595.28;
-    // const pageHeight = 841.89; // Not directly used for fixed item grid
-    const margin = 40;
-    const qrSize = 113.39; // ~40mm
-    const qrSpacing = 20;
-    const textHeight = 20; // Approximate height for product name text
-    // const cellWidth = (pageWidth - 2 * margin - 3 * qrSpacing) / 4; // Not directly used
-    const cellHeight = qrSize + textHeight + 15; // QR + text + padding
-    const cols = 4; // Number of QR codes per row
-    const rowsPerPage = 6; // Number of QR code rows per page
+    const pageHeight = 841.89;
+    const margin = 40; // Margin around the page
+    const qrSize = 113.39; // ~40mm at 72 DPI
+    const qrSpacing = 20; // Space between QR codes
+    const textHeight = 20; // Space for product name
+    const cellWidth = (pageWidth - 2 * margin - 3 * qrSpacing) / 4; // 4 columns
+    const cellHeight = qrSize + textHeight + 10; // QR code + text + padding
+    const cols = 4;
+    const rows = 6;
 
-    let firstPage = true;
-    let overallPageNumber = 1;
+    doc.setFontSize(16);
+    doc.text('Watagan Dental QR Codes', margin, 30);
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, margin, 50);
 
-    // Iterate over each location
-    for (const locationName in productsByLocation) {
-      if (productsByLocation.hasOwnProperty(locationName)) {
-        const locationProducts = productsByLocation[locationName];
-        let productIndexInLocation = 0;
+    let x, y, productIndex = 0;
 
-        if (locationProducts.length === 0) {
-          // Skip locations with no items
-          continue;
-        }
-        
-        let locationPageNumber = 1; // Page number specific to this location's items
-
-        while (productIndexInLocation < locationProducts.length) {
-          if (!firstPage) {
-            doc.addPage();
-            overallPageNumber++;
-          } else {
-            firstPage = false;
-          }
-
-          // Page header
-          doc.setFontSize(16);
-          doc.text(`Watagan Dental QR Codes - Location: ${locationName}`, margin, margin - 10);
-          doc.setFontSize(10);
-          doc.text(`Generated: ${new Date().toLocaleDateString()}`, margin, margin + 5);
-          doc.text(`Page ${locationPageNumber} (Overall: ${overallPageNumber})`, pageWidth - margin - 50, margin -10);
-
-
-          // Loop for rows on the current page
-          for (let row = 0; row < rowsPerPage && productIndexInLocation < locationProducts.length; row++) {
-            // Loop for columns in the current row
-            for (let col = 0; col < cols && productIndexInLocation < locationProducts.length; col++) {
-              const product = locationProducts[productIndexInLocation];
-
-              if (!product.id || !product.name) {
-                console.warn('Invalid product data for location', locationName, 'at index', productIndexInLocation, product);
-                productIndexInLocation++;
-                continue; 
-              }
-
-              const x = margin + col * (qrSize + qrSpacing);
-              const y = margin + 40 + row * cellHeight; // Adjusted starting y for QR codes
-
-              const canvas = document.createElement('canvas');
-              canvas.width = qrSize;
-              canvas.height = qrSize;
-              
-              try {
-                 new window.QRCode(canvas, {
-                    text: product.id,
-                    width: qrSize,
-                    height: qrSize,
-                    colorDark: '#000000',
-                    colorLight: '#ffffff',
-                    correctLevel: window.QRCode.CorrectLevel.L
-                });
-              } catch (qrError) {
-                console.error("QR Code generation failed for product:", product.id, qrError);
-                doc.setFontSize(8);
-                doc.setFillColor(255,0,0); 
-                doc.rect(x, y, qrSize, qrSize, 'F'); 
-                doc.setTextColor(255,255,255); 
-                doc.text("QR Error", x + qrSize/2, y + qrSize/2, { align: 'center', baseline: 'middle' });
-                doc.setTextColor(0,0,0); 
-                productIndexInLocation++;
-                continue;
-              }
-
-              const qrImage = canvas.toDataURL('image/png');
-              doc.addImage(qrImage, 'PNG', x, y, qrSize, qrSize);
-
-              doc.setFontSize(8); 
-              let productNameToDisplay = product.name;
-              const textWidth = doc.getTextWidth(productNameToDisplay);
-              const textX = x + (qrSize - textWidth) / 2; 
-              
-              if (textWidth > qrSize) {
-                  const approxCharsPerLine = productNameToDisplay.length * (qrSize / textWidth);
-                  // Attempt to split into two lines if too long, very basic split
-                  if (productNameToDisplay.length > approxCharsPerLine * 1.5) { // If it's much longer
-                    let splitPoint = productNameToDisplay.indexOf(' ', Math.floor(approxCharsPerLine) -1 );
-                    if (splitPoint === -1 || splitPoint > approxCharsPerLine * 1.8) splitPoint = Math.floor(approxCharsPerLine);
-                    
-                    const line1 = productNameToDisplay.substring(0, splitPoint);
-                    const line2 = productNameToDisplay.substring(splitPoint).trim();
-                    const textWidthL1 = doc.getTextWidth(line1);
-                    const textXL1 = x + (qrSize - textWidthL1) / 2;
-                    doc.text(line1, textXL1, y + qrSize + 10);
-
-                    const textWidthL2 = doc.getTextWidth(line2);
-                    const textXL2 = x + (qrSize - textWidthL2) / 2;
-                    doc.text(line2, textXL2, y + qrSize + 10 + 8); // 8pt font size + 2pt spacing
-                  } else { // Simple truncation if not extremely long or no good split point
-                    productNameToDisplay = productNameToDisplay.substring(0, Math.floor(approxCharsPerLine) - 3) + "...";
-                    const finalTextWidth = doc.getTextWidth(productNameToDisplay);
-                    const finalTextX = x + (qrSize - finalTextWidth) / 2;
-                    doc.text(productNameToDisplay, finalTextX, y + qrSize + 10);
-                  }
-              } else {
-                  doc.text(productNameToDisplay, textX, y + qrSize + 10);
-              }
-              productIndexInLocation++;
-            }
-          }
-          locationPageNumber++;
-        }
+    for (let i = 0; productIndex < products.length; i++) {
+      if (i > 0) {
+        doc.addPage();
+        doc.setFontSize(16);
+        doc.text(`Watagan Dental QR Codes (Page ${i + 1})`, margin, 30);
+        doc.setFontSize(10);
+        doc.text(`Generated: ${new Date().toLocaleDateString()}`, margin, 50);
       }
-    }
 
-    doc.save('Watagan_Dental_QR_Codes_By_Location.pdf');
-  } catch (error) {
-    console.error('Failed to generate QR Code PDF by location:', error.message, error.stack);
-    alert('Failed to generate QR Code PDF by location: ' + error.message);
-  }
-}
-
-async function generateQRCodePDFWithPdfLib() {
-  try {
-    await ensureQRCodeIsAvailable();
-    if (!window.PDFLib) {
-      alert('Error: PDFLib library is not loaded. Cannot generate QR Code PDF.');
-      console.error('PDFLib library not found on window object.');
-      return;
-    }
-    if (typeof window.QRCode !== 'function') {
-      alert('Error: QRCode library is not loaded. Cannot generate QR Code PDF.');
-      console.error('QRCode library not found on window object.');
-      return;
-    }
-
-    const { PDFDocument, StandardFonts, rgb, PageSizes } = window.PDFLib;
-
-    const snapshot = await db.collection('inventory').orderBy('location').get();
-    const products = snapshot.docs.map(doc => doc.data());
-
-    if (products.length === 0) {
-      alert('No products in inventory to generate QR codes for.');
-      return;
-    }
-
-    const productsByLocation = products.reduce((acc, product) => {
-      const location = product.location || 'Unassigned';
-      if (!acc[location]) {
-        acc[location] = [];
-      }
-      acc[location].push(product);
-      return acc;
-    }, {});
-
-    const pdfDoc = await PDFDocument.create();
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-    
-    const A4_WIDTH = PageSizes.A4[0];
-    const A4_HEIGHT = PageSizes.A4[1];
-    const margin = 40;
-    const qrSize = 90; // Slightly smaller for more items and text
-    const qrSpacing = 25;
-    const textHeight = 10; // For product name below QR
-    const productNameFontSize = 8;
-    const locationHeaderFontSize = 14;
-    const pageHeaderFontSize = 10;
-
-    const itemsPerRow = Math.floor((A4_WIDTH - 2 * margin + qrSpacing) / (qrSize + qrSpacing));
-    const itemsPerCol = Math.floor((A4_HEIGHT - 2 * margin - locationHeaderFontSize - pageHeaderFontSize) / (qrSize + textHeight + qrSpacing));
-    const itemsPerPage = itemsPerRow * itemsPerCol;
-    
-    let page = pdfDoc.addPage(PageSizes.A4);
-    let currentX = margin;
-    let currentY = A4_HEIGHT - margin - pageHeaderFontSize - 5;
-    let itemCountOnPage = 0;
-    let overallProductIndex = 0;
-    let firstLocation = true;
-
-    const drawPageHeader = (currentPage, locationName, pageNumber) => {
-        currentPage.drawText(`Watagan Dental QR Codes (pdf-lib) - Location: ${locationName} - Page ${pageNumber}`, {
-            x: margin,
-            y: A4_HEIGHT - margin,
-            font: boldFont,
-            size: pageHeaderFontSize,
-            color: rgb(0, 0, 0),
-        });
-    };
-
-
-    for (const locationName in productsByLocation) {
-      if (productsByLocation.hasOwnProperty(locationName)) {
-        const locationProducts = productsByLocation[locationName];
-        if (locationProducts.length === 0) continue;
-
-        if (!firstLocation || itemCountOnPage > 0) { // Add new page for new location unless it's the very first item overall
-          page = pdfDoc.addPage(PageSizes.A4);
-          itemCountOnPage = 0;
-        }
-        firstLocation = false;
-        
-        let locationPageNumber = 1;
-        drawPageHeader(page, locationName, locationPageNumber);
-        currentY = A4_HEIGHT - margin - pageHeaderFontSize - 5 - locationHeaderFontSize - 10;
-        currentX = margin;
-
-        for (let i = 0; i < locationProducts.length; i++) {
-          const product = locationProducts[i];
-
-          if (itemCountOnPage >= itemsPerPage || currentY - qrSize - textHeight < margin) {
-            page = pdfDoc.addPage(PageSizes.A4);
-            locationPageNumber++;
-            drawPageHeader(page, locationName, locationPageNumber);
-            currentY = A4_HEIGHT - margin - pageHeaderFontSize - 5 - locationHeaderFontSize - 10; // Reset Y for new page (after headers)
-            currentX = margin;
-            itemCountOnPage = 0;
+      for (let row = 0; row < rows && productIndex < products.length; row++) {
+        for (let col = 0; col < cols && productIndex < products.length; col++) {
+          const product = products[productIndex];
+          if (!product.id || !product.name) {
+            console.warn('Invalid product data at index', productIndex, product);
+            productIndex++;
+            continue;
           }
-          
-          // Generate QR Code
-          const tempQrDiv = document.createElement('div');
-          // Ensure QRCode.js generates QR code synchronously for canvas access
-          new QRCode(tempQrDiv, {
+
+          x = margin + col * (qrSize + qrSpacing);
+          y = margin + 60 + row * cellHeight;
+
+          // Create a temporary canvas for QR code
+          const canvas = document.createElement('canvas');
+          canvas.width = qrSize;
+          canvas.height = qrSize;
+          const qrCode = new window.QRCode(canvas, {
             text: product.id,
             width: qrSize,
             height: qrSize,
             colorDark: '#000000',
             colorLight: '#ffffff',
-            correctLevel: QRCode.CorrectLevel.L
+            correctLevel: window.QRCode.CorrectLevel.L
           });
 
-          // DEBUG: Log tempQrDiv and its content
-          console.log(`[Debug QR ${product.id}] tempQrDiv element:`, tempQrDiv);
-          console.log(`[Debug QR ${product.id}] tempQrDiv.innerHTML after QRCode instantiation:`, tempQrDiv.innerHTML);
+          // Add QR code to PDF
+          const qrImage = canvas.toDataURL('image/png');
+          doc.addImage(qrImage, 'PNG', x, y, qrSize, qrSize);
 
-          // TEMPORARY DELAY FOR DIAGNOSIS
-          await new Promise(resolve => setTimeout(resolve, 100)); 
-          console.log(`[Debug QR ${product.id}] After 100ms delay`);
+          // Add product name below QR code
+          doc.setFontSize(10);
+          const textWidth = doc.getTextWidth(product.name);
+          const textX = x + (qrSize - textWidth) / 2; // Center text
+          doc.text(product.name, textX, y + qrSize + 15);
 
-          const canvas = tempQrDiv.querySelector('canvas');
-          // DEBUG: Log found canvas
-          console.log(`[Debug QR ${product.id}] Found canvas element:`, canvas);
-
-          if (canvas) {
-            try {
-              const pngDataUrl = canvas.toDataURL('image/png');
-              // DEBUG: Log PNG Data URL
-              console.log(`[Debug QR ${product.id}] PNG Data URL (first 100 chars):`, pngDataUrl ? pngDataUrl.substring(0, 100) : 'null or empty');
-
-              if (!pngDataUrl || pngDataUrl === 'data:,') {
-                console.error(`[Debug QR ${product.id}] Canvas toDataURL returned empty or invalid data.`);
-                throw new Error('Canvas toDataURL returned empty data.');
-              }
-
-              const pngImage = await pdfDoc.embedPng(pngDataUrl);
-              // DEBUG: Log embedded PNG image object
-              console.log(`[Debug QR ${product.id}] Embedded PNG image object:`, pngImage);
-
-              if (pngImage) {
-                page.drawImage(pngImage, {
-                  x: currentX,
-                  y: currentY - qrSize,
-                  width: qrSize,
-                  height: qrSize,
-                });
-                console.log(`[Debug QR ${product.id}] QR Code image drawn.`);
-              } else {
-                throw new Error('Failed to embed PNG image.');
-              }
-            } catch (embedError) {
-              console.error(`[Debug QR ${product.id}] Error processing or embedding QR code image:`, embedError);
-              page.drawRectangle({ x: currentX, y: currentY - qrSize, width: qrSize, height: qrSize, borderColor: rgb(1, 0, 0), borderWidth: 1 });
-              page.drawText("Embed Err", { x: currentX + 5, y: currentY - qrSize / 2, size: 8, color: rgb(1, 0, 0) });
-            }
-          } else {
-            console.error(`[Debug QR ${product.id}] Canvas element not found for product ID: ${product.id}`);
-            page.drawRectangle({ x: currentX, y: currentY - qrSize, width: qrSize, height: qrSize, borderColor: rgb(1, 0, 0), borderWidth: 1 });
-            page.drawText("No Canvas", { x: currentX + 5, y: currentY - qrSize / 2, size: 8, color: rgb(1, 0, 0) });
-          }
-
-          // Draw product name
-          const productName = product.name || 'Unnamed Product';
-          const nameWidth = font.widthOfTextAtSize(productName, productNameFontSize);
-          const centeredNameX = currentX + (qrSize - nameWidth) / 2;
-          page.drawText(productName, {
-            x: Math.max(currentX, centeredNameX), // Ensure text doesn't go off-left
-            y: currentY - qrSize - textHeight,
-            font: font,
-            size: productNameFontSize,
-            color: rgb(0.1, 0.1, 0.1),
-            maxWidth: qrSize // Basic text clipping
-          });
-
-          currentX += qrSize + qrSpacing;
-          if (currentX + qrSize > A4_WIDTH - margin) {
-            currentX = margin;
-            currentY -= (qrSize + textHeight + qrSpacing);
-          }
-          itemCountOnPage++;
-          overallProductIndex++;
+          productIndex++;
         }
-        // Reset for next location, ensure it gets a new page if needed by setting itemCountOnPage
-        itemCountOnPage = itemsPerPage; // This will force a new page if there's another location
       }
     }
 
-    const pdfBytes = await pdfDoc.save();
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'Watagan_Dental_QR_Codes_Alternative.pdf';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
-
+    doc.save('Watagan_Dental_QR_Codes.pdf');
   } catch (error) {
-    console.error('Failed to generate QR Code PDF with pdf-lib:', error.message, error.stack);
-    alert('Failed to generate QR Code PDF with pdf-lib: ' + error.message);
+    console.error('Failed to generate QR Code PDF:', error, error.stack);
+    alert('Failed to generate QR Code PDF: ' + error.message);
   }
 }
-
 
 // Order Reports
 async function generateOrderReport() {
   try {
     const JsPDF = await waitForJsPDF();
-    const snapshot = await db.collection('inventory').get(); // Fetch all inventory
+    const snapshot = await db.collection('inventory').get();
     const toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity);
-
     if (toOrderItems.length === 0) {
       alert('No products need reordering.');
       return;
     }
 
-    // Group items by supplier
-    const itemsBySupplier = toOrderItems.reduce((acc, item) => {
-      const supplierName = item.supplier || 'Supplier Not Assigned'; // Default for items with no supplier
+    const JsPDF = await waitForJsPDF(); // Ensure JsPDF is loaded
+    const doc = new JsPDF();
+    doc.setFontSize(16);
+    doc.text('Watagan Dental Order Report', 10, 10);
+    doc.setFontSize(12);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 10, 20);
+
+    let y = 30; 
+    // Column Headers
+    doc.setFont("helvetica", "bold");
+    doc.text('ID', 10, y);
+    doc.text('Name', 40, y);
+    doc.text('Qty', 120, y, { align: 'right' });
+    doc.text('Min Qty', 150, y, { align: 'right' });
+    doc.text('Supplier', 180, y);
+    doc.setFont("helvetica", "normal");
+    
+    y += 7; 
+    doc.setLineWidth(0.5);
+    doc.line(10, y, 200, y); 
+    y += 10; 
+
+    const pageHeight = doc.internal.pageSize.height;
+    const bottomMargin = 20;
+
+    // Apply supplier filter if selected (as done in updateToOrderTable)
+    const filterToOrderSupplierDropdown = document.getElementById('filterToOrderSupplier');
+    const selectedSupplierFilter = filterToOrderSupplierDropdown ? filterToOrderSupplierDropdown.value : "";
+    if (selectedSupplierFilter) {
+      toOrderItems = toOrderItems.filter(item => item.supplier === selectedSupplierFilter);
+    }
+
+    const itemsBySupplierGroup = toOrderItems.reduce((acc, item) => {
+      const supplierName = item.supplier || 'Supplier Not Assigned';
       if (!acc[supplierName]) {
         acc[supplierName] = [];
       }
@@ -1200,203 +851,68 @@ async function generateOrderReport() {
       return acc;
     }, {});
 
-    const doc = new JsPDF({
-      orientation: 'portrait',
-      unit: 'pt', // Use points for measurements
-      format: 'a4'
-    });
+    const sortedSupplierNames = Object.keys(itemsBySupplierGroup).sort();
 
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 40; // 40pt margin
-    const lineHeight = 12; // 12pt line height for item details
-    const sectionSpacing = 20; // Space between supplier sections
-    let yPosition = margin; // Start yPosition for content
+    for (const supplierName of sortedSupplierNames) {
+        const items = itemsBySupplierGroup[supplierName];
+        if (items.length === 0) continue;
 
-    // Function to add page header
-    const addPageHeader = (pageNumber) => {
-      doc.setFontSize(16);
-      doc.text('Watagan Dental Order Report', margin, margin - 10); // Main title
-      doc.setFontSize(10);
-      doc.text(`Generated: ${new Date().toLocaleDateString()}`, margin, margin + 5);
-      doc.text(`Page ${pageNumber}`, pageWidth - margin - 30, margin -10);
-      yPosition = margin + 20; // Reset yPosition for content after header
-    };
-    
-    // Function to add a new page if needed
-    const checkAndAddPage = (itemHeight = lineHeight) => {
-      if (yPosition + itemHeight > pageHeight - margin) { // Check if content exceeds page
-        doc.addPage();
-        currentPage++;
-        addPageHeader(currentPage);
-        return true; // Page was added
-      }
-      return false; // No page added
-    };
-
-    let currentPage = 1;
-    addPageHeader(currentPage);
-
-    const supplierNames = Object.keys(itemsBySupplier).sort(); // Sort supplier names alphabetically
-
-    for (const supplierName of supplierNames) {
-      const items = itemsBySupplier[supplierName];
-      if (items.length === 0) continue;
-
-      // Check for page break before supplier header
-      const estimatedSectionHeight = lineHeight * 2 + sectionSpacing + lineHeight; 
-      if(checkAndAddPage(estimatedSectionHeight)) {
-        // If a page break happened, header is already added by addPageHeader.
-      }
-
-      // Supplier Header
-      page.drawText(supplierName, { 
-        x: margin, 
-        y: yPosition, 
-        font: boldFont, // Use boldFont
-        size: headerFontSize 
-      });
-      yPosition -= (headerFontSize + 5);
-
-      // Column Headers for items
-      page.drawText("ID", { x: margin, y: yPosition, font: boldFont, size: regularFontSize }); // Use boldFont
-      page.drawText("Name", { x: margin + 80, y: yPosition, font: boldFont, size: regularFontSize }); // Use boldFont
-      page.drawText("Qty", { x: margin + 350, y: yPosition, font: boldFont, size: regularFontSize }); // Use boldFont, adjusted x for alignment
-      page.drawText("Min Qty", { x: margin + 400, y: yPosition, font: boldFont, size: regularFontSize }); // Use boldFont, adjusted x for alignment
-      yPosition -= (lineHeight + 2);
-      page.drawLine({
-          start: { x: margin, y: yPosition },
-          end: { x: width - margin, y: yPosition },
-          thickness: 0.5,
-          color: rgb(0, 0, 0),
-      });
-      yPosition -= (lineHeight / 2);
-
-
-      // List items for the current supplier
-      for (const item of items) {
-        if (checkAndAddPage(lineHeight * (nameLines ? nameLines.length : 1) )) { // Adjust height for potential wrapped names
-          // If new page was added, re-print supplier header and column headers
-          page.drawText(`${supplierName} (continued)`, { 
-            x: margin, 
-            y: yPosition, 
-            font: boldFont, // Use boldFont
-            size: headerFontSize 
-          });
-          yPosition -= (headerFontSize + 5);
-
-          page.drawText("ID", { x: margin, y: yPosition, font: boldFont, size: regularFontSize }); // Use boldFont
-          page.drawText("Name", { x: margin + 80, y: yPosition, font: boldFont, size: regularFontSize }); // Use boldFont
-          page.drawText("Qty", { x: margin + 350, y: yPosition, font: boldFont, size: regularFontSize }); // Use boldFont
-          page.drawText("Min Qty", { x: margin + 400, y: yPosition, font: boldFont, size: regularFontSize }); // Use boldFont
-          yPosition -= (lineHeight + 2);
-          page.drawLine({
-              start: { x: margin, y: yPosition },
-              end: { x: width - margin, y: yPosition },
-              thickness: 0.5,
-              color: rgb(0, 0, 0),
-          });
-          yPosition -= (lineHeight/2);
-        }
-
-        let itemName = item.name;
-        const maxNameWidth = 250; 
-        const nameLines = [];
-        
-        if (font.widthOfTextAtSize(itemName, regularFontSize) > maxNameWidth) {
-            let currentLine = '';
-            const words = itemName.split(' ');
-            for (const word of words) {
-                if (font.widthOfTextAtSize(currentLine + word, regularFontSize) > maxNameWidth) {
-                    if(currentLine.trim() !== '') nameLines.push(currentLine.trim());
-                    currentLine = word + ' ';
-                } else {
-                    currentLine += word + ' ';
-                }
-            }
-            if(currentLine.trim() !== '') nameLines.push(currentLine.trim());
-            if(nameLines.length === 0 && currentLine.trim() !== '') nameLines.push(currentLine.trim()); // case where first word itself is too long
-        } else {
-            nameLines.push(itemName);
+        if (y + 20 > pageHeight - bottomMargin) { // Check for page break before supplier header
+            doc.addPage();
+            y = 20; // Reset y for new page
+            doc.setFont("helvetica", "bold");
+            doc.text('ID', 10, y);
+            doc.text('Name', 40, y);
+            doc.text('Qty', 120, y, { align: 'right' });
+            doc.text('Min Qty', 150, y, { align: 'right' });
+            doc.text('Supplier', 180, y);
+            doc.setFont("helvetica", "normal");
+            y += 7;
+            doc.setLineWidth(0.5);
+            doc.line(10, y, 200, y);
+            y += 10;
         }
         
-        let nameYOffset = yPosition;
-        nameLines.forEach((line, index) => {
-            if (index > 0) nameYOffset -= lineHeight; // Adjust y for subsequent lines of the same item
-             if (nameYOffset < margin + lineHeight) { // Check page boundary for each line
-                page = pdfDoc.addPage(PageSizes.A4);
-                yPosition = height - margin; // Reset y
-                nameYOffset = yPosition;
-                // Add necessary headers again if needed
-                 page.drawText(`Watagan Dental Order Report (pdf-lib) - Page ${pdfDoc.getPageCount()} (cont.)`, { 
-                    x: margin, y: yPosition, font: boldFont, size: titleFontSize 
-                });
-                yPosition -= (titleFontSize + 10);
-                nameYOffset = yPosition; // update nameYOffset after potential page break
+        doc.setFont("helvetica", "bold");
+        doc.text(supplierName, 10, y);
+        y += 15; 
+        doc.setFont("helvetica", "normal");
+
+        items.forEach(item => {
+            if (y > pageHeight - bottomMargin) { 
+                doc.addPage();
+                y = 20; 
+                doc.setFont("helvetica", "bold");
+                doc.text('ID', 10, y);
+                doc.text('Name', 40, y);
+                doc.text('Qty', 120, y, { align: 'right' });
+                doc.text('Min Qty', 150, y, { align: 'right' });
+                doc.text('Supplier', 180, y);
+                y += 7;
+                doc.setLineWidth(0.5);
+                doc.line(10, y, 200, y);
+                y += 10;
+                doc.text(`${supplierName} (continued)`, 10, y);
+                y += 15;
+                doc.setFont("helvetica", "normal");
             }
-            page.drawText(line, { x: margin + 80, y: nameYOffset, font: font, size: regularFontSize });
+            doc.text(item.id, 10, y);
+            doc.text(item.name, 40, y, {maxWidth: 75}); 
+            doc.text(item.quantity.toString(), 120, y, { align: 'right' });
+            doc.text(item.minQuantity.toString(), 150, y, { align: 'right' });
+            doc.text(item.supplier || 'N/A', 180, y);
+            y += 10;
         });
-        
-        page.drawText(item.id, { x: margin, y: yPosition, font: font, size: regularFontSize });
-        page.drawText(item.quantity.toString(), { x: margin + 350, y: yPosition, font: font, size: regularFontSize }); // Use font
-        page.drawText(item.minQuantity.toString(), { x: margin + 400, y: yPosition, font: font, size: regularFontSize }); // Use font
-        
-        yPosition -= (lineHeight * nameLines.length); // Adjust y based on how many lines the name took
-        
-        // Add a small buffer after each item if multiple lines were drawn for the name
-        if (nameLines.length > 1) {
-            yPosition -= (lineHeight / 2);
-        }
-
-        // Final check for page overflow after drawing item
-        if (yPosition < margin) {
-             page = pdfDoc.addPage(PageSizes.A4);
-             yPosition = height - margin;
-             // Add necessary headers again if needed
-             page.drawText(`Watagan Dental Order Report (pdf-lib) - Page ${pdfDoc.getPageCount()} (cont.)`, { 
-                x: margin, y: yPosition, font: boldFont, size: titleFontSize 
-            });
-            yPosition -= (titleFontSize + 10);
-        }
-
-        // Old try-catch for item name processing, simplified above
-        // try {
-            // const maxNameWidth = 210; 
-            // if (doc.getTextWidth(itemName) > maxNameWidth) {
-            //     let splitText = doc.splitTextToSize(itemName, maxNameWidth);
-            //     itemName = Array.isArray(splitText) ? splitText[0] : splitText;
-            //     if (itemName.length < item.name.length && !itemName.endsWith("...")) {
-            //         itemName = itemName.trim() + "...";
-            //     }
-            // }
-        // } catch(e) {
-        //     console.warn("Error processing item name for PDF: ", item.name, e);
-        // }
-
-        // doc.text(item.id, margin, yPosition);
-        // doc.text(itemName, margin + 80, yPosition);
-        // doc.text(item.quantity.toString(), margin + 300, yPosition, {align: 'right'});
-        // doc.text(item.minQuantity.toString(), margin + 350, yPosition, {align: 'right'});
-        // yPosition += lineHeight;
-      }
-      yPosition -= (lineHeight); // Extra space after a supplier's items
+        y += 5; 
     }
 
-    const pdfBytes = await pdfDoc.save();
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'Watagan_Dental_Order_Report_Alternative.pdf';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
-
+    doc.save('Watagan_Dental_Order_Report.pdf');
   } catch (error) {
-    console.error('Failed to generate Order Report PDF with pdf-lib:', error.message, error.stack);
-    alert('Failed to generate Order Report PDF with pdf-lib: ' + error.message);
+    console.error('Failed to generate Order Report PDF (jsPDF):', error.message, error.stack);
+    alert('Failed to generate Order Report PDF (jsPDF): ' + error.message);
   }
 }
+
 
 // Order Reports - Alternative PDF generation with pdf-lib.js
 async function generateOrderReportWithPdfLib() {
@@ -1440,7 +956,7 @@ async function generateOrderReportWithPdfLib() {
     const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
     const margin = 50;
-    let y = height - margin;
+    let yPosition = height - margin;
     const lineHeight = 14; // For 12pt font + spacing
     const titleFontSize = 18;
     const headerFontSize = 14;
@@ -1448,19 +964,19 @@ async function generateOrderReportWithPdfLib() {
 
     page.drawText('Watagan Dental Order Report (pdf-lib)', { 
       x: margin, 
-      y: y, 
+      y: yPosition, 
       font: boldFont, 
       size: titleFontSize 
     });
-    y -= (titleFontSize + 10);
+    yPosition -= (titleFontSize + 10);
 
     page.drawText(`Date: ${new Date().toLocaleDateString()}`, { 
       x: margin, 
-      y: y, 
+      y: yPosition, 
       font: font, 
       size: regularFontSize 
     });
-    y -= (regularFontSize + 15);
+    yPosition -= (regularFontSize + 15);
 
     const supplierNames = Object.keys(itemsBySupplier).sort();
 
@@ -1469,103 +985,104 @@ async function generateOrderReportWithPdfLib() {
       if (items.length === 0) continue;
 
       // Check if new page is needed for supplier header
-      if (y < margin + (headerFontSize + lineHeight * 2)) { // Supplier header + column headers + one item
+      if (yPosition < margin + (headerFontSize + lineHeight * 2)) { // Supplier header + column headers + one item
         page = pdfDoc.addPage(PageSizes.A4);
-        y = height - margin;
+        yPosition = height - margin;
          page.drawText(`Watagan Dental Order Report (pdf-lib) - Page ${pdfDoc.getPageCount()}`, { 
-            x: margin, y: y, font: boldFont, size: titleFontSize 
+            x: margin, y: yPosition, font: boldFont, size: titleFontSize 
         });
-        y -= (titleFontSize + 10);
+        yPosition -= (titleFontSize + 10);
       }
 
       page.drawText(supplierName, { 
         x: margin, 
-        y: y, 
+        y: yPosition, 
         font: boldFont, 
         size: headerFontSize 
       });
-      y -= (headerFontSize + 5);
+      yPosition -= (headerFontSize + 5);
 
-      // Column Headers
-      page.drawText("ID", { x: margin, y: y, font: boldFont, size: regularFontSize });
-      page.drawText("Name", { x: margin + 80, y: y, font: boldFont, size: regularFontSize });
-      page.drawText("Qty", { x: margin + 350, y: y, font: boldFont, size: regularFontSize });
-      page.drawText("Min Qty", { x: margin + 400, y: y, font: boldFont, size: regularFontSize });
-      y -= (lineHeight + 2);
+      // Column Headers for items
+      page.drawText("ID", { x: margin, y: yPosition, font: boldFont, size: regularFontSize });
+      page.drawText("Name", { x: margin + 80, y: yPosition, font: boldFont, size: regularFontSize });
+      page.drawText("Qty", { x: margin + 350, y: yPosition, font: boldFont, size: regularFontSize });
+      page.drawText("Min Qty", { x: margin + 400, y: yPosition, font: boldFont, size: regularFontSize });
+      yPosition -= (lineHeight + 2);
       page.drawLine({
-          start: { x: margin, y: y },
-          end: { x: width - margin, y: y },
+          start: { x: margin, y: yPosition },
+          end: { x: width - margin, y: yPosition },
           thickness: 0.5,
           color: rgb(0, 0, 0),
       });
-      y -= (lineHeight / 2);
+      yPosition -= (lineHeight / 2);
 
 
       for (const item of items) {
-        if (y < margin + lineHeight) { // Check if new page is needed for item
-          page = pdfDoc.addPage(PageSizes.A4);
-          y = height - margin;
-          // Optional: Repeat main title or page number on new page
-          page.drawText(`Watagan Dental Order Report (pdf-lib) - Page ${pdfDoc.getPageCount()} (cont.)`, { 
-            x: margin, y: y, font: boldFont, size: titleFontSize 
-          });
-          y -= (titleFontSize + 10);
-          page.drawText(`${supplierName} (continued)`, { 
-            x: margin, 
-            y: y, 
-            font: boldFont, 
-            size: headerFontSize 
-          });
-          y -= (headerFontSize + 5);
-          // Re-draw column headers
-          page.drawText("ID", { x: margin, y: y, font: boldFont, size: regularFontSize });
-          page.drawText("Name", { x: margin + 80, y: y, font: boldFont, size: regularFontSize });
-          page.drawText("Qty", { x: margin + 350, y: y, font: boldFont, size: regularFontSize });
-          page.drawText("Min Qty", { x: margin + 400, y: y, font: boldFont, size: regularFontSize });
-          y -= (lineHeight + 2);
-           page.drawLine({
-              start: { x: margin, y: y },
-              end: { x: width - margin, y: y },
-              thickness: 0.5,
-              color: rgb(0, 0, 0),
-          });
-          y -= (lineHeight/2);
-        }
-
-        page.drawText(item.id, { x: margin, y: y, font: font, size: regularFontSize });
-        
-        // Basic text wrapping for item name
-        let itemName = item.name;
-        const maxNameWidth = 250; // Approximate max width for name column
+        const itemName = item.name || 'Unnamed Product';
         const nameLines = [];
+        const maxNameWidth = 250; 
         if (font.widthOfTextAtSize(itemName, regularFontSize) > maxNameWidth) {
             let currentLine = '';
             const words = itemName.split(' ');
             for (const word of words) {
                 if (font.widthOfTextAtSize(currentLine + word, regularFontSize) > maxNameWidth) {
-                    nameLines.push(currentLine.trim());
+                    if(currentLine.trim() !== '') nameLines.push(currentLine.trim());
                     currentLine = word + ' ';
                 } else {
                     currentLine += word + ' ';
                 }
             }
-            nameLines.push(currentLine.trim());
+            if(currentLine.trim() !== '') nameLines.push(currentLine.trim());
+            if(nameLines.length === 0 && currentLine.trim() !== '') nameLines.push(currentLine.trim()); 
         } else {
             nameLines.push(itemName);
         }
 
-        let nameYOffset = y;
-        nameLines.forEach(line => {
-            page.drawText(line, { x: margin + 80, y: nameYOffset, font: font, size: regularFontSize });
-            nameYOffset -= lineHeight; // Move Y for next line of the same item's name
+        if (yPosition < margin + (lineHeight * nameLines.length)) { 
+          page = pdfDoc.addPage(PageSizes.A4);
+          yPosition = height - margin; 
+          page.drawText(`Watagan Dental Order Report (pdf-lib) - Page ${pdfDoc.getPageCount()} (cont.)`, { 
+            x: margin, y: yPosition, font: boldFont, size: titleFontSize 
+          });
+          yPosition -= (titleFontSize + 10);
+          page.drawText(`${supplierName} (continued)`, { 
+            x: margin, 
+            y: yPosition, 
+            font: boldFont, 
+            size: headerFontSize 
+          });
+          yPosition -= (headerFontSize + 5);
+          
+          page.drawText("ID", { x: margin, y: yPosition, font: boldFont, size: regularFontSize });
+          page.drawText("Name", { x: margin + 80, y: yPosition, font: boldFont, size: regularFontSize });
+          page.drawText("Qty", { x: margin + 350, y: yPosition, font: boldFont, size: regularFontSize });
+          page.drawText("Min Qty", { x: margin + 400, y: yPosition, font: boldFont, size: regularFontSize });
+          yPosition -= (lineHeight + 2);
+           page.drawLine({
+              start: { x: margin, y: yPosition },
+              end: { x: width - margin, y: yPosition },
+              thickness: 0.5,
+              color: rgb(0, 0, 0),
+          });
+          yPosition -= (lineHeight/2);
+        }
+        
+        let currentLineY = yPosition;
+        page.drawText(item.id, { x: margin, y: currentLineY, font: font, size: regularFontSize });
+        nameLines.forEach((line, index) => {
+            page.drawText(line, { x: margin + 80, y: currentLineY, font: font, size: regularFontSize });
+            if (index < nameLines.length -1) currentLineY -= lineHeight;
         });
+        page.drawText(item.quantity.toString(), { x: margin + 350, y: yPosition, font: font, size: regularFontSize }); 
+        page.drawText(item.minQuantity.toString(), { x: margin + 400, y: yPosition, font: font, size: regularFontSize }); 
         
-        page.drawText(item.quantity.toString(), { x: margin + 350, y: y, font: font, size: regularFontSize });
-        page.drawText(item.minQuantity.toString(), { x: margin + 400, y: y, font: font, size: regularFontSize });
+        yPosition -= (lineHeight * nameLines.length); 
         
-        y -= (lineHeight * nameLines.length); // Adjust y based on how many lines the name took
+        if (nameLines.length > 1) {
+            yPosition -= (lineHeight / 2); 
+        }
       }
-      y -= (lineHeight); // Extra space after a supplier's items
+      yPosition -= (lineHeight); 
     }
 
     const pdfBytes = await pdfDoc.save();
@@ -1731,19 +1248,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadLocations(); // This will also populate filterLocation dropdown
     addBatchEntry(); 
 
-    // Setup collapsible sections
-    console.log('Initializing collapsible sections...');
-    // Forms collapsed by default
-    setupCollapsibleSection('toggleProductFormBtn', 'productFormContent', false);
-    setupCollapsibleSection('toggleSupplierFormBtn', 'supplierFormContent', false);
-    setupCollapsibleSection('toggleLocationFormBtn', 'locationFormContent', false);
-    setupCollapsibleSection('toggleMoveProductFormBtn', 'moveProductFormContent', false);
-    
-    // Tables expanded by default
-    setupCollapsibleSection('toggleInventoryTableBtn', 'inventoryTableContent', true);
-    setupCollapsibleSection('toggleToOrderTableBtn', 'toOrderTableContent', true);
-
-
     // Event Listeners
     const darkModeToggle = document.getElementById('darkModeToggle');
     if (darkModeToggle) {
@@ -1778,8 +1282,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const filterSupplierEl = document.getElementById('filterSupplier');
   const filterLocationEl = document.getElementById('filterLocation');
   const clearInventoryFiltersBtnEl = document.getElementById('clearInventoryFiltersBtn');
-  const filterToOrderSupplierEl = document.getElementById('filterToOrderSupplier');
-
 
   if (filterSupplierEl) {
     filterSupplierEl.addEventListener('change', applyAndRenderInventoryFilters);
@@ -1791,39 +1293,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     clearInventoryFiltersBtnEl.addEventListener('click', () => {
       if (filterSupplierEl) filterSupplierEl.value = '';
       if (filterLocationEl) filterLocationEl.value = '';
-      // Also reset the "To Order" supplier filter if desired, or handle separately
-      // if (filterToOrderSupplierEl) filterToOrderSupplierEl.value = ''; 
       applyAndRenderInventoryFilters();
-      updateToOrderTable(); // Update "To Order" table if filters are cleared
     });
-  }
-  if (filterToOrderSupplierEl) {
-    filterToOrderSupplierEl.addEventListener('change', updateToOrderTable);
   }
   
   document.getElementById('generateOrderReportBtn').addEventListener('click', generateOrderReport);
-  const generateOrderReportPdfLibBtn = document.getElementById('generateOrderReportPdfLibBtn');
-  if (generateOrderReportPdfLibBtn) {
-      generateOrderReportPdfLibBtn.addEventListener('click', generateOrderReportWithPdfLib);
-  }
   document.getElementById('emailOrderReportBtn').addEventListener('click', emailOrderReport);
 
   const qrCodePDFBtn = document.getElementById('generateQRCodePDFBtn');
   if (qrCodePDFBtn) {
     qrCodePDFBtn.addEventListener('click', generateQRCodePDF);
   } else {
-    console.warn('QR Code PDF button (jsPDF) not found in DOM');
-  }
-  
-  const qrCodePdfLibBtn = document.getElementById('generateQRCodePdfLibBtn');
-  if (qrCodePdfLibBtn) {
-    qrCodePdfLibBtn.addEventListener('click', generateQRCodePDFWithPdfLib);
-  } else {
-    console.warn('QR Code PDF button (pdf-lib) not found in DOM');
+    console.warn('QR Code PDF button not found in DOM');
   }
 
   // Log button element after all initializations
-  // console.log('Button element (generateQRCodePDFBtn):', document.getElementById('generateQRCodePDFBtn'));
+  console.log('Button element (generateQRCodePDFBtn):', document.getElementById('generateQRCodePDFBtn'));
 
   } catch (error) {
     console.error('Initialization failed:', error);
