@@ -815,7 +815,7 @@ async function generateQRCodePDF() {
     const CELL_HEIGHT = QR_SIZE + TEXT_AREA_HEIGHT + CELL_PADDING_VERTICAL; 
 
     let pageNumber = 0;
-    let overallProductIndex = 0; // For unique canvas IDs if needed, though not strictly necessary now
+    // let overallProductIndex = 0; // Removed as it was only for commented-out debug canvas IDs
 
     const drawPageHeaders = (docInstance, locationName, genDate) => {
       docInstance.setFontSize(16);
@@ -842,7 +842,7 @@ async function generateQRCodePDF() {
 
       for (let j = 0; j < productsInLocation.length; j++) {
         const product = productsInLocation[j];
-        overallProductIndex++;
+        // overallProductIndex++; // Removed as it was only for commented-out debug canvas IDs
 
         if (productCountInLocationOnPage === 0) { // Start of a new page for this location or first product
           pageNumber++;
@@ -870,8 +870,6 @@ async function generateQRCodePDF() {
         
         // Create a temporary canvas for QR code
         const canvas = document.createElement('canvas');
-        // canvas.id = `qrCanvas-${overallProductIndex}`; // Unique ID if needed for debugging
-        // document.body.appendChild(canvas); // For debugging, makes canvas visible
         
         try {
           new window.QRCode(canvas, {
@@ -889,13 +887,13 @@ async function generateQRCodePDF() {
           doc.setFontSize(8);
           doc.text('QR Error', x + QR_SIZE / 2, y + QR_SIZE / 2, { align: 'center' });
         }
-        // canvas.remove(); // Clean up canvas if it was appended to body
 
         // Add product name below QR code
         doc.setFontSize(NAME_FONT_SIZE);
-        // Attempt to center text, handle potential multi-line with maxWidth
-        doc.text(product.name, x + QR_SIZE / 2, y + QR_SIZE + NAME_FONT_SIZE + 2, { 
-            align: 'center', 
+        // Position the baseline of the text to be vertically centered within TEXT_AREA_HEIGHT
+        const textYPosition = y + QR_SIZE + (TEXT_AREA_HEIGHT + NAME_FONT_SIZE) / 2;
+        doc.text(product.name, x + QR_SIZE / 2, textYPosition, {
+            align: 'center',
             maxWidth: QR_SIZE // Constrain name text to QR code width
         });
 
