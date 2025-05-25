@@ -1010,7 +1010,7 @@ async function generateOrderReport() {
         docInstance.text('Name', xName, currentY);
         docInstance.text('Qty', xQty, currentY, { align: 'right' });
         docInstance.text('Qty Ord', xQtyOrdered, currentY, { align: 'right' });
-        docInstance.text('Qty BO', xQtyBackordered, currentY, { align: 'right' });
+        docInstance.text('BACKORDER_PDF', xQtyBackordered, currentY, { align: 'right' });
         docInstance.text('Supplier', xSupplier, currentY);
         docInstance.setFont("helvetica", "normal");
         
@@ -1115,7 +1115,7 @@ async function generateOrderReport() {
             doc.text(item.name, xName, textY, {maxWidth: xQty - xName - 5}); 
             doc.text((item.quantity || 0).toString(), xQty, textY, { align: 'right' });
             doc.text((item.quantityOrdered || 0).toString(), xQtyOrdered, textY, { align: 'right' });
-            doc.text((item.quantityBackordered || 0).toString(), xQtyBackordered, textY, { align: 'right' });
+            doc.text('BO:' + (item.quantityBackordered || 0).toString(), xQtyBackordered, textY, { align: 'right' });
             doc.text(item.supplier || 'N/A', xSupplier, textY, {maxWidth: pageWidth - xSupplier - margin});
             
             y += ROW_HEIGHT;
