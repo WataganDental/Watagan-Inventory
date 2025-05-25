@@ -800,13 +800,14 @@ async function generateQRCodePDF() {
 
     // Layout Constants
     const COLS = 4;
-    const ROWS = 6;
+    const ROWS = 3; // Adjusted from 6
     const PRODUCTS_PER_PAGE = COLS * ROWS;
     const MARGIN = 40; // points
     const QR_SIZE = 60; // points, fixed size for QR code
     const NAME_FONT_SIZE = 8;
     const TEXT_AREA_HEIGHT = 20; // Space for product name below QR
-    const CELL_PADDING_VERTICAL = 10; // Space between product name and the QR code of the row below
+    const ADDITIONAL_VERTICAL_PADDING_POINTS = 113.4; // 4cm converted to points (1 cm = 28.3465 points)
+    const CELL_PADDING_VERTICAL = 10 + ADDITIONAL_VERTICAL_PADDING_POINTS; // Space between product name and the QR code of the row below
 
     const USABLE_WIDTH = pageWidth - 2 * MARGIN;
     const QR_SPACING_HORIZONTAL = (USABLE_WIDTH - COLS * QR_SIZE) / (COLS - 1);
