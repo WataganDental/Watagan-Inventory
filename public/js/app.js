@@ -1002,12 +1002,12 @@ async function generateOrderReport() {
 
     // Define x-coordinates for columns
     let xQr = margin; // Typically 20
-    let xName = xQr + QR_CODE_SIZE_IN_PDF + 5; // 20 + 30 + 5 = 55
-    let xQty = xName + 100 + 5; // 55 + 100 + 5 = 160
-    let xQtyOrdered = xQty + 30 + 5; // 160 + 30 + 5 = 195
-    let xQtyBackordered = xQtyOrdered + 40 + 5; // 195 + 40 + 5 = 240
-    let xReorderQty = xQtyBackordered + 40 + 5; // 240 + 40 + 5 = 285
-    let xSupplier = xReorderQty + 40 + 5; // 285 + 40 + 5 = 330
+    let xName = xQr + QR_CODE_SIZE_IN_PDF + 5; // 55 (remains unchanged)
+    let xQty = xName + 80 + 5; // New: 55 + 80 + 5 = 140 (Name maxWidth becomes 80)
+    let xQtyOrdered = xQty + 30 + 5; // New: 140 + 30 + 5 = 175
+    let xQtyBackordered = xQtyOrdered + 40 + 5; // New: 175 + 40 + 5 = 220
+    let xReorderQty = xQtyBackordered + 40 + 5; // New: 220 + 40 + 5 = 265
+    let xSupplier = xReorderQty + 40 + 5; // New: 265 + 40 + 5 = 310
 
     let y = margin + 20; // Initial y position
 
