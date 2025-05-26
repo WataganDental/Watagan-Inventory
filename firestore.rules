@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to get user's role
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.role;
+    }
+
+    // Helper function to check if the user is an Admin
+    function isAdmin() {
+      return request.auth != null && getUserRole(request.auth.uid) == 'Admin';
+    }
+
+    // Helper function to check if the user has a specific role
+    function hasRole(role) {
+      return request.auth != null && getUserRole(request.auth.uid) == role;
+    }
+
+    // Helper function to check if the user is the owner of the document
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // Allow users to read their own profile
+      allow read: if isOwner(userId) || isAdmin();
+      // Allow users to create their own profile (e.g., on signup)
+      // Allow Admins to create users
+      allow create: if isOwner(userId) || isAdmin();
+      // Allow users to update their own profile (but not their role)
+      // Allow Admins to update any part of any profile (including role)
+      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin();
+      // Only Admins can delete user profiles
+      allow delete: if isAdmin();
+    }
+
+    // Inventory collection (example rules, adjust as needed)
+    match /inventory/{itemId} {
+      // Admin: Full CRUD
+      allow read, write, create, delete: if isAdmin();
+      // Reception: Read all, Create new items, Update existing items
+      allow read, create, update: if hasRole('Reception');
+      // Clinical: Read all
+      allow read: if hasRole('Clinical');
+
+      // More granular access for Reception and Clinical if needed:
+      // Example: Reception can only update 'stockQuantity'
+      // allow update: if hasRole('Reception') && request.resource.data.keys().hasOnly(['stockQuantity']);
+      // Example: Clinical can only read items of type 'medicalSupply'
+      // allow read: if hasRole('Clinical') && resource.data.category == 'medicalSupply';
+    }
+
+    // Default deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
