@@ -1720,7 +1720,18 @@ function stopEditScanner() {
 
 // Initialize and Bind Events
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('DOMContentLoaded fired');
+  console.log("DEBUG: DOMContentLoaded callback started.");
+  console.log("DEBUG: document.readyState:", document.readyState);
+  console.log("DEBUG: Attempting to log document.body.innerHTML. Length:", document.body.innerHTML.length); 
+  // console.log("DEBUG: document.body.innerHTML:", document.body.innerHTML); // Keep this commented out for now to avoid excessively long logs, unless specifically needed.
+  
+  const debugMenuInventory = document.getElementById('menuInventory');
+  console.log("DEBUG: menuInventory element:", debugMenuInventory);
+
+  const debugInventoryViewContainer = document.getElementById('inventoryViewContainer');
+  console.log("DEBUG: inventoryViewContainer element:", debugInventoryViewContainer);
+
+  console.log('DOMContentLoaded fired'); // This was the original first line
   initialDarkModeCheck(); // Apply dark mode preferences early
 
   try {
