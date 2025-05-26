@@ -1723,7 +1723,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   console.log("DEBUG: DOMContentLoaded callback started.");
   console.log("DEBUG: document.readyState:", document.readyState);
   console.log("DEBUG: Attempting to log document.body.innerHTML. Length:", document.body.innerHTML.length); 
-  // console.log("DEBUG: document.body.innerHTML:", document.body.innerHTML); // Keep this commented out for now to avoid excessively long logs, unless specifically needed.
+  console.log("DEBUG: document.body.innerHTML:", document.body.innerHTML);
   
   const debugMenuInventory = document.getElementById('menuInventory');
   console.log("DEBUG: menuInventory element:", debugMenuInventory);
