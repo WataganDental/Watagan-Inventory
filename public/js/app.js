@@ -1853,6 +1853,123 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // --- START NEW NAVIGATION LOGIC ---
+  const menuInventory = document.getElementById('menuInventory');
+  const menuSuppliers = document.getElementById('menuSuppliers');
+  const menuOrders = document.getElementById('menuOrders');
+  const menuReports = document.getElementById('menuReports');
+
+  const menuItems = [menuInventory, menuSuppliers, menuOrders, menuReports].filter(item => item !== null);
+
+  const inventoryViewContainer = document.getElementById('inventoryViewContainer');
+  const suppliersSectionContainer = document.getElementById('suppliersSectionContainer');
+  const locationsAdminSectionContainer = document.getElementById('locationsAdminSectionContainer'); // Keep for future
+  const ordersSectionContainer = document.getElementById('ordersSectionContainer');
+  const reportsSectionContainer = document.getElementById('reportsSectionContainer');
+
+  const allViewContainers = [
+      inventoryViewContainer,
+      suppliersSectionContainer,
+      locationsAdminSectionContainer,
+      ordersSectionContainer,
+      reportsSectionContainer
+  ].filter(container => container !== null); 
+
+  // Define CSS classes for active and inactive states
+  const activeMenuClasses = ['bg-gray-300', 'dark:bg-slate-700', 'font-semibold', 'text-gray-900', 'dark:text-white'];
+  const inactiveMenuClasses = ['text-gray-700', 'dark:text-gray-300', 'hover:bg-gray-300', 'dark:hover:bg-slate-700'];
+  // Note: 'rounded-md' and 'flex', 'items-center', 'p-2' are base classes and should remain on all.
+
+  function setActiveMenuItem(clickedItemId) {
+      menuItems.forEach(item => {
+          if (item.id === clickedItemId) {
+              // Apply active classes
+              inactiveMenuClasses.forEach(cls => item.classList.remove(cls));
+              activeMenuClasses.forEach(cls => item.classList.add(cls));
+              // Ensure SVG icon within active item also gets appropriate color if needed
+              const icon = item.querySelector('svg');
+              if (icon) {
+                  icon.classList.remove('text-gray-500', 'dark:text-gray-400', 'group-hover:text-gray-700', 'dark:group-hover:text-gray-200');
+                  icon.classList.add('text-gray-700', 'dark:text-gray-100'); // Active icon color
+              }
+          } else {
+              // Apply inactive classes (restore default)
+              activeMenuClasses.forEach(cls => item.classList.remove(cls));
+              inactiveMenuClasses.forEach(cls => item.classList.add(cls));
+               // Restore default icon color and hover for inactive items
+              const icon = item.querySelector('svg');
+              if (icon) {
+                  icon.classList.remove('text-gray-700', 'dark:text-gray-100'); // Remove active icon color
+                  icon.classList.add('text-gray-500', 'dark:text-gray-400', 'group-hover:text-gray-700', 'dark:group-hover:text-gray-200');
+              }
+          }
+      });
+  }
+
+  function showView(viewIdToShow, clickedMenuId) {
+      console.log(`Attempting to show view: ${viewIdToShow} triggered by ${clickedMenuId}`);
+      let viewFound = false;
+      allViewContainers.forEach(container => {
+          if (container.id === viewIdToShow) {
+              container.classList.remove('hidden');
+              viewFound = true;
+              console.log(`Showing: ${container.id}`);
+          } else {
+              container.classList.add('hidden');
+              console.log(`Hiding: ${container.id}`);
+          }
+      });
+      if (viewFound) {
+          setActiveMenuItem(clickedMenuId);
+      } else if (viewIdToShow) { 
+          console.warn(`View with ID '${viewIdToShow}' not found among registered containers.`);
+      }
+  }
+
+  if (menuInventory) {
+      menuInventory.addEventListener('click', (e) => {
+          e.preventDefault();
+          showView('inventoryViewContainer', menuInventory.id);
+      });
+  }
+
+  if (menuSuppliers) {
+      menuSuppliers.addEventListener('click', (e) => {
+          e.preventDefault();
+          showView('suppliersSectionContainer', menuSuppliers.id);
+      });
+  }
+
+  if (menuOrders) {
+      menuOrders.addEventListener('click', (e) => {
+          e.preventDefault();
+          showView('ordersSectionContainer', menuOrders.id);
+      });
+  }
+
+  if (menuReports) {
+      menuReports.addEventListener('click', (e) => {
+          e.preventDefault();
+          showView('reportsSectionContainer', menuReports.id);
+      });
+  }
+  
+  // Initial View State: Show Inventory View by default and set its menu item active.
+  if (inventoryViewContainer && menuInventory) {
+      showView('inventoryViewContainer', menuInventory.id); 
+  } else {
+      console.error("Default view 'inventoryViewContainer' or 'menuInventory' not found on page load.");
+      const firstAvailableView = allViewContainers.length > 0 ? allViewContainers[0] : null;
+      const firstAvailableMenuItem = menuItems.length > 0 ? menuItems[0] : null;
+      if (firstAvailableView && firstAvailableMenuItem) {
+          showView(firstAvailableView.id, firstAvailableMenuItem.id);
+          console.warn(`Default inventory view/menu missing, showing first available: ${firstAvailableView.id}, ${firstAvailableMenuItem.id}`);
+      } else {
+          console.error("No view containers or menu items found. Page might be empty or IDs are incorrect.");
+      }
+  }
+  // --- END NEW NAVIGATION LOGIC ---
+
   } catch (error) {
     console.error('Initialization failed:', error);
     // Optionally, display an error message to the user in the UI
