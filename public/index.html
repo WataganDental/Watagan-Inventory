@@ -13,6 +13,9 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 </head>
 <body class="bg-gray-100 dark:bg-slate-900 font-sans dark:text-gray-200">
+  <div id="reorderNotificationBar" class="hidden fixed top-0 left-0 right-0 bg-yellow-400 text-black p-4 text-center z-50">
+    Products to reorder: 0
+  </div>
   <div class="container mx-auto p-4">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-3xl font-bold dark:text-white">Watagan Dental Inventory System</h1>
@@ -149,10 +152,10 @@
               <th class="border dark:border-slate-600 p-2">Name</th>
               <th class="border dark:border-slate-600 p-2">Quantity</th>
               <th class="border dark:border-slate-600 p-2">Minimum Quantity</th>
+              <th class="border dark:border-slate-600 p-2">Reorder Qty</th>
               <th class="border dark:border-slate-600 p-2">Supplier</th>
               <th class="border dark:border-slate-600 p-2">Qty Ordered</th>
               <th class="border dark:border-slate-600 p-2">Qty Backordered</th>
-              <th class="border dark:border-slate-600 p-2">Reorder Qty</th>
             </tr>
           </thead>
           <tbody id="toOrderTable"></tbody>
@@ -189,12 +192,12 @@
               <th class="border dark:border-slate-600 p-2">Name</th>
               <th class="border dark:border-slate-600 p-2">Quantity</th>
               <th class="border dark:border-slate-600 p-2">Min Quantity</th>
+              <th class="border dark:border-slate-600 p-2">Reorder Qty</th>
               <th class="border dark:border-slate-600 p-2">Cost ($)</th>
               <th class="border dark:border-slate-600 p-2">Supplier</th>
               <th class="border dark:border-slate-600 p-2">Location</th>
               <th class="border dark:border-slate-600 p-2">Qty Ordered</th>
               <th class="border dark:border-slate-600 p-2">Qty Backordered</th>
-              <th class="border dark:border-slate-600 p-2">Reorder Qty</th>
               <th class="border dark:border-slate-600 p-2">Photo</th>
               <th class="border dark:border-slate-600 p-2">QR Code</th>
               <th class="border dark:border-slate-600 p-2">Actions</th>
