@@ -1,3 +1,5 @@
+const SIDEBAR_STATE_KEY = 'sidebarMinimized';
+
 let stream = null;
 let photoStream = null;
 let inventory = [];
@@ -1614,6 +1616,39 @@ function stopUpdateScanner() {
   // Quagga.stop(); // Quagga is no longer used here.
 }
 
+function applySidebarState(isMinimized) {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const sidebarToggleIcon = document.getElementById('sidebarToggleIcon');
+    const reorderNotificationBar = document.getElementById('reorderNotificationBar'); // Get the reorder bar
+
+    if (!sidebar || !mainContent || !sidebarToggleIcon || !reorderNotificationBar) {
+        console.error('Sidebar, main content, toggle icon, or reorder notification bar not found for state application.');
+        return;
+    }
+
+    if (isMinimized) {
+        sidebar.classList.add('sidebar-minimized');
+        mainContent.classList.add('main-content-expanded');
+        reorderNotificationBar.classList.add('text-transparent'); // Hide text, keep background
+        // Change icon to "expand" (e.g., right chevron)
+        sidebarToggleIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M5.25 4.5l7.5 7.5-7.5 7.5" />';
+        localStorage.setItem(SIDEBAR_STATE_KEY, 'true');
+    } else {
+        sidebar.classList.remove('sidebar-minimized');
+        mainContent.classList.remove('main-content-expanded');
+        reorderNotificationBar.classList.remove('text-transparent'); // Show text again
+        // Change icon to "collapse" (e.g., left chevron)
+        sidebarToggleIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5" />';
+        localStorage.setItem(SIDEBAR_STATE_KEY, 'false');
+    }
+}
+
+function toggleSidebar() {
+    let isMinimized = localStorage.getItem(SIDEBAR_STATE_KEY) === 'true';
+    applySidebarState(!isMinimized); // Apply the opposite state
+}
+
 function exportInventoryToCSV() {
     // Get the currently filtered and searched inventory data.
     const supplierFilter = document.getElementById('filterSupplier') ? document.getElementById('filterSupplier').value : '';
@@ -1846,6 +1881,16 @@ function stopEditScanner() {
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('DOMContentLoaded fired'); 
   initialDarkModeCheck(); // Apply dark mode preferences early
+  
+  // Initialize Sidebar State on Load
+  let initialSidebarMinimized = localStorage.getItem(SIDEBAR_STATE_KEY) === 'true';
+  applySidebarState(initialSidebarMinimized);
+
+  // Add Event Listener for the Toggle Button
+  const sidebarToggleBtnEl = document.getElementById('sidebarToggleBtn');
+  if (sidebarToggleBtnEl) {
+      sidebarToggleBtnEl.addEventListener('click', toggleSidebar);
+  }
 
   try {
     await ensureQRCodeIsAvailable(); // Wait for QRCode to be ready

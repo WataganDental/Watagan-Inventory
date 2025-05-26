@@ -25,3 +25,68 @@ body {
 #mainContent {
     /* overflow-y: auto; /* This is usually default for block elements if content exceeds height */
 }
+
+/* --- Sidebar Minimized Styles --- */
+
+/* Sidebar itself when minimized */
+#sidebar.sidebar-minimized {
+    width: 4.5rem; /* Equivalent to Tailwind's w-18 */
+    overflow: hidden; /* Hide content that might overflow the new width */
+}
+
+/* Main content adjustment when sidebar is minimized */
+#mainContent.main-content-expanded {
+    margin-left: 4.5rem; /* Should match the minimized sidebar width */
+}
+
+/* Hide menu text when sidebar is minimized */
+#sidebar.sidebar-minimized .menu-text {
+    display: none;
+}
+
+/* Center icons and ensure proper spacing for menu items when minimized */
+#sidebar.sidebar-minimized ul li a {
+    justify-content: center; /* Center the icon horizontally */
+    padding-left: 0.5rem;   /* Adjust padding as needed */
+    padding-right: 0.5rem;  /* Adjust padding as needed */
+}
+
+#sidebar.sidebar-minimized ul li a svg {
+    margin-right: 0; /* Remove margin from SVG when text is hidden */
+}
+
+/* Adjustments for the reorder notification bar text when sidebar is minimized */
+/* The class 'text-transparent' is added by JS. Ensure it works as expected. */
+/* Tailwind CSS already provides .text-transparent { color: transparent; } */
+/* No extra CSS needed for text-transparent itself if Tailwind is used. */
+/* However, ensure the bar's padding/layout in minimized state is acceptable. */
+#sidebar.sidebar-minimized #reorderNotificationBar {
+    /* Example: If you want to ensure it doesn't take up too much space or only shows a dot */
+    /* For now, just letting text-transparent hide the text is fine. */
+    /* Consider if padding needs to change, or if it should have a min-height */
+    font-size: 0; /* Another way to hide text, if text-transparent has issues or for full collapse */
+    padding: 0.25rem; /* Reduce padding to make it smaller */
+}
+#sidebar.sidebar-minimized #reorderNotificationBar.hidden {
+    display: none; /* Ensure it's still hidden if no items to reorder */
+}
+
+
+/* Adjust the toggle button container at the bottom when sidebar is minimized */
+#sidebar.sidebar-minimized .mt-auto div { /* Targeting the container of the toggle button */
+    /* If any specific centering or padding adjustments are needed for the button itself */
+}
+
+/* Ensure the toggle button SVG is centered if needed */
+#sidebar.sidebar-minimized #sidebarToggleBtn {
+    /* SVG should center by default within the button */
+}
+
+/* Optional: Add transition for sidebar width and main content margin for smoother effect */
+#sidebar {
+    transition: width 0.3s ease-in-out;
+}
+
+#mainContent {
+    transition: margin-left 0.3s ease-in-out;
+}
