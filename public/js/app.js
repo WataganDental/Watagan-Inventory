@@ -980,7 +980,7 @@ async function generateOrderReport() {
 
     await ensureQRCodeIsAvailable(); // Ensure QRCode library is ready
     const JsPDF = await waitForJsPDF(); // Ensure JsPDF is loaded
-    const doc = new JsPDF();
+    const doc = new JsPDF({ orientation: 'landscape' });
 
     const margin = 20; // Page margin
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -996,11 +996,11 @@ async function generateOrderReport() {
     // Define x-coordinates for columns
     let xQr = margin; // Typically 20
     let xName = xQr + QR_CODE_SIZE_IN_PDF + 5; // 20 + 30 + 5 = 55
-    let xQty = xName + 100 + 5; // 55 + 100 + 5 = 160
-    let xQtyOrdered = xQty + 30 + 5; // 160 + 30 + 5 = 195
-    let xQtyBackordered = xQtyOrdered + 40 + 5; // 195 + 40 + 5 = 240
-    let xReorderQty = xQtyBackordered + 40 + 5; // 240 + 40 + 5 = 285
-    let xSupplier = xReorderQty + 40 + 5; // 285 + 40 + 5 = 330
+    let xQty = xName + 75 + 5; // 55 + 75 + 5 = 135 (Name column width effectively 75)
+    let xQtyOrdered = xQty + 30 + 5; // 135 + 30 + 5 = 170 (Qty column width effectively 30)
+    let xQtyBackordered = xQtyOrdered + 40 + 5; // 170 + 40 + 5 = 215 (QtyOrdered column width effectively 40)
+    let xReorderQty = xQtyBackordered + 40 + 5; // 215 + 40 + 5 = 260 (QtyBackordered column width effectively 40)
+    let xSupplier = xReorderQty + 40 + 5; // 260 + 40 + 5 = 305 (ReorderQty column width effectively 40)
 
     let y = margin + 20; // Initial y position
 
