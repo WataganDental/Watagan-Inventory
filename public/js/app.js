@@ -1744,13 +1744,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Setup collapsible sections
     setTimeout(() => {
         console.log('Initializing collapsible sections (after small delay)...');
-        // Forms collapsed by default
-        setupCollapsibleSection('toggleProductFormBtn', 'productFormContent', false);
-        setupCollapsibleSection('toggleSupplierFormBtn', 'supplierFormContent', false);
-        setupCollapsibleSection('toggleLocationFormBtn', 'locationFormContent', false);
-        setupCollapsibleSection('toggleMoveProductFormBtn', 'moveProductFormContent', false);
+        // Forms expanded by default as per new requirement
+        setupCollapsibleSection('toggleProductFormBtn', 'productFormContent', true);
+        setupCollapsibleSection('toggleSupplierFormBtn', 'supplierFormContent', true);
+        setupCollapsibleSection('toggleLocationFormBtn', 'locationFormContent', true);
+        setupCollapsibleSection('toggleMoveProductFormBtn', 'moveProductFormContent', true);
+        setupCollapsibleSection('toggleUpdateProductFormBtn', 'updateProductFormContent', true); // Added this line
         
-        // Tables expanded by default
+        // Tables expanded by default (remains true)
         setupCollapsibleSection('toggleInventoryTableBtn', 'inventoryTableContent', true);
         setupCollapsibleSection('toggleToOrderTableBtn', 'toOrderTableContainer', true);
     }, 0);
@@ -1876,7 +1877,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const allViewContainers = [
       inventoryViewContainer,
       suppliersSectionContainer,
-      locationsAdminSectionContainer,
+      // locationsAdminSectionContainer, // Removed as it's now part of suppliersSectionContainer
       ordersSectionContainer,
       reportsSectionContainer
   ].filter(container => container !== null); 
