@@ -685,12 +685,12 @@ function updateInventoryTable(itemsToDisplay) {
       <td class="border dark:border-slate-600 p-2">${item.name}</td>
       <td class="border dark:border-slate-600 p-2">${item.quantity}</td>
       <td class="border dark:border-slate-600 p-2">${item.minQuantity}</td>
+      <td class="border dark:border-slate-600 p-2">${item.reorderQuantity || 0}</td>
       <td class="border dark:border-slate-600 p-2">${item.cost.toFixed(2)}</td>
       <td class="border dark:border-slate-600 p-2">${item.supplier}</td>
       <td class="border dark:border-slate-600 p-2">${item.location}</td>
       <td class="border dark:border-slate-600 p-2">${item.quantityOrdered || 0}</td>
       <td class="border dark:border-slate-600 p-2">${item.quantityBackordered || 0}</td>
-      <td class="border dark:border-slate-600 p-2">${item.reorderQuantity || 0}</td>
       <td class="border dark:border-slate-600 p-2">${item.photo ? `<img src="${item.photo}" class="w-16 h-16 object-cover mx-auto" alt="Product Photo">` : 'No Photo'}</td>
       <td class="border dark:border-slate-600 p-2"><div id="qrcode-${item.id}" class="mx-auto w-24 h-24"></div></td>
       <td class="border dark:border-slate-600 p-2">
@@ -733,9 +733,16 @@ async function updateToOrderTable() {
   const toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity);
   const toOrderTable = document.getElementById('toOrderTable');
   toOrderTable.innerHTML = '';
+
+  const reorderNotificationBar = document.getElementById('reorderNotificationBar');
   if (toOrderItems.length > 0) {
-    alert(`Warning: ${toOrderItems.length} product(s) need reordering!`);
+    reorderNotificationBar.textContent = `Products to reorder: ${toOrderItems.length}`;
+    reorderNotificationBar.classList.remove('hidden');
+  } else {
+    reorderNotificationBar.classList.add('hidden');
+    reorderNotificationBar.textContent = 'Products to reorder: 0'; // Reset text
   }
+
   toOrderItems.forEach(item => {
     const row = document.createElement('tr');
     // Row background will be default (likely dark:bg-slate-800 from parent container), text inherited.
@@ -746,10 +753,10 @@ async function updateToOrderTable() {
       <td class="border dark:border-slate-600 p-2">${item.name}</td>
       <td class="border dark:border-slate-600 p-2">${item.quantity}</td>
       <td class="border dark:border-slate-600 p-2">${item.minQuantity}</td>
+      <td class="border dark:border-slate-600 p-2">${item.reorderQuantity || 0}</td>
       <td class="border dark:border-slate-600 p-2">${item.supplier}</td>
       <td class="border dark:border-slate-600 p-2">${item.quantityOrdered || 0}</td>
       <td class="border dark:border-slate-600 p-2">${item.quantityBackordered || 0}</td>
-      <td class="border dark:border-slate-600 p-2">${item.reorderQuantity || 0}</td>
     `;
     toOrderTable.appendChild(row);
   });
@@ -987,7 +994,7 @@ async function generateOrderReport() {
     const pageHeight = doc.internal.pageSize.getHeight();
     const bottomMargin = 20;
     const QR_CODE_SIZE_IN_PDF = 30; // points
-    const ROW_HEIGHT = QR_CODE_SIZE_IN_PDF + 15; // Estimated row height (QR + padding)
+    const ROW_HEIGHT = QR_CODE_SIZE_IN_PDF + 5; // Reduced padding
     const TEXT_FONT_SIZE = 10;
     const HEADER_FONT_SIZE = 12;
     const SUPPLIER_HEADER_FONT_SIZE = 14;
@@ -1117,8 +1124,40 @@ async function generateOrderReport() {
                 doc.addImage(qrImageFromCanvas, 'PNG', xQr, y, QR_CODE_SIZE_IN_PDF, QR_CODE_SIZE_IN_PDF);
             }
 
-            // Calculate y position for text to be vertically centered with QR code
-            const textY = y + (QR_CODE_SIZE_IN_PDF / 2) + (TEXT_FONT_SIZE / 3); // Approximation for vertical centering
+            // Calculate y position for text to be positioned closer below the QR code
+            // The QR code is drawn at `y`. Text should start slightly below the QR code's bottom edge.
+            // QR code bottom edge is y + QR_CODE_SIZE_IN_PDF.
+            // Add a small gap (e.g., 2 points) plus half the text height (approximated by TEXT_FONT_SIZE / 2)
+            // to roughly align the baseline of the text.
+            // A simpler approach: place text baseline slightly below QR code.
+            // Let's try placing the text baseline a few points below the QR code itself.
+            // If QR is at y, and is QR_CODE_SIZE_IN_PDF high, text starts at y + QR_CODE_SIZE_IN_PDF + some_offset.
+            // However, the existing textY was relative to y (top of QR code).
+            // The old textY was: y + 15 + 3.33 = y + 18.33 (for QR_SIZE=30, FONT_SIZE=10)
+            // The QR image is drawn at `y`. We want the text to appear just below it.
+            // Let's position the text baseline a bit below the QR.
+            // If QR is at `y` and has height `QR_CODE_SIZE_IN_PDF`, its bottom is `y + QR_CODE_SIZE_IN_PDF`.
+            // We want text to start just below this. `TEXT_FONT_SIZE` is the height of the text.
+            // So, `textY` (baseline) should be `y + QR_CODE_SIZE_IN_PDF + TEXT_FONT_SIZE * 0.75` (approx) or simply a fixed offset.
+            // Let's try a simpler adjustment: The original textY was aiming for vertical centering within the old ROW_HEIGHT.
+            // The QR code itself takes `QR_CODE_SIZE_IN_PDF` (30 points).
+            // The new ROW_HEIGHT is 30 + 5 = 35.
+            // We want the text to sit closely under the QR.
+            // Let's try positioning the text baseline relative to the QR code's `y` position.
+            // If the QR code is drawn at `y`, its height is `QR_CODE_SIZE_IN_PDF`.
+            // The text should start just below the QR code.
+            // Let's make textY = y + QR_CODE_SIZE_IN_PDF - (TEXT_FONT_SIZE / 2) + 5;
+            // This aims to place the center of the text line slightly below the QR code.
+            // The original textY = y + (QR_CODE_SIZE_IN_PDF / 2) + (TEXT_FONT_SIZE / 3)
+            // textY = y + 15 + 3.33 = y + 18.33
+            // The QR code is drawn from y to y + 30.
+            // Text was drawn with its baseline at y + 18.33. This means most of the text was within the QR's vertical span.
+            // To move it closer *underneath*, textY needs to be > y + QR_CODE_SIZE_IN_PDF.
+            // No, textY is the baseline. If textY = y, text is *on top* of QR.
+            // If textY = y + QR_CODE_SIZE_IN_PDF, baseline is at bottom of QR.
+            // If textY = y + QR_CODE_SIZE_IN_PDF + TEXT_FONT_SIZE, text is fully below QR.
+            // Let's try:
+            const textY = y + QR_CODE_SIZE_IN_PDF - (TEXT_FONT_SIZE / 2) + 2; // Position text more tightly under the QR
 
             doc.text(item.name, xName, textY, {maxWidth: xQty - xName - 5}); 
             doc.text((item.quantity || 0).toString(), xQty, textY, { align: 'right' });
