@@ -1,20 +1,27 @@
-/* Collapsible Section Toggle Indicators */
-h2[id^="toggle"] {
-  position: relative; /* Ensures proper positioning of the pseudo-element */
-  padding-left: 25px; /* Make space for the indicator */
+/* Custom scrollbar for sidebar (optional) */
+#sidebar::-webkit-scrollbar {
+    width: 8px;
+}
+#sidebar::-webkit-scrollbar-thumb {
+    background-color: #a0aec0; /* Tailwind gray-500 */
+    border-radius: 4px;
+}
+#sidebar::-webkit-scrollbar-track {
+    background-color: #edf2f7; /* Tailwind gray-200 */
+}
+.dark #sidebar::-webkit-scrollbar-thumb {
+    background-color: #4a5568; /* Tailwind gray-700 in default palette, gray-600 is #718096 */
+}
+.dark #sidebar::-webkit-scrollbar-track {
+    background-color: #2d3748; /* Tailwind gray-800 */
 }
 
-h2[id^="toggle"]::before {
-  content: '+';
-  position: absolute;
-  left: 5px; /* Align to the start of the padding */
-  top: 50%;
-  transform: translateY(-50%); /* Vertically center */
-  font-weight: bold;
-  font-size: 1.2em; /* Make the indicator slightly larger */
-  line-height: 1; /* Ensure consistent line height for the indicator */
+/* Ensure the main content is scrollable if it overflows, which it should be by default */
+/* The body should allow for scrolling if the main content area is taller than the viewport */
+body {
+    /* overflow-y: auto; /* This might not be necessary if html and body defaults allow it */
 }
 
-h2[id^="toggle"].active::before {
-  content: '-';
+#mainContent {
+    /* overflow-y: auto; /* This is usually default for block elements if content exceeds height */
 }
