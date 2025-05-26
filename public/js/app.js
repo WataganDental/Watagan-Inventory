@@ -45,10 +45,16 @@ const firebaseConfig = {
 };
 
 try {
-  const app = firebase.initializeApp(firebaseConfig);
-  console.log('Firebase initialized successfully:', app.name);
+  let app;
+  if (firebase.apps.length === 0) {
+    app = firebase.initializeApp(firebaseConfig);
+    console.log('Firebase initialized successfully:', app.name);
+  } else {
+    app = firebase.app(); // Get the default app
+    console.log('Using existing Firebase app:', app.name);
+  }
   db = firebase.firestore();
-  storage = firebase.storage();
+  storage = firebase.storage(); // If using Firebase Storage
   console.log('Firestore instance created:', !!db);
   console.log('Storage instance created:', !!storage);
 } catch (error) {
@@ -1746,7 +1752,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Tables expanded by default
         setupCollapsibleSection('toggleInventoryTableBtn', 'inventoryTableContent', true);
-        setupCollapsibleSection('toggleToOrderTableBtn', 'toOrderTableContent', true);
+        setupCollapsibleSection('toggleToOrderTableBtn', 'toOrderTableContainer', true);
     }, 0);
 
 
