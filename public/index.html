@@ -148,16 +148,19 @@
               <h2 id="toggleInventoryTableBtn" class="text-xl font-semibold mb-4 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-md p-2">Inventory List</h2>
               <div id="inventoryTableContent" class="hidden">
                 <div class="mb-4 flex flex-wrap gap-2">
+                  <button id="generateLocationQRCodePDFBtn" class="bg-teal-500 hover:bg-teal-600 text-white p-2 rounded dark:bg-teal-700 dark:hover:bg-teal-600">Generate QR PDF (Filtered Location)</button>
                   <button id="toggleInventoryIDColumnBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded dark:bg-gray-700 dark:hover:bg-gray-600">Show IDs</button>
+                  <button id="exportInventoryCSVBtn" class="bg-green-600 hover:bg-green-700 text-white p-2 rounded dark:bg-green-700 dark:hover:bg-green-800">Export to CSV</button>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 items-center">
-                  <select id="filterSupplier" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200">
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4 items-center">
+                  <select id="filterSupplier" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 sm:col-span-1">
                     <option value="">Filter by Supplier (All)</option>
                   </select>
-                  <select id="filterLocation" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200">
+                  <select id="filterLocation" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 sm:col-span-1">
                     <option value="">Filter by Location (All)</option>
                   </select>
-                  <button id="clearInventoryFiltersBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded dark:bg-gray-700 dark:hover:bg-gray-600 h-10">Clear Filters</button>
+                  <input type="search" id="inventorySearchInput" placeholder="Search name, ID, etc..." class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400 sm:col-span-1">
+                  <button id="clearInventoryFiltersBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded dark:bg-gray-700 dark:hover:bg-gray-600 h-10 sm:col-span-1">Clear Filters</button>
                 </div>
                 <div class="overflow-x-auto shadow-md rounded-lg">
                     <table class="min-w-full w-full text-sm text-left text-gray-500 dark:text-gray-400">
@@ -253,6 +256,40 @@
             <div id="qrCodeReportContainer" class="p-4 border dark:border-slate-700 rounded-md mt-6">
                 <h3 class="text-xl mb-3">Notes on QR Code Generation:</h3>
                 <p class="text-sm text-gray-600 dark:text-gray-400">The button above generates QR codes for all items across all locations. If you need QR codes for a specific location, please use the filter in the "Inventory List" section and generate the PDF from there.</p>
+            </div>
+
+            <div id="inventoryDashboard" class="mt-8">
+                <h3 class="text-xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">Inventory Dashboard</h3>
+                
+                <div id="lowStockAlertsSection" class="mb-6">
+                    <h4 class="text-lg font-semibold mb-2 text-amber-700 dark:text-amber-500">Low-Stock Alerts</h4>
+                    <div id="lowStockAlertsTableContainer" class="overflow-x-auto shadow-md rounded-lg max-h-96 overflow-y-auto">
+                        <table class="min-w-full w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                            <thead class="text-xs text-gray-700 uppercase bg-amber-100 dark:bg-amber-800 dark:text-amber-50">
+                                <tr>
+                                    <th scope="col" class="px-4 py-3">Product Name</th>
+                                    <th scope="col" class="px-4 py-3">ID</th>
+                                    <th scope="col" class="px-4 py-3 text-center">Current Qty</th>
+                                    <th scope="col" class="px-4 py-3 text-center">Min. Qty</th>
+                                    <th scope="col" class="px-4 py-3">Location</th>
+                                    <th scope="col" class="px-4 py-3">Supplier</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lowStockAlertsTableBody" class="divide-y dark:divide-slate-700">
+                                <!-- Low-stock items will be populated here by JavaScript -->
+                                <tr><td colspan="6" class="text-center p-4">No low-stock items.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Placeholder for future Trend Analysis -->
+                <!-- 
+                <div id="inventoryTrendsSection" class="mb-6">
+                    <h4 class="text-lg font-semibold mb-2">Inventory Trends (Placeholder)</h4>
+                    <p class="text-gray-600 dark:text-gray-400">Trend analysis and stock turnover rates will be displayed here in a future update.</p>
+                </div>
+                -->
             </div>
         </section>
     </main>

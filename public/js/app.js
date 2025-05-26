@@ -656,6 +656,7 @@ async function loadInventory() {
 function applyAndRenderInventoryFilters() {
   const supplierFilter = document.getElementById('filterSupplier') ? document.getElementById('filterSupplier').value : '';
   const locationFilter = document.getElementById('filterLocation') ? document.getElementById('filterLocation').value : '';
+  const searchTerm = document.getElementById('inventorySearchInput') ? document.getElementById('inventorySearchInput').value.toLowerCase().trim() : '';
 
   let filteredInventory = inventory; // Start with the full inventory
 
@@ -664,6 +665,13 @@ function applyAndRenderInventoryFilters() {
   }
   if (locationFilter) {
     filteredInventory = filteredInventory.filter(item => item.location === locationFilter);
+  }
+  if (searchTerm) {
+    filteredInventory = filteredInventory.filter(item => {
+        return (item.name && item.name.toLowerCase().includes(searchTerm)) ||
+               (item.id && item.id.toLowerCase().includes(searchTerm)) ||
+               (item.supplier && item.supplier.toLowerCase().includes(searchTerm)); 
+    });
   }
   updateInventoryTable(filteredInventory);
 }
@@ -1606,6 +1614,116 @@ function stopUpdateScanner() {
   // Quagga.stop(); // Quagga is no longer used here.
 }
 
+function exportInventoryToCSV() {
+    // Get the currently filtered and searched inventory data.
+    const supplierFilter = document.getElementById('filterSupplier') ? document.getElementById('filterSupplier').value : '';
+    const locationFilter = document.getElementById('filterLocation') ? document.getElementById('filterLocation').value : '';
+    const searchInput = document.getElementById('inventorySearchInput');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+    let itemsToExport = [...inventory]; // Start with a copy of the full inventory
+
+    if (supplierFilter) {
+        itemsToExport = itemsToExport.filter(item => item.supplier === supplierFilter);
+    }
+    if (locationFilter) {
+        itemsToExport = itemsToExport.filter(item => item.location === locationFilter);
+    }
+    if (searchTerm) {
+        itemsToExport = itemsToExport.filter(item => {
+            return (item.name && item.name.toLowerCase().includes(searchTerm)) ||
+                   (item.id && item.id.toLowerCase().includes(searchTerm)) ||
+                   (item.supplier && item.supplier.toLowerCase().includes(searchTerm));
+        });
+    }
+
+    if (itemsToExport.length === 0) {
+        alert("No inventory data to export based on current filters.");
+        return;
+    }
+
+    // Define CSV headers
+    const headers = [
+        "ID", "Name", "Quantity", "Cost", "Min Quantity", 
+        "Quantity Ordered", "Quantity Backordered", "Reorder Quantity",
+        "Supplier", "Location", "Photo URL"
+    ];
+    // Define the order of keys corresponding to headers
+    const keys = [
+        "id", "name", "quantity", "cost", "minQuantity",
+        "quantityOrdered", "quantityBackordered", "reorderQuantity",
+        "supplier", "location", "photo"
+    ];
+
+    let csvContent = headers.join(",") + "\n";
+
+    itemsToExport.forEach(item => {
+        const row = keys.map(key => {
+            let cellValue = item[key] === undefined || item[key] === null ? '' : item[key];
+            // Handle potential commas in cell values by enclosing in double quotes
+            if (typeof cellValue === 'string' && cellValue.includes(',')) {
+                cellValue = `"${cellValue.replace(/"/g, '""')}"`; // Escape existing double quotes
+            }
+            return cellValue;
+        });
+        csvContent += row.join(",") + "\n";
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    if (link.download !== undefined) { // Feature detection
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "inventory_export.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } else {
+        alert("CSV export is not supported by your browser.");
+    }
+}
+
+async function updateInventoryDashboard() {
+    console.log("Updating inventory dashboard...");
+    const lowStockAlertsTableBody = document.getElementById('lowStockAlertsTableBody');
+    if (!lowStockAlertsTableBody) {
+        console.error("Dashboard's lowStockAlertsTableBody not found.");
+        return;
+    }
+
+    // Use existing global 'inventory' array if it's kept up-to-date.
+    // For this phase, we assume 'inventory' is reasonably current.
+    // If not, consider fetching fresh data or ensuring loadInventory() is called appropriately.
+
+    const lowStockItems = inventory.filter(item => item.quantity <= item.minQuantity);
+
+    lowStockAlertsTableBody.innerHTML = ''; // Clear previous entries
+
+    if (lowStockItems.length === 0) {
+        const row = lowStockAlertsTableBody.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = 6; // Number of columns in the low-stock table
+        cell.textContent = 'No low-stock items currently.';
+        cell.className = 'text-center p-4';
+        return;
+    }
+
+    lowStockItems.forEach(item => {
+        const row = lowStockAlertsTableBody.insertRow();
+        row.innerHTML = `
+            <td class="border-b dark:border-slate-700 p-2">${item.name}</td>
+            <td class="border-b dark:border-slate-700 p-2">${item.id}</td>
+            <td class="border-b dark:border-slate-700 p-2 text-center">${item.quantity}</td>
+            <td class="border-b dark:border-slate-700 p-2 text-center">${item.minQuantity}</td>
+            <td class="border-b dark:border-slate-700 p-2">${item.location || 'N/A'}</td>
+            <td class="border-b dark:border-slate-700 p-2">${item.supplier || 'N/A'}</td>
+        `;
+    });
+    console.log(`Dashboard updated with ${lowStockItems.length} low-stock items.`);
+}
+
 async function startEditScanner() {
   console.log('[EditScanner] Starting startEditScanner...');
   if (typeof jsQR === 'undefined' && typeof window.jsQR === 'undefined') {
@@ -1793,6 +1911,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const filterSupplierEl = document.getElementById('filterSupplier');
   const filterLocationEl = document.getElementById('filterLocation');
   const clearInventoryFiltersBtnEl = document.getElementById('clearInventoryFiltersBtn');
+  const inventorySearchInputEl = document.getElementById('inventorySearchInput');
 
   if (filterSupplierEl) {
     filterSupplierEl.addEventListener('change', applyAndRenderInventoryFilters);
@@ -1800,10 +1919,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (filterLocationEl) {
     filterLocationEl.addEventListener('change', applyAndRenderInventoryFilters);
   }
+  if (inventorySearchInputEl) {
+    inventorySearchInputEl.addEventListener('input', applyAndRenderInventoryFilters);
+  }
   if (clearInventoryFiltersBtnEl) {
     clearInventoryFiltersBtnEl.addEventListener('click', () => {
       if (filterSupplierEl) filterSupplierEl.value = '';
       if (filterLocationEl) filterLocationEl.value = '';
+      if (inventorySearchInputEl) inventorySearchInputEl.value = '';
       applyAndRenderInventoryFilters();
     });
   }
@@ -1820,6 +1943,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Log button element after all initializations
   console.log('Button element (generateQRCodePDFBtn):', document.getElementById('generateQRCodePDFBtn'));
+
+  const generateLocationQRCodePDFBtnEl = document.getElementById('generateLocationQRCodePDFBtn');
+  if (generateLocationQRCodePDFBtnEl) {
+    generateLocationQRCodePDFBtnEl.addEventListener('click', generateQRCodePDF);
+  }
+
+  const exportInventoryCSVBtnEl = document.getElementById('exportInventoryCSVBtn');
+  if (exportInventoryCSVBtnEl) {
+    exportInventoryCSVBtnEl.addEventListener('click', exportInventoryToCSV);
+  }
 
   const toggleInventoryIDBtn = document.getElementById('toggleInventoryIDColumnBtn');
   if (toggleInventoryIDBtn) {
@@ -1958,6 +2091,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       menuReports.addEventListener('click', (e) => {
           e.preventDefault();
           showView('reportsSectionContainer', menuReports.id);
+          updateInventoryDashboard(); // Call to update dashboard data
       });
   }
   
