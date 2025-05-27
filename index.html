@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Watagan Dental Inventory</title>
     <link href="https://unpkg.com/tailwindcss@^2.0/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/css/custom.css"> <!-- Added custom CSS link -->
-    <script defer src="/__/firebase/11.8.1/firebase-app-compat.js"></script>
-    <script defer src="/__/firebase/11.8.1/firebase-auth-compat.js"></script> <!-- Added Auth -->
-    <script defer src="/__/firebase/11.8.1/firebase-firestore-compat.js"></script>
-    <script defer src="/__/firebase/11.8.1/firebase-storage-compat.js"></script>
+    <link rel="stylesheet" href="/css/custom.css">
+    <script defer src="/__/firebase/10.12.5/firebase-app-compat.js"></script>
+    <script defer src="/__/firebase/10.12.5/firebase-auth-compat.js"></script>
+    <script defer src="/__/firebase/10.12.5/firebase-firestore-compat.js"></script>
+    <script defer src="/__/firebase/10.12.5/firebase-storage-compat.js"></script>
     <script defer src="/__/firebase/init.js?useEmulator=true"></script>
     <script src="/js/qrcode.min.js"></script> 
     <script src="/js/jspdf.umd.min.js"></script>
@@ -27,7 +27,6 @@
         </div>
     </nav>
 
-    <!-- LOGIN VIEW CONTAINER (NEW) -->
     <div id="loginViewContainer" class="text-center p-8">
         <h2 class="text-2xl font-semibold mb-4 dark:text-white">Welcome to Watagan Dental Inventory</h2>
         <p class="mb-6 dark:text-gray-300">Please log in to continue.</p>
@@ -36,11 +35,8 @@
         </button>
     </div>
 
-    <!-- MAIN APP CONTAINER (NEW WRAPPER, INITIALLY HIDDEN) -->
     <div id="mainAppContainer" class="hidden">
         
-        <!-- AUTH STATUS CONTAINER (NEW) -->
-        <!-- Placed here to be part of the main app view but above the flex layout -->
         <div id="authStatusContainer" class="p-4 bg-gray-200 dark:bg-slate-700 text-right shadow">
             <span id="userInfoDisplay" class="mr-4 text-sm text-gray-700 dark:text-gray-200">Not logged in</span>
             <button id="logoutBtn" class="hidden bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded text-sm">
@@ -48,9 +44,7 @@
             </button>
         </div>
 
-        <!-- Existing main flex container for sidebar and content -->
-        <div class="flex"> <!-- Main wrapper for sidebar and content -->
-            <!-- Sidebar -->
+        <div class="flex"> 
             <aside id="sidebar" class="fixed top-16 left-0 w-64 h-[calc(100vh-4rem)] bg-gray-200 dark:bg-slate-800 shadow-md p-4 overflow-y-auto">
                 <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Menu</h3>
                 <ul class="space-y-2">
@@ -89,17 +83,11 @@
                 </ul>
             </aside>
 
-            <!-- Main Content -->
-            <!-- Note: mt-16 (for top nav) and ml-64 (for sidebar) are applied here -->
             <main id="mainContent" class="flex-1 p-4 mt-16 ml-64 container mx-auto"> 
-                
-                <!-- Inventory View Container -->
                 <div id="inventoryViewContainer">
-                    <!-- Product Management Section -->
                     <section id="productManagement" class="mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
                     <h2 class="text-2xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">Product Management</h2>
-                    <div class="grid grid-cols-1 gap-6"> <!-- Adjusted grid to single column -->
-                    <!-- Product Form -->
+                    <div class="grid grid-cols-1 gap-6"> 
                     <div id="productFormSection" class="p-4 border dark:border-slate-700 rounded-md">
                         <div class="flex justify-between items-center mb-3">
                             <h3 id="productFormTitle" class="text-xl">Add New Product</h3>
@@ -133,99 +121,91 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Supplier & Location Management were here -->
                     </div>
                     </section>
 
-                    <!-- Inventory Display Section (Part of Inventory View) -->
                     <section id="inventoryDisplaySection" class="mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
-                <div class="flex justify-between items-center mb-4 border-b pb-2 dark:border-slate-700">
-                    <h2 class="text-2xl font-semibold">Current Inventory</h2>
-                    <button id="toggleInventoryTableBtn" aria-expanded="true" aria-controls="inventoryTableContent" class="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </button>
-                </div>
-                <div id="inventoryTableContent">
-                    <div class="flex flex-col sm:flex-row gap-4 mb-4">
-                        <select id="filterSupplier" class="w-full sm:w-auto p-2 border dark:border-slate-600 rounded dark:bg-slate-700">
-                            <option value="">All Suppliers</option>
-                        </select>
-                        <select id="filterLocation" class="w-full sm:w-auto p-2 border dark:border-slate-600 rounded dark:bg-slate-700">
-                            <option value="">All Locations</option>
-                        </select>
-                        <button id="clearInventoryFiltersBtn" class="w-full sm:w-auto bg-gray-500 hover:bg-gray-600 text-white p-2 rounded">Clear Filters</button>
-                    </div>
-                    <div class="overflow-x-auto shadow-md rounded-lg">
-                        <table class="min-w-full w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                            <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-slate-700 dark:text-gray-300">
-                                <tr>
-                                    <th scope="col" class="px-4 py-3">ID</th>
-                                    <th scope="col" class="px-4 py-3">Name</th>
-                                    <th scope="col" class="px-4 py-3 text-center">Qty</th>
-                                    <th scope="col" class="px-4 py-3 text-center">Min.Qty</th>
-                                    <th scope="col" class="px-4 py-3 text-right">Cost</th>
-                                    <th scope="col" class="px-4 py-3">Supplier</th>
-                                    <th scope="col" class="px-4 py-3">Location</th>
-                                    <th scope="col" class="px-4 py-3 text-center">Photo</th>
-                                    <th scope="col" class="px-4 py-3 text-center">QR Code</th>
-                                    <th scope="col" class="px-4 py-3 text-center">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="inventoryTable" class="divide-y dark:divide-slate-700">
-                                <!-- Rows will be added by JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div> <!-- inventoryTableContent -->
-            </section>
+                        <div class="flex justify-between items-center mb-4 border-b pb-2 dark:border-slate-700">
+                            <h2 class="text-2xl font-semibold">Current Inventory</h2>
+                            <button id="toggleInventoryTableBtn" aria-expanded="true" aria-controls="inventoryTableContent" class="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+                        </div>
+                        <div id="inventoryTableContent">
+                            <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                                <select id="filterSupplier" class="w-full sm:w-auto p-2 border dark:border-slate-600 rounded dark:bg-slate-700">
+                                    <option value="">All Suppliers</option>
+                                </select>
+                                <select id="filterLocation" class="w-full sm:w-auto p-2 border dark:border-slate-600 rounded dark:bg-slate-700">
+                                    <option value="">All Locations</option>
+                                </select>
+                                <button id="clearInventoryFiltersBtn" class="w-full sm:w-auto bg-gray-500 hover:bg-gray-600 text-white p-2 rounded">Clear Filters</button>
+                            </div>
+                            <div class="overflow-x-auto shadow-md rounded-lg">
+                                <table class="min-w-full w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-slate-700 dark:text-gray-300">
+                                        <tr>
+                                            <th scope="col" class="px-4 py-3">ID</th>
+                                            <th scope="col" class="px-4 py-3">Name</th>
+                                            <th scope="col" class="px-4 py-3 text-center">Qty</th>
+                                            <th scope="col" class="px-4 py-3 text-center">Min.Qty</th>
+                                            <th scope="col" class="px-4 py-3 text-right">Cost</th>
+                                            <th scope="col" class="px-4 py-3">Supplier</th>
+                                            <th scope="col" class="px-4 py-3">Location</th>
+                                            <th scope="col" class="px-4 py-3 text-center">Photo</th>
+                                            <th scope="col" class="px-4 py-3 text-center">QR Code</th>
+                                            <th scope="col" class="px-4 py-3 text-center">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="inventoryTable" class="divide-y dark:divide-slate-700">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div> 
+                    </section>
 
-                    <!-- Batch Update & Move Product Section (Part of Inventory View) -->
                     <section id="batchActions" class="mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
                         <h2 class="text-2xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">Batch & Quick Actions</h2>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Batch Updates -->
-                    <div id="batchUpdateContainer" class="p-4 border dark:border-slate-700 rounded-md">
-                        <h3 class="text-xl mb-3">Batch Update Quantities</h3>
-                        <div id="batchUpdates" class="space-y-3 mb-3 max-h-60 overflow-y-auto">
-                            <!-- Batch entries will be added by JS -->
-                        </div>
-                        <div class="flex flex-col sm:flex-row gap-2">
-                            <button id="addBatchEntryBtn" class="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white p-2 rounded">Add Entry</button>
-                            <button id="startUpdateScannerBtn" class="w-full sm:w-auto bg-purple-500 hover:bg-purple-600 text-white p-2 rounded">Scan for Batch</button>
-                            <button id="stopUpdateScannerBtn" class="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white p-2 rounded">Stop Scanner</button>
-                        </div>
-                        <video id="updateVideo" class="hidden w-full rounded border dark:border-slate-600 mt-2"></video>
-                        <p id="updateScanResult" class="mt-1 text-sm"></p>
-                        <button id="submitBatchUpdatesBtn" class="mt-4 w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white p-2 rounded">Submit Batch Updates</button>
-                    </div>
-                    
-                    <!-- Move Product -->
-                    <div id="moveProductSection" class="p-4 border dark:border-slate-700 rounded-md">
-                        <div class="flex justify-between items-center mb-3">
-                            <h3 class="text-xl">Move Product</h3>
-                            <button id="toggleMoveProductFormBtn" aria-expanded="false" aria-controls="moveProductFormContent" class="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
-                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                            </button>
-                        </div>
-                        <div id="moveProductFormContent" class="hidden space-y-3">
-                            <input type="text" id="moveProductId" placeholder="Product ID (Scan or Type)" class="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:placeholder-gray-400">
-                            <select id="newLocation" class="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700">
-                                <option value="">Select New Location</option>
-                            </select>
-                            <div class="flex flex-col sm:flex-row gap-2 mt-2">
-                                 <button id="startMoveScannerBtn" class="w-full sm:w-auto bg-purple-500 hover:bg-purple-600 text-white p-2 rounded">Scan Product ID</button>
-                                 <button id="stopMoveScannerBtn" class="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white p-2 rounded">Stop Scanner</button>
+                            <div id="batchUpdateContainer" class="p-4 border dark:border-slate-700 rounded-md">
+                                <h3 class="text-xl mb-3">Batch Update Quantities</h3>
+                                <div id="batchUpdates" class="space-y-3 mb-3 max-h-60 overflow-y-auto">
+                                </div>
+                                <div class="flex flex-col sm:flex-row gap-2">
+                                    <button id="addBatchEntryBtn" class="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white p-2 rounded">Add Entry</button>
+                                    <button id="startUpdateScannerBtn" class="w-full sm:w-auto bg-purple-500 hover:bg-purple-600 text-white p-2 rounded">Scan for Batch</button>
+                                    <button id="stopUpdateScannerBtn" class="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white p-2 rounded">Stop Scanner</button>
+                                </div>
+                                <video id="updateVideo" class="hidden w-full rounded border dark:border-slate-600 mt-2"></video>
+                                <p id="updateScanResult" class="mt-1 text-sm"></p>
+                                <button id="submitBatchUpdatesBtn" class="mt-4 w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white p-2 rounded">Submit Batch Updates</button>
                             </div>
-                            <video id="moveVideo" class="hidden w-full rounded border dark:border-slate-600 mt-2"></video>
-                            <p id="moveScanResult" class="mt-1 text-sm"></p>
-                            <button id="moveProductBtn" class="mt-4 w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white p-2 rounded">Move Product</button>
-                        </div>
-                    </div>
+                            
+                            <div id="moveProductSection" class="p-4 border dark:border-slate-700 rounded-md">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h3 class="text-xl">Move Product</h3>
+                                    <button id="toggleMoveProductFormBtn" aria-expanded="false" aria-controls="moveProductFormContent" class="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                    </button>
+                                </div>
+                                <div id="moveProductFormContent" class="hidden space-y-3">
+                                    <input type="text" id="moveProductId" placeholder="Product ID (Scan or Type)" class="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:placeholder-gray-400">
+                                    <select id="newLocation" class="w-full p-2 border dark:border-slate-600 rounded dark:bg-slate-700">
+                                        <option value="">Select New Location</option>
+                                    </select>
+                                    <div class="flex flex-col sm:flex-row gap-2 mt-2">
+                                         <button id="startMoveScannerBtn" class="w-full sm:w-auto bg-purple-500 hover:bg-purple-600 text-white p-2 rounded">Scan Product ID</button>
+                                         <button id="stopMoveScannerBtn" class="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white p-2 rounded">Stop Scanner</button>
+                                    </div>
+                                    <video id="moveVideo" class="hidden w-full rounded border dark:border-slate-600 mt-2"></video>
+                                    <p id="moveScanResult" class="mt-1 text-sm"></p>
+                                    <button id="moveProductBtn" class="mt-4 w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white p-2 rounded">Move Product</button>
+                                </div>
+                            </div>
                         </div>
                     </section>
-                </div> <!-- Close Inventory View Container -->
+                </div> 
 
-                <!-- Suppliers Section -->
                 <section id="suppliersSectionContainer" class="hidden mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
                 <h2 class="text-2xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">Manage Suppliers</h2>
                 <div id="supplierManagementSectionContent" class="p-4 border dark:border-slate-700 rounded-md">
@@ -245,7 +225,6 @@
                 </div>
             </section>
 
-            <!-- Locations Admin Section -->
             <section id="locationsAdminSectionContainer" class="hidden mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
                 <h2 class="text-2xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">Manage Locations</h2>
                 <div id="locationManagementSectionContent" class="p-4 border dark:border-slate-700 rounded-md">
@@ -265,13 +244,11 @@
                 </div>
             </section>
 
-            <!-- Orders Section -->
             <section id="ordersSectionContainer" class="hidden mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
                 <h2 class="text-2xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">Orders</h2>
                 <p>Order management functionality will be here.</p>
             </section>
 
-            <!-- Reports Section -->
             <section id="reportsSectionContainer" class="hidden mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
                 <h2 class="text-2xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">Reports</h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -301,7 +278,6 @@
                                         </tr>
                                     </thead>
                                     <tbody id="toOrderTable" class="divide-y dark:divide-slate-700">
-                                        <!-- Rows will be added by JS -->
                                     </tbody>
                                 </table>
                             </div>
@@ -321,13 +297,9 @@
                     </div>
                 </div>
             </section>
-
         </main>
-        
-        </div> <!-- Close main flex wrapper for sidebar and content -->
-
-    </div> <!-- Close mainAppContainer -->
-
+        </div> 
+    </div> 
     <footer class="text-center p-4 text-sm text-gray-600 dark:text-gray-400">
         Watagan Dental Inventory Management &copy; <script>document.write(new Date().getFullYear())</script>
     </footer>
