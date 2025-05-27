@@ -50,21 +50,79 @@ const firebaseConfig = {
 
 try {
   let app;
+  // Ensure firebase object itself is available
+  if (typeof firebase === 'undefined') {
+    console.error('[DIAGNOSTIC] Firebase object is undefined before initialization attempt!');
+    throw new Error('Firebase object is undefined.'); // Stop further execution in this block
+  }
+  console.log('[DIAGNOSTIC] typeof firebase:', typeof firebase);
+
+  // Check for firebase.app and firebase.initializeApp
+  if (typeof firebase.initializeApp !== 'function' || typeof firebase.app !== 'function') {
+      console.error('[DIAGNOSTIC] firebase.initializeApp or firebase.app is not a function. Firebase App SDK may not be loaded correctly.');
+      throw new Error('Firebase App SDK not loaded correctly.');
+  }
+
   if (firebase.apps.length === 0) {
+    console.log('[DIAGNOSTIC] Initializing new Firebase app...');
     app = firebase.initializeApp(firebaseConfig);
     console.log('Firebase initialized successfully:', app.name);
   } else {
-    app = firebase.app(); // Get the default app
+    console.log('[DIAGNOSTIC] Using existing Firebase app...');
+    app = firebase.app(); 
     console.log('Using existing Firebase app:', app.name);
   }
-  db = firebase.firestore();
-  storage = firebase.storage(); // If using Firebase Storage
-  auth = firebase.auth();
-  console.log('Firestore instance created:', !!db);
-  console.log('Storage instance created:', !!storage);
-  console.log('Auth instance created:', !!auth);
+
+  // Log the firebase object to see what services are attached
+  console.log('[DIAGNOSTIC] Firebase object after app init:', firebase);
+  if (firebase) {
+    console.log('[DIAGNOSTIC] Keys in firebase object:', Object.keys(firebase));
+  }
+  
+  // Check if auth is available before trying to call it
+  if (typeof firebase.auth === 'function') {
+    console.log('[DIAGNOSTIC] firebase.auth IS a function. Attempting to call firebase.auth()...');
+    auth = firebase.auth(); // Ensure 'auth' is declared with 'let auth;' at the global scope of app.js
+    console.log('[DIAGNOSTIC] Auth instance supposedly created:', !!auth);
+  } else {
+    console.error('[DIAGNOSTIC] firebase.auth is NOT a function or is undefined!');
+    if (firebase) {
+      console.log('[DIAGNOSTIC] Further check: firebase.auth value is:', firebase.auth);
+    }
+    throw new Error('firebase.auth is not available.'); // Explicitly throw to catch below
+  }
+
+  // Check for firestore (similar logic)
+  if (typeof firebase.firestore === 'function') {
+    console.log('[DIAGNOSTIC] firebase.firestore IS a function. Attempting to call firebase.firestore()...');
+    db = firebase.firestore(); // Ensure 'db' is declared at global scope
+    console.log('Firestore instance created:', !!db);
+  } else {
+    console.error('[DIAGNOSTIC] firebase.firestore is NOT a function or is undefined!');
+    if (firebase) {
+      console.log('[DIAGNOSTIC] Further check: firebase.firestore value is:', firebase.firestore);
+    }
+    // Not throwing error here to allow auth to be the primary failure point if both are missing
+  }
+  
+  // Check for storage (similar logic)
+  if (typeof firebase.storage === 'function') {
+    console.log('[DIAGNOSTIC] firebase.storage IS a function. Attempting to call firebase.storage()...');
+    storage = firebase.storage(); // Ensure 'storage' is declared at global scope
+    console.log('Storage instance created:', !!storage);
+  } else {
+    console.error('[DIAGNOSTIC] firebase.storage is NOT a function or is undefined!');
+    if (firebase) {
+      console.log('[DIAGNOSTIC] Further check: firebase.storage value is:', firebase.storage);
+    }
+    // Not throwing error here
+  }
+
 } catch (error) {
-  console.error('Firebase initialization failed:', error);
+  console.error('[DIAGNOSTIC] Firebase initialization failed (overall try-catch):', error.message); 
+  if (error.stack) {
+    console.error('[DIAGNOSTIC] Error stack:', error.stack);
+  }
 }
 
 // Core Authentication Logic
