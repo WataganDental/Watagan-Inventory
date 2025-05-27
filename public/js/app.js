@@ -8,6 +8,8 @@ let locations = []; // Added for location management
 let batchUpdates = [];
 let db; // Declare db globally
 let storage; // Declare storage globally
+let auth;
+let currentUser = null;
 
 // Dark Mode Toggle Functionality
 const userPreference = localStorage.getItem('darkMode');
@@ -57,11 +59,108 @@ try {
   }
   db = firebase.firestore();
   storage = firebase.storage(); // If using Firebase Storage
+  auth = firebase.auth();
   console.log('Firestore instance created:', !!db);
   console.log('Storage instance created:', !!storage);
+  console.log('Auth instance created:', !!auth);
 } catch (error) {
   console.error('Firebase initialization failed:', error);
 }
+
+// Core Authentication Logic
+function signInWithGoogle() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithRedirect(provider);
+}
+
+function handleUserLoggedIn(user) {
+  currentUser = user;
+  document.getElementById('loginViewContainer').classList.add('hidden');
+  document.getElementById('mainAppContainer').classList.remove('hidden');
+  document.getElementById('userInfoDisplay').textContent = `Logged in as: ${user.email}`;
+  document.getElementById('logoutBtn').classList.remove('hidden');
+  document.getElementById('googleLoginBtn').classList.add('hidden'); // Hide login button
+
+  // Initial data loads - IMPORTANT: Move these from DOMContentLoaded or make them conditional
+  // Ensure these are called here, AFTER login.
+  loadInventory();
+  loadSuppliers();
+  loadLocations();
+  // Any other data loading functions that depend on authentication.
+
+  // Check if user profile exists, create if not, and get role
+  const userDocRef = db.collection('users').doc(user.uid);
+  userDocRef.get().then((docSnapshot) => {
+    if (docSnapshot.exists) {
+      currentUser.appRole = docSnapshot.data().role;
+      console.log('User role:', currentUser.appRole);
+      // Potentially update UI based on role here if needed in app.js
+    } else {
+      // New user or profile doesn't exist, create one with a default role
+      const defaultRole = 'Clinical'; // Assign a default role
+      userDocRef.set({
+        email: user.email,
+        name: user.displayName,
+        role: defaultRole,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        currentUser.appRole = defaultRole;
+        console.log('New user profile created in Firestore with role:', defaultRole);
+      }).catch(error => {
+        console.error('Error creating user profile:', error);
+      });
+    }
+  }).catch(error => {
+    console.error('Error fetching user profile:', error);
+  });
+}
+
+function handleUserLoggedOut() {
+  currentUser = null;
+  document.getElementById('loginViewContainer').classList.remove('hidden');
+  document.getElementById('mainAppContainer').classList.add('hidden');
+  document.getElementById('userInfoDisplay').textContent = '';
+  document.getElementById('logoutBtn').classList.add('hidden');
+  document.getElementById('googleLoginBtn').classList.remove('hidden'); // Show login button
+
+
+  // Clear any sensitive data from UI if necessary
+  const inventoryTableBody = document.getElementById('inventoryTable');
+  if (inventoryTableBody) inventoryTableBody.innerHTML = '<tr><td colspan="13" class="text-center p-4">Please log in to view inventory.</td></tr>';
+  const toOrderTableBody = document.getElementById('toOrderTable');
+  if (toOrderTableBody) toOrderTableBody.innerHTML = '<tr><td colspan="8" class="text-center p-4">Please log in.</td></tr>';
+  // Clear other data displays as needed
+}
+
+// onAuthStateChanged Listener
+auth.onAuthStateChanged(user => {
+  if (user) {
+    // User is signed in.
+    // Check if this is a result of a redirect.
+    auth.getRedirectResult().then(result => {
+      if (result.credential) {
+        // This means the user has just signed in via redirect.
+        // `result.user` is the signed-in user.
+        // `result.additionalUserInfo.isNewUser` can be checked here.
+        console.log('Signed in via redirect. New user:', result.additionalUserInfo.isNewUser);
+      }
+      // `user` object is already available from onAuthStateChanged parameter
+      handleUserLoggedIn(user);
+    }).catch(error => {
+      // Handle errors here.
+      console.error('Error getting redirect result:', error);
+      // Still, if `user` is available, proceed, otherwise treat as logged out.
+      if (user) {
+        handleUserLoggedIn(user); // Fallback if getRedirectResult fails but user is somehow available
+      } else {
+        handleUserLoggedOut();
+      }
+    });
+  } else {
+    // User is signed out.
+    handleUserLoggedOut();
+  }
+});
 
 // Utility to load jsPDF dynamically with polling
 async function loadJsPDF(scriptSrc = '/js/jspdf.umd.min.js') {
@@ -1895,13 +1994,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     await ensureQRCodeIsAvailable(); // Wait for QRCode to be ready
     // Initialize parts of the app that depend on QRCode
-    // loadInventory will call applyAndRenderInventoryFilters, which calls updateInventoryTable
-    loadInventory(); 
-    
-    // Other initializations that don't depend on QRCode can be here or remain
-    loadSuppliers(); // This will also populate filterSupplier dropdown
-    loadLocations(); // This will also populate filterLocation dropdown
-    addBatchEntry(); 
+    // loadInventory, loadSuppliers, loadLocations are now called from handleUserLoggedIn()
+    // after successful authentication.
+    addBatchEntry(); // This can remain if it doesn't depend on auth, or move if it does.
 
     console.log('DOMContentLoaded: About to schedule collapsible section initialization.');
     // Setup collapsible sections
@@ -2155,6 +2250,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
   }
   // --- END NEW NAVIGATION LOGIC ---
+
+  // Event Listeners for Login/Logout
+  const googleLoginBtn = document.getElementById('googleLoginBtn');
+  if (googleLoginBtn) {
+    googleLoginBtn.addEventListener('click', signInWithGoogle);
+  }
+
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      auth.signOut(); // onAuthStateChanged will handle the rest
+    });
+  }
 
   } catch (error) {
     console.error('Initialization failed:', error);
