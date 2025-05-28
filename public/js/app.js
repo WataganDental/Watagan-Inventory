@@ -9,6 +9,14 @@ let batchUpdates = [];
 let db; // Declare db globally
 let storage; // Declare storage globally
 
+// Pagination state variables
+let currentPage = 1;
+let itemsPerPage = 10; // Default, consider making this configurable later
+let lastVisibleDoc = null; // For Firestore's startAfter
+let firstVisibleDoc = null; // For Firestore's endBefore
+let unsubscribeInventoryListener = null; // For potential future real-time updates
+let currentQuery = null; // To store the base query for reuse
+
 // Dark Mode Toggle Functionality
 const userPreference = localStorage.getItem('darkMode');
 const systemPreference = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -639,43 +647,166 @@ async function moveProduct() {
 }
 
 // Inventory Management
-async function loadInventory() {
+async function loadInventory(navigation = 'first') { // Added navigation parameter
+  const prevPageBtn = document.getElementById('prevPageBtn');
+  const nextPageBtn = document.getElementById('nextPageBtn');
+  const currentPageDisplay = document.getElementById('currentPageDisplay');
+  const filterSupplierInput = document.getElementById('filterSupplier');
+  const filterLocationInput = document.getElementById('filterLocation');
+  const inventorySearchInput = document.getElementById('inventorySearchInput');
+
+  // Start loading state
+  if (prevPageBtn) prevPageBtn.disabled = true;
+  if (nextPageBtn) nextPageBtn.disabled = true;
+  if (currentPageDisplay) currentPageDisplay.textContent = 'Loading...';
+  if (filterSupplierInput) filterSupplierInput.disabled = true;
+  if (filterLocationInput) filterLocationInput.disabled = true;
+  if (inventorySearchInput) inventorySearchInput.disabled = true;
+
   try {
-    console.log('Fetching inventory from Firestore...');
-    const snapshot = await db.collection('inventory').get();
+    console.log(`Fetching inventory from Firestore (navigation: ${navigation})...`);
+
+    const supplierFilterValue = filterSupplierInput ? filterSupplierInput.value : '';
+    const locationFilterValue = filterLocationInput ? filterLocationInput.value : '';
+    // Search term will be applied client-side after fetching the page based on filters
+
+    let query = db.collection('inventory');
+
+    // Apply filters
+    if (supplierFilterValue) {
+      query = query.where('supplier', '==', supplierFilterValue);
+    }
+    if (locationFilterValue) {
+      query = query.where('location', '==', locationFilterValue);
+    }
+
+    // Always order by name for consistent pagination
+    query = query.orderBy('name');
+
+    // Navigation logic
+    if (navigation === 'first') {
+      currentPage = 1;
+      lastVisibleDoc = null;
+      firstVisibleDoc = null;
+      currentQuery = query; // Store the base query with filters
+      query = currentQuery.limit(itemsPerPage);
+    } else if (navigation === 'next' && lastVisibleDoc) {
+      currentPage++;
+      query = currentQuery.startAfter(lastVisibleDoc).limit(itemsPerPage);
+    } else if (navigation === 'previous' && firstVisibleDoc) {
+      currentPage--;
+      // For 'previous', Firestore requires limitToLast with endBefore.
+      // The documents are returned in ascending order by 'name', so limitToLast gives the N items *before* firstVisibleDoc.
+      query = currentQuery.endBefore(firstVisibleDoc).limitToLast(itemsPerPage);
+    } else {
+      console.log(`Cannot navigate ${navigation} - condition not met (lastVisibleDoc: ${!!lastVisibleDoc}, firstVisibleDoc: ${!!firstVisibleDoc})`);
+      // Potentially disable next/prev buttons here or show a message
+      // For now, just log and don't fetch if navigation condition isn't met for next/prev
+      if (navigation === 'next' && !lastVisibleDoc) console.warn('Next page requested but no lastVisibleDoc.');
+      if (navigation === 'previous' && !firstVisibleDoc) console.warn('Previous page requested but no firstVisibleDoc.');
+      // If it's a filter change, it should be 'first', so this path shouldn't be hit unless buttons are clicked inappropriately.
+      // Let's ensure applyAndRenderInventoryFilters is still called to update UI (e.g. page number)
+      applyAndRenderInventoryFilters(); 
+      updatePaginationUI();
+      return; 
+    }
+
+    const snapshot = await query.get();
     console.log('Inventory snapshot:', snapshot.size, 'documents');
-    inventory = snapshot.docs.map(doc => doc.data());
-    console.log('Inventory loaded:', inventory);
-    // updateInventoryTable(); // OLD CALL
-    applyAndRenderInventoryFilters(); // NEW CALL - this will render the table
-    await updateToOrderTable(); // Ensure "To Order" table is updated after initial load and filtering
+
+    if (snapshot.empty) {
+      if (navigation === 'next') {
+        console.log('No more items for next page.');
+        currentPage--; // Adjust page number back if we overshot
+        // Potentially disable 'next' button here
+      } else if (navigation === 'previous') {
+        console.log('No more items for previous page.');
+        currentPage++; // Adjust page number back
+        // Potentially disable 'previous' button here
+      }
+      inventory = []; // Clear inventory if page is empty
+    } else {
+      inventory = snapshot.docs.map(doc => doc.data());
+      firstVisibleDoc = snapshot.docs[0];
+      lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
+    }
+    
+    console.log('Inventory for current page loaded:', inventory.length, 'items. Current Page:', currentPage);
+    applyAndRenderInventoryFilters(); // This will render the current page's items + apply search
+    await updateToOrderTable(); // Ensure "To Order" table is updated
+    // updatePaginationUI(); // Called in finally block
+
   } catch (error) {
     console.error('Error loading inventory:', error);
     alert('Failed to load inventory: ' + error.message);
+    // Reset pagination state on error to be safe
+    currentPage = 1;
+    lastVisibleDoc = null;
+    firstVisibleDoc = null;
+    inventory = [];
+    applyAndRenderInventoryFilters(); // Re-render with empty inventory
+    // updatePaginationUI(); // Called in finally block, will reflect reset state
+    if (currentPageDisplay) currentPageDisplay.textContent = `Page ${currentPage}`; // Explicitly reset loading text on error
+  } finally {
+    // This block executes regardless of try/catch outcome
+    if (filterSupplierInput) filterSupplierInput.disabled = false;
+    if (filterLocationInput) filterLocationInput.disabled = false;
+    if (inventorySearchInput) inventorySearchInput.disabled = false;
+    
+    updatePaginationUI(); // This will set button states and page number correctly based on current state
   }
 }
 
-function applyAndRenderInventoryFilters() {
-  const supplierFilter = document.getElementById('filterSupplier') ? document.getElementById('filterSupplier').value : '';
-  const locationFilter = document.getElementById('filterLocation') ? document.getElementById('filterLocation').value : '';
+function updatePaginationUI() {
+  const currentPageSpan = document.getElementById('currentPageDisplay'); // Corrected ID
+  const prevPageBtn = document.getElementById('prevPageBtn');
+  const nextPageBtn = document.getElementById('nextPageBtn');
+
+  if (currentPageSpan) {
+    currentPageSpan.textContent = currentPage;
+  }
+
+  if (prevPageBtn) {
+    // Disable 'prev' if on the first page (or if firstVisibleDoc is null after a 'first' load)
+    // More robust: disable if currentPage is 1.
+    prevPageBtn.disabled = currentPage === 1;
+  }
+
+  if (nextPageBtn) {
+    // Disable 'next' if lastVisibleDoc is null (implies nothing loaded or last page was empty)
+    // OR if the number of items fetched is less than itemsPerPage (implies it's the last page)
+    nextPageBtn.disabled = !lastVisibleDoc || inventory.length < itemsPerPage;
+  }
+  console.log(`Pagination UI updated: Page ${currentPage}, Prev enabled: ${!prevPageBtn?.disabled}, Next enabled: ${!nextPageBtn?.disabled}`);
+}
+
+
+function applyAndRende<ctrl61>rInventoryFilters() {
+  // Filters (supplier, location) are now applied server-side by loadInventory.
+  // This function will primarily handle client-side search on the current page's data.
+  // const supplierFilter = document.getElementById('filterSupplier') ? document.getElementById('filterSupplier').value : ''; // No longer needed for client-side filtering
+  // const locationFilter = document.getElementById('filterLocation') ? document.getElementById('filterLocation').value : ''; // No longer needed for client-side filtering
   const searchTerm = document.getElementById('inventorySearchInput') ? document.getElementById('inventorySearchInput').value.toLowerCase().trim() : '';
 
-  let filteredInventory = inventory; // Start with the full inventory
+  let itemsToDisplay = [...inventory]; // Start with the current page's inventory (already filtered by supplier/location by Firestore)
 
-  if (supplierFilter) {
-    filteredInventory = filteredInventory.filter(item => item.supplier === supplierFilter);
-  }
-  if (locationFilter) {
-    filteredInventory = filteredInventory.filter(item => item.location === locationFilter);
-  }
+  // Client-side search on the current page's data
   if (searchTerm) {
-    filteredInventory = filteredInventory.filter(item => {
+    itemsToDisplay = itemsToDisplay.filter(item => {
         return (item.name && item.name.toLowerCase().includes(searchTerm)) ||
                (item.id && item.id.toLowerCase().includes(searchTerm)) ||
-               (item.supplier && item.supplier.toLowerCase().includes(searchTerm)); 
+               (item.supplier && item.supplier.toLowerCase().includes(searchTerm)); // Supplier search on current page data
     });
   }
-  updateInventoryTable(filteredInventory);
+  
+  // If a search term is active and results in an empty list for the current page,
+  // it doesn't mean there are no results in the *entire dataset*.
+  // The table will correctly show "No products found matching your criteria on this page."
+  
+  updateInventoryTable(itemsToDisplay);
+  // updatePaginationUI(); // Re-evaluate if this is needed here. loadInventory calls it.
+  // If search makes the current page empty, the pagination UI should reflect that we might not be on the "last" page of overall results.
+  // However, the current logic in updatePaginationUI bases 'next' button disable on inventory.length < itemsPerPage, which is correct for the current fetch.
 }
 
 
@@ -1959,20 +2090,41 @@ document.addEventListener('DOMContentLoaded', async () => {
   const inventorySearchInputEl = document.getElementById('inventorySearchInput');
 
   if (filterSupplierEl) {
-    filterSupplierEl.addEventListener('change', applyAndRenderInventoryFilters);
+    filterSupplierEl.addEventListener('change', () => loadInventory('first'));
   }
   if (filterLocationEl) {
-    filterLocationEl.addEventListener('change', applyAndRenderInventoryFilters);
+    filterLocationEl.addEventListener('change', () => loadInventory('first'));
   }
   if (inventorySearchInputEl) {
-    inventorySearchInputEl.addEventListener('input', applyAndRenderInventoryFilters);
+    // When search input changes, reload data from the first page.
+    // Note: loadInventory current doesn't pass the search term to Firestore.
+    // It fetches based on supplier/location, then applyAndRenderInventoryFilters searches client-side.
+    // This behavior is kept for now as per previous steps.
+    inventorySearchInputEl.addEventListener('input', () => loadInventory('first'));
   }
   if (clearInventoryFiltersBtnEl) {
     clearInventoryFiltersBtnEl.addEventListener('click', () => {
       if (filterSupplierEl) filterSupplierEl.value = '';
       if (filterLocationEl) filterLocationEl.value = '';
       if (inventorySearchInputEl) inventorySearchInputEl.value = '';
-      applyAndRenderInventoryFilters();
+      loadInventory('first'); // Reload with cleared filters from the first page
+    });
+  }
+
+  // Pagination Buttons Event Listeners
+  const prevPageBtn = document.getElementById('prevPageBtn');
+  const nextPageBtn = document.getElementById('nextPageBtn');
+
+  if (prevPageBtn) {
+    prevPageBtn.addEventListener('click', () => {
+      console.log('Previous page button clicked');
+      loadInventory('previous');
+    });
+  }
+  if (nextPageBtn) {
+    nextPageBtn.addEventListener('click', () => {
+      console.log('Next page button clicked');
+      loadInventory('next');
     });
   }
   
