@@ -2,12 +2,21 @@ const SIDEBAR_STATE_KEY = 'sidebarMinimized';
 
 let stream = null;
 let photoStream = null;
-let inventory = [];
+let inventory = []; // Will store all items when unfiltered, or all filtered items
 let suppliers = [];
 let locations = []; // Added for location management
 let batchUpdates = [];
 let db; // Declare db globally
 let storage; // Declare storage globally
+
+// Pagination Variables
+let currentPage = 1;
+let itemsPerPage = 25; // Default items per page, can be changed
+let totalInventoryItems = 0;
+let allInventoryIDs = []; // To store all document IDs for unfiltered count, if needed for some strategies
+let lastVisibleDoc = null; // For Firestore pagination (next page)
+let firstVisibleDoc = null; // For Firestore pagination (previous page)
+let isFiltered = false; // Flag to indicate if filters are active
 
 // Dark Mode Toggle Functionality
 const userPreference = localStorage.getItem('darkMode');
@@ -445,8 +454,82 @@ async function uploadPhoto(id, photoData) {
   }
 }
 
+function renderPaginationControls() {
+  const totalItemsCountEl = document.getElementById('totalItemsCount');
+  const paginationButtonsEl = document.getElementById('paginationButtons');
+
+  if (!totalItemsCountEl || !paginationButtonsEl) {
+    console.warn('Pagination control elements not found.');
+    return;
+  }
+
+  totalItemsCountEl.textContent = `Total Items: ${totalInventoryItems}`;
+  paginationButtonsEl.innerHTML = ''; // Clear existing buttons
+
+  const totalPages = Math.ceil(totalInventoryItems / itemsPerPage);
+
+  if (totalPages <= 1) {
+    // If only one page or no items, no need to show pagination buttons,
+    // but still show total items count.
+    return;
+  }
+
+  const createButton = (text, page, isDisabled = false, isActive = false, isIcon = false) => {
+    const button = document.createElement('button');
+    if (isIcon) {
+      button.innerHTML = text; // For SVG icons
+    } else {
+      button.textContent = text;
+    }
+    button.disabled = isDisabled;
+    
+    let baseClasses = 'px-3 py-2 text-sm font-medium border rounded-md mx-1 mb-1 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-150 ease-in-out';
+    if (isDisabled) {
+      baseClasses += ' bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-gray-500 cursor-not-allowed border-gray-300 dark:border-slate-600';
+    } else if (isActive) {
+      baseClasses += ' bg-blue-500 dark:bg-blue-600 text-white border-blue-500 dark:border-blue-600';
+    } else {
+      baseClasses += ' bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 hover:bg-gray-50 dark:hover:bg-slate-700 border-gray-300 dark:border-slate-600';
+    }
+    button.className = baseClasses;
+
+    if (!isDisabled) {
+      button.addEventListener('click', () => fetchInventoryPage(page));
+    }
+    return button;
+  };
+  
+  const firstIcon = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" /></svg>';
+  const prevIcon = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>';
+  const nextIcon = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>';
+  const lastIcon = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 4.5l7.5 7.5-7.5 7.5m6-15l7.5 7.5-7.5 7.5" /></svg>';
+
+
+  if (totalPages > 10) {
+    // Simplified display for many pages: First, Prev, Current/Total, Next, Last
+    paginationButtonsEl.appendChild(createButton(firstIcon, 1, currentPage === 1, false, true));
+    paginationButtonsEl.appendChild(createButton(prevIcon, 'prev', currentPage === 1, false, true));
+
+    const pageInfo = document.createElement('span');
+    pageInfo.className = 'px-3 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-slate-600 rounded-md mx-1 mb-1 flex items-center';
+    pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+    paginationButtonsEl.appendChild(pageInfo);
+
+    paginationButtonsEl.appendChild(createButton(nextIcon, 'next', currentPage === totalPages, false, true));
+    paginationButtonsEl.appendChild(createButton(lastIcon, totalPages, currentPage === totalPages, false, true));
+  } else {
+    // Numbered pages for 10 or fewer total pages
+    paginationButtonsEl.appendChild(createButton(prevIcon, 'prev', currentPage === 1, false, true));
+    for (let i = 1; i <= totalPages; i++) {
+      paginationButtonsEl.appendChild(createButton(i.toString(), i, false, i === currentPage));
+    }
+    paginationButtonsEl.appendChild(createButton(nextIcon, 'next', currentPage === totalPages, false, true));
+  }
+  console.log("Pagination controls rendered. Total pages:", totalPages, "Current page:", currentPage);
+}
+
+
 // Product Management
-async function submitProduct() {
   const id = document.getElementById('productId').value || generateUUID();
   const name = document.getElementById('productName').value.trim();
   const quantity = parseInt(document.getElementById('productQuantity').value) || 0;
@@ -476,7 +559,12 @@ async function submitProduct() {
         photo: photoUrl 
       });
       resetProductForm();
-      await loadInventory(); // loadInventory now calls updateToOrderTable internally
+      // After adding/updating, reload the first page of unfiltered data.
+      isFiltered = false; 
+      currentPage = 1;
+      lastVisibleDoc = null;
+      firstVisibleDoc = null;
+      await loadInventory(); 
     } catch (error) {
       console.error('Error submitting product:', error);
       alert('Failed to submit product: ' + error.message);
@@ -487,6 +575,7 @@ async function submitProduct() {
 }
 
 async function editProduct(id) {
+  // Editing an item doesn't change pagination state.
   const snapshot = await db.collection('inventory').where('id', '==', id).get();
   if (!snapshot.empty) {
     const product = snapshot.docs[0].data();
@@ -511,6 +600,7 @@ async function editProduct(id) {
 }
 
 function resetProductForm() {
+  // Resetting the form doesn't change pagination state.
   document.getElementById('productId').value = '';
   document.getElementById('productName').value = '';
   document.getElementById('productQuantity').value = '';
@@ -538,8 +628,12 @@ async function deleteProduct(id) {
       } catch (err) {
         console.log('No photo to delete:', err);
       }
-      await loadInventory();
-      await updateToOrderTable();
+      // After deleting, go to first page of unfiltered view.
+      isFiltered = false;
+      currentPage = 1;
+      lastVisibleDoc = null;
+      firstVisibleDoc = null;
+      await loadInventory(); 
     } catch (error) {
       console.error('Error deleting product:', error);
       alert('Failed to delete product: ' + error.message);
@@ -577,27 +671,31 @@ function removeBatchEntry(entryId) {
 
 async function submitBatchUpdates() {
   let messages = [];
+  let inventoryChanged = false;
   for (const entryId of batchUpdates) {
     const productId = document.getElementById(`${entryId}-id`).value.trim();
     const quantity = parseInt(document.getElementById(`${entryId}-quantity`).value) || 0;
     const action = document.getElementById(`${entryId}-action`).value;
     const snapshot = await db.collection('inventory').where('id', '==', productId).get();
     if (!snapshot.empty) {
-      const product = snapshot.docs[0].data();
+      const productDoc = snapshot.docs[0];
+      const product = productDoc.data();
       if (quantity > 0) {
+        let newQuantity = product.quantity;
         if (action === 'add') {
-          const newQuantity = product.quantity + quantity;
-          await db.collection('inventory').doc(productId).update({ quantity: newQuantity });
+          newQuantity += quantity;
           messages.push(`Added ${quantity} to ${product.name}. New quantity: ${newQuantity}`);
         } else if (action === 'remove') {
           if (product.quantity >= quantity) {
-            const newQuantity = product.quantity - quantity;
-            await db.collection('inventory').doc(productId).update({ quantity: newQuantity });
+            newQuantity -= quantity;
             messages.push(`Removed ${quantity} from ${product.name}. New quantity: ${newQuantity}`);
           } else {
             messages.push(`Cannot remove ${quantity} from ${product.name}. Only ${product.quantity} available.`);
+            continue; 
           }
         }
+        await db.collection('inventory').doc(productDoc.id).update({ quantity: newQuantity });
+        inventoryChanged = true;
       } else {
         messages.push(`Invalid quantity for ${product.name}.`);
       }
@@ -605,12 +703,19 @@ async function submitBatchUpdates() {
       messages.push(`Product ID ${productId} not found.`);
     }
   }
+
   if (messages.length > 0) {
-    await loadInventory();
-    await updateToOrderTable();
-    document.getElementById('batchUpdates').innerHTML = '';
-    batchUpdates = [];
     alert(messages.join('\n'));
+    if (inventoryChanged) {
+      isFiltered = false; 
+      currentPage = 1;
+      lastVisibleDoc = null;
+      firstVisibleDoc = null;
+      await loadInventory(); 
+    }
+    document.getElementById('batchUpdates').innerHTML = ''; 
+    batchUpdates = [];
+    addBatchEntry(); 
   } else {
     alert('No updates to process.');
   }
@@ -622,11 +727,15 @@ async function moveProduct() {
   const newLocation = document.getElementById('newLocation').value;
   const snapshot = await db.collection('inventory').where('id', '==', productId).get();
   if (!snapshot.empty) {
-    const product = snapshot.docs[0].data();
+    const productDoc = snapshot.docs[0];
+    const product = productDoc.data();
     try {
-      await db.collection('inventory').doc(productId).update({ location: newLocation });
+      await db.collection('inventory').doc(productDoc.id).update({ location: newLocation });
+      isFiltered = false;
+      currentPage = 1;
+      lastVisibleDoc = null;
+      firstVisibleDoc = null;
       await loadInventory();
-      await updateToOrderTable();
       document.getElementById('moveProductId').value = '';
       alert(`Product ${product.name} moved to ${newLocation}`);
     } catch (error) {
@@ -638,104 +747,314 @@ async function moveProduct() {
   }
 }
 
-// Inventory Management
-async function loadInventory() {
+// Inventory Management & Pagination
+async function loadInventory() { 
+  console.log('loadInventory called (initial load or filter clear)');
+  isFiltered = false;
+  currentPage = 1;
+  lastVisibleDoc = null;
+  firstVisibleDoc = null;
+
   try {
-    console.log('Fetching inventory from Firestore...');
-    const snapshot = await db.collection('inventory').get();
-    console.log('Inventory snapshot:', snapshot.size, 'documents');
-    inventory = snapshot.docs.map(doc => doc.data());
-    console.log('Inventory loaded:', inventory);
-    // updateInventoryTable(); // OLD CALL
-    applyAndRenderInventoryFilters(); // NEW CALL - this will render the table
-    await updateToOrderTable(); // Ensure "To Order" table is updated after initial load and filtering
+    console.log('Fetching all inventory IDs for total count...');
+    const idSnapshot = await db.collection('inventory').select().get(); 
+    totalInventoryItems = idSnapshot.size; 
+    console.log(`Total inventory items (unfiltered): ${totalInventoryItems}`);
+
+    let query = db.collection('inventory').orderBy('name').limit(itemsPerPage);
+    const documentSnapshots = await query.get();
+
+    const pageItems = documentSnapshots.docs.map(doc => doc.data());
+    // When isFiltered is false (as it is in loadInventory), the global 'inventory' array 
+    // should reflect the current page's items, not the entire dataset.
+    inventory = pageItems; 
+    
+    if (documentSnapshots.docs.length > 0) {
+        lastVisibleDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
+        firstVisibleDoc = documentSnapshots.docs[0];
+    } else {
+        lastVisibleDoc = null;
+        firstVisibleDoc = null;
+    }
+    
+    console.log(`First page loaded. Items: ${pageItems.length}. Last doc:`, lastVisibleDoc ? lastVisibleDoc.id : 'null', `First doc:`, firstVisibleDoc ? firstVisibleDoc.id : 'null');
+
+    updateInventoryTable(pageItems); 
+    renderPaginationControls();
+    await updateToOrderTable(); 
   } catch (error) {
-    console.error('Error loading inventory:', error);
-    alert('Failed to load inventory: ' + error.message);
+    console.error('Error in loadInventory:', error);
+    alert('Failed to load initial inventory: ' + error.message);
+    inventory = [];
+    totalInventoryItems = 0;
+    updateInventoryTable([]);
+    renderPaginationControls();
   }
 }
 
-function applyAndRenderInventoryFilters() {
-  const supplierFilter = document.getElementById('filterSupplier') ? document.getElementById('filterSupplier').value : '';
-  const locationFilter = document.getElementById('filterLocation') ? document.getElementById('filterLocation').value : '';
+async function fetchInventoryPage(pageOrDirection) {
+  console.log(`fetchInventoryPage called with: ${pageOrDirection}, currentPage: ${currentPage}, isFiltered: ${isFiltered}, totalItems: ${totalInventoryItems}, itemsPerPage: ${itemsPerPage}`);
+
+  let targetPage;
+  if (typeof pageOrDirection === 'number') {
+    targetPage = pageOrDirection;
+  } else if (pageOrDirection === 'next') {
+    targetPage = currentPage + 1;
+  } else if (pageOrDirection === 'prev') {
+    targetPage = currentPage - 1;
+  } else {
+    console.warn("Invalid pageOrDirection:", pageOrDirection);
+    renderPaginationControls(); // Update UI state
+    return;
+  }
+  
+  const totalPages = Math.ceil(totalInventoryItems / itemsPerPage);
+  if (targetPage < 1 || targetPage > totalPages) {
+    console.log(`Target page ${targetPage} is out of bounds (1-${totalPages}).`);
+    renderPaginationControls(); 
+    return;
+  }
+
+  if (isFiltered) {
+    console.log(`Fetching page (client-side filtered): ${targetPage}`);
+    currentPage = targetPage;
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    // 'inventory' global variable holds ALL filtered items in this case
+    const pageItems = inventory.slice(startIndex, endIndex); 
+    updateInventoryTable(pageItems);
+    renderPaginationControls();
+    return;
+  }
+
+  // Firestore pagination for unfiltered results
+  console.log(`Fetching page (Firestore): ${targetPage}`);
+  if (!itemsPerPage) {
+    console.error("itemsPerPage is not set.");
+    renderPaginationControls();
+    return;
+  }
+
+  let query;
+  let newPageItems = [];
+
+  if (targetPage === currentPage) {
+    console.log("Target page is current page. No action needed.");
+    renderPaginationControls();
+    return;
+  }
+
+  try {
+    if (targetPage === currentPage + 1) { // Standard "next"
+      if (!lastVisibleDoc) {
+        console.log("No lastVisibleDoc, cannot fetch next page.");
+        renderPaginationControls(); return;
+      }
+      query = db.collection('inventory').orderBy('name').startAfter(lastVisibleDoc).limit(itemsPerPage);
+    } else if (targetPage === currentPage - 1) { // Standard "prev"
+      if (!firstVisibleDoc) {
+        console.log("No firstVisibleDoc, cannot fetch previous page.");
+        renderPaginationControls(); return;
+      }
+      query = db.collection('inventory').orderBy('name').endBefore(firstVisibleDoc).limitToLast(itemsPerPage);
+    } else { // Non-adjacent page jump
+      console.log(`Jumping to non-adjacent page ${targetPage} from ${currentPage}. This will re-fetch.`);
+      let tempLastVisibleDoc = null;
+      // Loop to reach the target page by fetching page by page
+      for (let i = 1; i <= targetPage; i++) {
+        let pageQuery = db.collection('inventory').orderBy('name').limit(itemsPerPage);
+        if (tempLastVisibleDoc && i > 1) { // For i=1, no startAfter needed
+          pageQuery = pageQuery.startAfter(tempLastVisibleDoc);
+        }
+        
+        const interimSnapshots = await pageQuery.get();
+        if (interimSnapshots.empty) {
+          console.warn(`Reached end of data while trying to jump to page ${targetPage}. Stopping at page ${i-1}.`);
+          currentPage = i -1; // Update currentPage to what was actually reached
+          // Update first/last visible from previous successful fetch if i > 1
+          // If i=1 and empty, then no items at all, handled by loadInventory initial check.
+          renderPaginationControls();
+          return;
+        }
+        newPageItems = interimSnapshots.docs.map(doc => doc.data()); 
+        firstVisibleDoc = interimSnapshots.docs[0]; // Keep track of first for potential prev
+        tempLastVisibleDoc = interimSnapshots.docs[interimSnapshots.docs.length - 1];
+        console.log(`Fetched interim page ${i} for jump. Last doc:`, tempLastVisibleDoc ? tempLastVisibleDoc.id : 'null');
+      }
+      lastVisibleDoc = tempLastVisibleDoc; // Set the final lastVisibleDoc
+      currentPage = targetPage; 
+      updateInventoryTable(newPageItems);
+      renderPaginationControls();
+      return; 
+    }
+
+    // Common execution for standard next/prev after query is set
+    const documentSnapshots = await query.get();
+    if (documentSnapshots.empty) {
+      console.log("No more documents found for this page (next/prev).");
+      // Revert page change if no items found
+      if (pageOrDirection === "next") targetPage--; 
+      else if (pageOrDirection === "prev") targetPage++;
+      // currentPage should not be changed yet, but targetPage reflects the attempt
+    } else {
+        newPageItems = documentSnapshots.docs.map(doc => doc.data());
+        if (newPageItems.length > 0) {
+            firstVisibleDoc = documentSnapshots.docs[0];
+            lastVisibleDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
+            currentPage = targetPage; // Update current page only if successful
+            updateInventoryTable(newPageItems);
+            console.log(`Page ${currentPage} fetched. Items: ${newPageItems.length}. First doc:`, firstVisibleDoc.id, `Last doc:`, lastVisibleDoc.id);
+        } else {
+             // This case should ideally be caught by documentSnapshots.empty
+             console.log("Fetched page but newPageItems is empty.");
+        }
+    }
+  } catch (error) {
+    console.error(`Error fetching page ${pageOrDirection}:`, error);
+    alert(`Failed to fetch page: ${error.message}`);
+    // Attempt to revert currentPage if it was optimistically updated (though it's better to update it only on success)
+  } finally {
+    renderPaginationControls(); // Always update controls to reflect the final state
+  }
+}
+
+
+async function applyAndRenderInventoryFilters() {
+  const supplierFilterValue = document.getElementById('filterSupplier') ? document.getElementById('filterSupplier').value : '';
+  const locationFilterValue = document.getElementById('filterLocation') ? document.getElementById('filterLocation').value : '';
   const searchTerm = document.getElementById('inventorySearchInput') ? document.getElementById('inventorySearchInput').value.toLowerCase().trim() : '';
 
-  let filteredInventory = inventory; // Start with the full inventory
+  isFiltered = !!(supplierFilterValue || locationFilterValue || searchTerm);
+  currentPage = 1; 
+  lastVisibleDoc = null; 
+  firstVisibleDoc = null;
 
-  if (supplierFilter) {
-    filteredInventory = filteredInventory.filter(item => item.supplier === supplierFilter);
-  }
-  if (locationFilter) {
-    filteredInventory = filteredInventory.filter(item => item.location === locationFilter);
-  }
-  if (searchTerm) {
-    filteredInventory = filteredInventory.filter(item => {
+  try {
+    if (!isFiltered) {
+      await loadInventory(); 
+      return;
+    }
+
+    console.log('Applying filters. Fetching all matching documents for client-side pagination...');
+    let query = db.collection('inventory');
+
+    if (supplierFilterValue) {
+      query = query.where('supplier', '==', supplierFilterValue);
+    }
+    if (locationFilterValue) {
+      query = query.where('location', '==', locationFilterValue);
+    }
+    query = query.orderBy('name'); // Order consistently for client-side search later if needed
+
+    const snapshot = await query.get();
+    let filteredResults = snapshot.docs.map(doc => doc.data());
+
+    if (searchTerm) {
+      filteredResults = filteredResults.filter(item => {
         return (item.name && item.name.toLowerCase().includes(searchTerm)) ||
                (item.id && item.id.toLowerCase().includes(searchTerm)) ||
-               (item.supplier && item.supplier.toLowerCase().includes(searchTerm)); 
-    });
+               (item.supplier && item.supplier.toLowerCase().includes(searchTerm));
+      });
+    }
+    
+    inventory = filteredResults; // Global 'inventory' now holds ALL filtered items
+    totalInventoryItems = inventory.length;
+    console.log(`Filtered results loaded. Total items matching filter: ${totalInventoryItems}`);
+
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const itemsForCurrentPage = inventory.slice(startIndex, endIndex);
+
+    updateInventoryTable(itemsForCurrentPage);
+    renderPaginationControls();
+    await updateToOrderTable(); 
+
+  } catch (error) {
+    console.error('Error applying filters or fetching filtered inventory:', error);
+    alert('Failed to apply filters: ' + error.message);
+    inventory = [];
+    totalInventoryItems = 0;
+    updateInventoryTable([]);
+    renderPaginationControls();
   }
-  updateInventoryTable(filteredInventory);
 }
 
 
 function updateInventoryTable(itemsToDisplay) {
   const tableBody = document.getElementById('inventoryTable');
-  console.log('Updating inventory table with:', itemsToDisplay);
+  console.log('Updating inventory table with (current page items):', itemsToDisplay ? itemsToDisplay.length : 0);
   tableBody.innerHTML = '';
 
   if (!itemsToDisplay || itemsToDisplay.length === 0) {
     const row = tableBody.insertRow();
     const cell = row.insertCell();
-    cell.colSpan = 13; // Number of columns in your inventory table
-    cell.textContent = 'No products found matching your criteria.';
+    cell.colSpan = 13; 
+    cell.textContent = 'No products to display.'; // Generic message
     cell.className = 'text-center p-4 dark:text-gray-400';
     return;
   }
 
   itemsToDisplay.forEach(item => {
+    // Ensure item has all necessary fields, providing defaults if not
+    const displayItem = {
+      id: item.id || 'N/A',
+      name: item.name || 'N/A',
+      quantity: typeof item.quantity === 'number' ? item.quantity : 0,
+      minQuantity: typeof item.minQuantity === 'number' ? item.minQuantity : 0,
+      reorderQuantity: typeof item.reorderQuantity === 'number' ? item.reorderQuantity : 0,
+      cost: typeof item.cost === 'number' ? item.cost : 0,
+      supplier: item.supplier || 'N/A',
+      location: item.location || 'N/A',
+      quantityOrdered: typeof item.quantityOrdered === 'number' ? item.quantityOrdered : 0,
+      quantityBackordered: typeof item.quantityBackordered === 'number' ? item.quantityBackordered : 0,
+      photo: item.photo || ''
+    };
+
     const row = document.createElement('tr');
-    row.className = item.quantity <= item.minQuantity ? 'bg-red-100 dark:bg-red-800/60' : '';
+    row.className = displayItem.quantity <= displayItem.minQuantity ? 'bg-red-100 dark:bg-red-800/60' : '';
     row.innerHTML = `
-      <td class="border dark:border-slate-600 p-2 id-column hidden">${item.id}</td>
-      <td class="border dark:border-slate-600 p-2">${item.name}</td>
-      <td class="border dark:border-slate-600 p-2">${item.quantity}</td>
-      <td class="border dark:border-slate-600 p-2">${item.minQuantity}</td>
-      <td class="border dark:border-slate-600 p-2">${item.reorderQuantity || 0}</td>
-      <td class="border dark:border-slate-600 p-2">${item.cost.toFixed(2)}</td>
-      <td class="border dark:border-slate-600 p-2">${item.supplier}</td>
-      <td class="border dark:border-slate-600 p-2">${item.location}</td>
-      <td class="border dark:border-slate-600 p-2">${item.quantityOrdered || 0}</td>
-      <td class="border dark:border-slate-600 p-2">${item.quantityBackordered || 0}</td>
-      <td class="border dark:border-slate-600 p-2">${item.photo ? `<img src="${item.photo}" class="w-16 h-16 object-cover mx-auto" alt="Product Photo">` : 'No Photo'}</td>
-      <td class="border dark:border-slate-600 p-2"><div id="qrcode-${item.id}" class="mx-auto w-24 h-24"></div></td>
-      <td class="border dark:border-slate-600 p-2">
-        <button data-id="${item.id}" class="editProductBtn text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 mr-2">Edit</button>
-        <button data-id="${item.id}" class="deleteProductBtn text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">Delete</button>
+      <td class="border dark:border-slate-600 p-2 id-column hidden">${displayItem.id}</td>
+      <td class="border dark:border-slate-600 p-2">${displayItem.name}</td>
+      <td class="border dark:border-slate-600 p-2 text-center">${displayItem.quantity}</td>
+      <td class="border dark:border-slate-600 p-2 text-center">${displayItem.minQuantity}</td>
+      <td class="border dark:border-slate-600 p-2 text-center">${displayItem.reorderQuantity}</td>
+      <td class="border dark:border-slate-600 p-2 text-right">${displayItem.cost.toFixed(2)}</td>
+      <td class="border dark:border-slate-600 p-2">${displayItem.supplier}</td>
+      <td class="border dark:border-slate-600 p-2">${displayItem.location}</td>
+      <td class="border dark:border-slate-600 p-2 text-center">${displayItem.quantityOrdered}</td>
+      <td class="border dark:border-slate-600 p-2 text-center">${displayItem.quantityBackordered}</td>
+      <td class="border dark:border-slate-600 p-2 text-center">${displayItem.photo ? `<img src="${displayItem.photo}" class="w-16 h-16 object-cover mx-auto" alt="Product Photo">` : 'No Photo'}</td>
+      <td class="border dark:border-slate-600 p-2 text-center"><div id="qrcode-${displayItem.id}" class="mx-auto w-24 h-24"></div></td>
+      <td class="border dark:border-slate-600 p-2 text-center">
+        <button data-id="${displayItem.id}" class="editProductBtn text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 mr-2">Edit</button>
+        <button data-id="${displayItem.id}" class="deleteProductBtn text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">Delete</button>
       </td>
     `;
     tableBody.appendChild(row);
 
-    const qrCodeDiv = document.getElementById(`qrcode-${item.id}`);
-    try {
-      console.log('QRCode check:', typeof window.QRCode);
-      if (typeof window.QRCode !== 'function') {
-        throw new Error('QRCode is not a constructor');
+    const qrCodeDiv = document.getElementById(`qrcode-${displayItem.id}`);
+    if (qrCodeDiv && displayItem.id !== 'N/A') { 
+      try {
+        if (typeof window.QRCode !== 'function') {
+          throw new Error('QRCode is not a constructor');
+        }
+        new window.QRCode(qrCodeDiv, {
+          text: displayItem.id,
+          width: 96,
+          height: 96,
+          colorDark: '#000000',
+          colorLight: '#ffffff',
+          correctLevel: window.QRCode.CorrectLevel.L
+        });
+      } catch (error) {
+        console.error('QR Code generation failed for ID', displayItem.id, ':', error);
+        qrCodeDiv.innerHTML = `<p class="text-red-500 dark:text-red-400 text-xs">QR Error</p>`;
       }
-      new window.QRCode(qrCodeDiv, {
-        text: item.id,
-        width: 96,
-        height: 96,
-        colorDark: '#000000',
-        colorLight: '#ffffff',
-        correctLevel: window.QRCode.CorrectLevel.L
-      });
-    } catch (error) {
-      console.error('QR Code generation failed for ID', item.id, ':', error);
-      qrCodeDiv.innerHTML = `<p class="text-red-500 dark:text-red-400">QR Code generation failed: ${error.message}</p>`;
+    } else if (qrCodeDiv) {
+        qrCodeDiv.innerHTML = `<p class="text-xs text-gray-400">No ID</p>`;
     }
   });
-  console.log('Inventory table updated, rows:', tableBody.children.length);
+  // console.log('Inventory table updated, rows:', tableBody.children.length); // Already logged above
   document.querySelectorAll('.editProductBtn').forEach(button => {
     button.addEventListener('click', () => editProduct(button.getAttribute('data-id')));
   });
@@ -745,37 +1064,51 @@ function updateInventoryTable(itemsToDisplay) {
 }
 
 async function updateToOrderTable() {
-  const snapshot = await db.collection('inventory').get();
-  const toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity);
+  let itemsToConsider = [];
+  if (isFiltered) {
+    itemsToConsider = inventory; // 'inventory' holds all filtered items
+  } else {
+    // When not filtered, 'To Order' should reflect all items in DB, not just current page
+    // This might be slow for very large DBs if not indexed properly for quantity <= minQuantity
+    // For now, fetching all. Consider optimizing if performance issues arise.
+    const snapshot = await db.collection('inventory').get();
+    itemsToConsider = snapshot.docs.map(doc => doc.data());
+  }
+  
+  const toOrderItems = itemsToConsider.filter(item => item.quantity <= item.minQuantity);
   const toOrderTable = document.getElementById('toOrderTable');
+  if (!toOrderTable) {
+    console.warn("toOrderTable element not found. Skipping update.");
+    return;
+  }
   toOrderTable.innerHTML = '';
 
   const reorderNotificationBar = document.getElementById('reorderNotificationBar');
-  if (toOrderItems.length > 0) {
-    reorderNotificationBar.textContent = `Products to reorder: ${toOrderItems.length}`;
-    reorderNotificationBar.classList.remove('hidden');
-  } else {
-    reorderNotificationBar.classList.add('hidden');
-    reorderNotificationBar.textContent = 'Products to reorder: 0'; // Reset text
+  if (reorderNotificationBar) {
+    if (toOrderItems.length > 0) {
+      reorderNotificationBar.textContent = `Products to reorder: ${toOrderItems.length}`;
+      reorderNotificationBar.classList.remove('hidden');
+    } else {
+      reorderNotificationBar.classList.add('hidden');
+      reorderNotificationBar.textContent = 'Products to reorder: 0'; 
+    }
   }
 
   toOrderItems.forEach(item => {
     const row = document.createElement('tr');
-    // Row background will be default (likely dark:bg-slate-800 from parent container), text inherited.
-    // Highlighted low-stock rows in the main inventory table are handled by `updateInventoryTable`.
-    // This table just lists items to order, so no special row.className needed here for dark mode beyond cell borders.
     row.innerHTML = `
-      <td class="border dark:border-slate-600 p-2 to-order-id-column hidden">${item.id}</td>
-      <td class="border dark:border-slate-600 p-2">${item.name}</td>
-      <td class="border dark:border-slate-600 p-2">${item.quantity}</td>
-      <td class="border dark:border-slate-600 p-2">${item.minQuantity}</td>
-      <td class="border dark:border-slate-600 p-2">${item.reorderQuantity || 0}</td>
-      <td class="border dark:border-slate-600 p-2">${item.supplier}</td>
-      <td class="border dark:border-slate-600 p-2">${item.quantityOrdered || 0}</td>
-      <td class="border dark:border-slate-600 p-2">${item.quantityBackordered || 0}</td>
+      <td class="border dark:border-slate-600 p-2 to-order-id-column hidden">${item.id || 'N/A'}</td>
+      <td class="border dark:border-slate-600 p-2">${item.name || 'N/A'}</td>
+      <td class="border dark:border-slate-600 p-2 text-center">${item.quantity}</td>
+      <td class="border dark:border-slate-600 p-2 text-center">${item.minQuantity}</td>
+      <td class="border dark:border-slate-600 p-2 text-center">${item.reorderQuantity || 0}</td>
+      <td class="border dark:border-slate-600 p-2">${item.supplier || 'N/A'}</td>
+      <td class="border dark:border-slate-600 p-2 text-center">${item.quantityOrdered || 0}</td>
+      <td class="border dark:border-slate-600 p-2 text-center">${item.quantityBackordered || 0}</td>
     `;
     toOrderTable.appendChild(row);
   });
+  console.log("To Order table updated with", toOrderItems.length, "items.");
 }
 
 // QR Code PDF Generation
@@ -1729,12 +2062,12 @@ async function updateInventoryDashboard() {
     }
 
     // Use existing global 'inventory' array if it's kept up-to-date.
-    // For this phase, we assume 'inventory' is reasonably current.
-    // If not, consider fetching fresh data or ensuring loadInventory() is called appropriately.
+    // Dashboard should reflect the current view context (filtered or unfiltered)
+    const itemsForDashboard = inventory; // 'inventory' holds all filtered items, or first page of unfiltered
 
-    const lowStockItems = inventory.filter(item => item.quantity <= item.minQuantity);
+    const lowStockItems = itemsForDashboard.filter(item => item.quantity <= item.minQuantity);
 
-    lowStockAlertsTableBody.innerHTML = ''; // Clear previous entries
+    lowStockAlertsTableBody.innerHTML = ''; 
 
     if (lowStockItems.length === 0) {
         const row = lowStockAlertsTableBody.insertRow();
@@ -1895,30 +2228,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     await ensureQRCodeIsAvailable(); // Wait for QRCode to be ready
     // Initialize parts of the app that depend on QRCode
-    // loadInventory will call applyAndRenderInventoryFilters, which calls updateInventoryTable
-    loadInventory(); 
+    await loadInventory(); // Initial load of data, including total count and first page
     
-    // Other initializations that don't depend on QRCode can be here or remain
-    loadSuppliers(); // This will also populate filterSupplier dropdown
-    loadLocations(); // This will also populate filterLocation dropdown
+    loadSuppliers(); 
+    loadLocations(); 
     addBatchEntry(); 
 
-    console.log('DOMContentLoaded: About to schedule collapsible section initialization.');
     // Setup collapsible sections
-    setTimeout(() => {
-        console.log('Initializing collapsible sections (after small delay)...');
-        // Forms expanded by default as per new requirement
-        setupCollapsibleSection('toggleProductFormBtn', 'productFormContent', true);
-        setupCollapsibleSection('toggleSupplierFormBtn', 'supplierFormContent', true);
-        setupCollapsibleSection('toggleLocationFormBtn', 'locationFormContent', true);
-        setupCollapsibleSection('toggleMoveProductFormBtn', 'moveProductFormContent', true);
-        setupCollapsibleSection('toggleUpdateProductFormBtn', 'updateProductFormContent', true); // Added this line
-        
-        // Tables expanded by default (remains true)
-        setupCollapsibleSection('toggleInventoryTableBtn', 'inventoryTableContent', true);
-        setupCollapsibleSection('toggleToOrderTableBtn', 'toOrderTableContainer', true);
-    }, 0);
-
+    setupCollapsibleSection('toggleProductFormBtn', 'productFormContent', true);
+    setupCollapsibleSection('toggleSupplierFormBtn', 'supplierFormContent', true);
+    setupCollapsibleSection('toggleLocationFormBtn', 'locationFormContent', true);
+    setupCollapsibleSection('toggleMoveProductFormBtn', 'moveProductFormContent', true);
+    setupCollapsibleSection('toggleUpdateProductFormBtn', 'updateProductFormContent', true);
+    setupCollapsibleSection('toggleInventoryTableBtn', 'inventoryTableContent', true);
+    setupCollapsibleSection('toggleToOrderTableBtn', 'toOrderTableContainer', true);
 
     // Event Listeners
     const darkModeToggle = document.getElementById('darkModeToggle');
@@ -1931,55 +2254,57 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       });
     }
-    // Bind other events (these are fine as they are user-triggered)
+    // Bind other events
     document.getElementById('addBatchEntryBtn').addEventListener('click', addBatchEntry);
-  document.getElementById('submitBatchUpdatesBtn').addEventListener('click', submitBatchUpdates);
-  document.getElementById('startUpdateScannerBtn').addEventListener('click', startUpdateScanner);
-  document.getElementById('stopUpdateScannerBtn').addEventListener('click', stopUpdateScanner);
-  document.getElementById('productSubmitBtn').addEventListener('click', submitProduct);
-  document.getElementById('capturePhotoBtn').addEventListener('click', startPhotoCapture);
-  document.getElementById('takePhotoBtn').addEventListener('click', takePhoto);
-  document.getElementById('cancelPhotoBtn').addEventListener('click', cancelPhoto);
-  document.getElementById('cancelEditBtn').addEventListener('click', resetProductForm);
-  document.getElementById('moveProductBtn').addEventListener('click', moveProduct);
-  document.getElementById('startMoveScannerBtn').addEventListener('click', startMoveScanner);
-  document.getElementById('stopMoveScannerBtn').addEventListener('click', stopMoveScanner);
-  document.getElementById('scanToEditBtn').addEventListener('click', startEditScanner);
-  document.getElementById('stopEditScannerBtn').addEventListener('click', stopEditScanner);
-  document.getElementById('addSupplierBtn').addEventListener('click', addSupplier);
-  const addLocationBtn = document.getElementById('addLocationBtn');
-  if (addLocationBtn) {
-    addLocationBtn.addEventListener('click', addLocation);
-  }
+    document.getElementById('submitBatchUpdatesBtn').addEventListener('click', submitBatchUpdates);
+    document.getElementById('startUpdateScannerBtn').addEventListener('click', startUpdateScanner);
+    document.getElementById('stopUpdateScannerBtn').addEventListener('click', stopUpdateScanner);
+    document.getElementById('productSubmitBtn').addEventListener('click', submitProduct);
+    document.getElementById('capturePhotoBtn').addEventListener('click', startPhotoCapture);
+    document.getElementById('takePhotoBtn').addEventListener('click', takePhoto);
+    document.getElementById('cancelPhotoBtn').addEventListener('click', cancelPhoto);
+    document.getElementById('cancelEditBtn').addEventListener('click', resetProductForm);
+    document.getElementById('moveProductBtn').addEventListener('click', moveProduct);
+    document.getElementById('startMoveScannerBtn').addEventListener('click', startMoveScanner);
+    document.getElementById('stopMoveScannerBtn').addEventListener('click', stopMoveScanner);
+    document.getElementById('scanToEditBtn').addEventListener('click', startEditScanner);
+    document.getElementById('stopEditScannerBtn').addEventListener('click', stopEditScanner);
+    document.getElementById('addSupplierBtn').addEventListener('click', addSupplier);
+    const addLocationBtn = document.getElementById('addLocationBtn');
+    if (addLocationBtn) {
+      addLocationBtn.addEventListener('click', addLocation);
+    }
 
-  // Inventory Filter Event Listeners
-  const filterSupplierEl = document.getElementById('filterSupplier');
-  const filterLocationEl = document.getElementById('filterLocation');
-  const clearInventoryFiltersBtnEl = document.getElementById('clearInventoryFiltersBtn');
-  const inventorySearchInputEl = document.getElementById('inventorySearchInput');
+    // Inventory Filter Event Listeners
+    const filterSupplierEl = document.getElementById('filterSupplier');
+    const filterLocationEl = document.getElementById('filterLocation');
+    const clearInventoryFiltersBtnEl = document.getElementById('clearInventoryFiltersBtn');
+    const inventorySearchInputEl = document.getElementById('inventorySearchInput');
 
-  if (filterSupplierEl) {
-    filterSupplierEl.addEventListener('change', applyAndRenderInventoryFilters);
-  }
-  if (filterLocationEl) {
-    filterLocationEl.addEventListener('change', applyAndRenderInventoryFilters);
-  }
-  if (inventorySearchInputEl) {
-    inventorySearchInputEl.addEventListener('input', applyAndRenderInventoryFilters);
-  }
-  if (clearInventoryFiltersBtnEl) {
-    clearInventoryFiltersBtnEl.addEventListener('click', () => {
-      if (filterSupplierEl) filterSupplierEl.value = '';
-      if (filterLocationEl) filterLocationEl.value = '';
-      if (inventorySearchInputEl) inventorySearchInputEl.value = '';
-      applyAndRenderInventoryFilters();
-    });
-  }
-  
-  document.getElementById('generateOrderReportBtn').addEventListener('click', generateOrderReport);
-  document.getElementById('emailOrderReportBtn').addEventListener('click', emailOrderReport);
+    if (filterSupplierEl) {
+      filterSupplierEl.addEventListener('change', applyAndRenderInventoryFilters);
+    }
+    if (filterLocationEl) {
+      filterLocationEl.addEventListener('change', applyAndRenderInventoryFilters);
+    }
+    if (inventorySearchInputEl) {
+      inventorySearchInputEl.addEventListener('input', applyAndRenderInventoryFilters);
+    }
+    if (clearInventoryFiltersBtnEl) {
+      clearInventoryFiltersBtnEl.addEventListener('click', () => {
+        if (filterSupplierEl) filterSupplierEl.value = '';
+        if (filterLocationEl) filterLocationEl.value = '';
+        if (inventorySearchInputEl) inventorySearchInputEl.value = '';
+        applyAndRenderInventoryFilters(); // This will call loadInventory() if all filters are cleared
+      });
+    }
+    
+    // Note: Specific pagination button listeners are added dynamically in renderPaginationControls()
 
-  const qrCodePDFBtn = document.getElementById('generateQRCodePDFBtn');
+    document.getElementById('generateOrderReportBtn').addEventListener('click', generateOrderReport);
+    document.getElementById('emailOrderReportBtn').addEventListener('click', emailOrderReport);
+
+    const qrCodePDFBtn = document.getElementById('generateQRCodePDFBtn');
   if (qrCodePDFBtn) {
     qrCodePDFBtn.addEventListener('click', generateQRCodePDF);
   } else {
