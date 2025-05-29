@@ -8,6 +8,7 @@ let locations = []; // Added for location management
 let batchUpdates = [];
 let db; // Declare db globally
 let storage; // Declare storage globally
+let originalPhotoUrlForEdit = ''; // Stores the original photo URL when editing a product
 
 // Dark Mode Toggle Functionality
 const userPreference = localStorage.getItem('darkMode');
@@ -457,23 +458,38 @@ async function submitProduct() {
   const reorderQuantity = parseInt(document.getElementById('productReorderQuantity').value) || 0;
   const supplier = document.getElementById('productSupplier').value;
   const location = document.getElementById('productLocation').value;
-  const photoData = document.getElementById('productPhotoPreview').src;
+  const currentPhotoSrc = document.getElementById('productPhotoPreview').src;
 
   if (name && quantity >= 0 && cost >= 0 && minQuantity >= 0 && supplier && location) {
     try {
-      const photoUrl = await uploadPhoto(id, photoData);
-      await db.collection('inventory').doc(id).set({ 
-        id, 
-        name, 
+      let photoUrlToSave;
+      const productIdValue = document.getElementById('productId').value; // Check if it's an edit
+
+      if (currentPhotoSrc.startsWith('data:image')) { // New photo taken/selected
+        photoUrlToSave = await uploadPhoto(id, currentPhotoSrc);
+      } else if (productIdValue && currentPhotoSrc === originalPhotoUrlForEdit) { // Editing and photo hasn't changed from original
+        photoUrlToSave = originalPhotoUrlForEdit;
+      } else if (!currentPhotoSrc) { // Photo preview is empty (photo removed or never added)
+        photoUrlToSave = ''; 
+      } else {
+        // Fallback: if currentPhotoSrc is some other URL (e.g. user pasted one, or it's an old product with a URL not matching originalPhotoUrlForEdit)
+        // This will attempt to "upload" it. uploadPhoto should ideally handle http URLs gracefully or this might fail if it's not a valid data URL.
+        // For the specific bug, the conditions above are the most important.
+        photoUrlToSave = await uploadPhoto(id, currentPhotoSrc);
+      }
+
+      await db.collection('inventory').doc(id).set({
+        id,
+        name,
         quantity, 
         cost, 
         minQuantity,
         quantityOrdered,
         quantityBackordered,
         reorderQuantity,
-        supplier, 
-        location, 
-        photo: photoUrl 
+        supplier,
+        location,
+        photo: photoUrlToSave
       });
       resetProductForm();
       await loadInventory(); // loadInventory now calls updateToOrderTable internally
@@ -501,8 +517,11 @@ async function editProduct(id) {
     document.getElementById('productSupplier').value = product.supplier;
     document.getElementById('productLocation').value = product.location;
     if (product.photo) {
+      originalPhotoUrlForEdit = product.photo; // Store original photo URL
       document.getElementById('productPhotoPreview').src = product.photo;
       document.getElementById('productPhotoPreview').classList.remove('hidden');
+    } else {
+      originalPhotoUrlForEdit = ''; // Clear if no photo
     }
     document.getElementById('toggleProductFormBtn').textContent = 'Edit Product'; // Updated ID
     document.getElementById('productSubmitBtn').textContent = 'Update Product';
@@ -523,6 +542,7 @@ function resetProductForm() {
   document.getElementById('productLocation').value = 'Surgery 1';
   document.getElementById('productPhotoPreview').src = '';
   document.getElementById('productPhotoPreview').classList.add('hidden');
+  originalPhotoUrlForEdit = ''; // Clear stored original photo URL
   document.getElementById('toggleProductFormBtn').textContent = 'Add New Product'; // Updated ID
   document.getElementById('productSubmitBtn').textContent = 'Add Product';
   document.getElementById('cancelEditBtn').classList.add('hidden');
