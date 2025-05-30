@@ -597,25 +597,13 @@ function addBatchEntry() {
       if ((event.key === 'Enter' || event.keyCode === 13) && productIdInput.value.trim() !== '') {
         event.preventDefault();
         stopUpdateScanner(); // Stop camera if active
-        console.log('Enter key processed for batch ID ' + entryId + '. Value:', event.target.value);
-        const quantityInput = document.getElementById(`${entryId}-quantity`);
-        if (quantityInput) {
-          quantityInput.focus(); // Move focus to the quantity field
-        }
-      }
-    });
-  }
-
-  const quantityInput = document.getElementById(`${entryId}-quantity`);
-  if (quantityInput) {
-    quantityInput.addEventListener('keypress', function(event) {
-      if (event.key === 'Enter' || event.keyCode === 13) {
-        event.preventDefault();
-        console.log('Enter pressed in quantity field for ' + entryId + '. Adding new batch entry.');
+        console.log('Enter in batch Product ID ' + entryId + '. Value: ' + productIdInput.value + '. Adding new row.');
         addBatchEntry(); // Add a new row and focus its ID field
       }
     });
   }
+
+  // The keypress listener for quantityInput has been removed as per the requirement.
 
   document.querySelectorAll('.removeBatchEntryBtn').forEach(button => {
     button.addEventListener('click', () => removeBatchEntry(button.getAttribute('data-entry-id')));
