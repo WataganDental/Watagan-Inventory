@@ -1,5 +1,9 @@
 const SIDEBAR_STATE_KEY = 'sidebarMinimized';
 
+// Global variables for edit scan mode
+let isEditScanModeActive = false;
+let editScanInputBuffer = "";
+
 let stream = null;
 let photoStream = null;
 let inventory = [];
@@ -584,6 +588,24 @@ function addBatchEntry() {
   `;
   batchUpdatesDiv.appendChild(entryDiv);
   batchUpdates.push(entryId);
+
+  const productIdInput = document.getElementById(`${entryId}-id`);
+  if (productIdInput) {
+    productIdInput.focus(); // Focus the new product ID input
+
+    productIdInput.addEventListener('keypress', function(event) {
+      if ((event.key === 'Enter' || event.keyCode === 13) && productIdInput.value.trim() !== '') {
+        event.preventDefault();
+        stopUpdateScanner(); // Stop camera if active
+        console.log('Enter key processed for batch ID ' + entryId + '. Value:', event.target.value);
+        const quantityInput = document.getElementById(`${entryId}-quantity`);
+        if (quantityInput) {
+          quantityInput.focus(); // Move focus to the quantity field
+        }
+      }
+    });
+  }
+
   document.querySelectorAll('.removeBatchEntryBtn').forEach(button => {
     button.addEventListener('click', () => removeBatchEntry(button.getAttribute('data-entry-id')));
   });
@@ -1450,6 +1472,7 @@ async function emailOrderReport() {
 
 // Barcode Scanning
 async function startMoveScanner() {
+  document.getElementById('moveProductId').focus(); // Focus the input field
   if (typeof jsQR === 'undefined' && typeof window.jsQR === 'undefined') {
     console.error('jsQR library not found.');
     alert('QR code scanning library (jsQR) is not available. Please check the console for errors.');
@@ -1515,6 +1538,7 @@ async function startMoveScanner() {
 }
 
 function stopMoveScanner() {
+  console.log('stopMoveScanner called. Stream and UI cleanup executed.');
   // Cancel the animation frame loop using the stored ID
   if (window.moveScannerAnimationFrameId) {
     cancelAnimationFrame(window.moveScannerAnimationFrameId);
@@ -1538,6 +1562,20 @@ function stopMoveScanner() {
 }
 
 async function startUpdateScanner() {
+  // Ensure there's an entry to work with and focus its ID field
+  if (batchUpdates.length === 0) {
+    addBatchEntry(); // This will also focus the new entry's ID field
+  } else {
+    const lastEntryArrayId = batchUpdates[batchUpdates.length - 1];
+    const lastProductIdInput = document.getElementById(`${lastEntryArrayId}-id`);
+    if (lastProductIdInput) {
+      lastProductIdInput.focus();
+    } else {
+      // If the last input doesn't exist for some reason, add a new entry
+      addBatchEntry();
+    }
+  }
+
   if (typeof jsQR === 'undefined' && typeof window.jsQR === 'undefined') {
     console.error('jsQR library not found.');
     alert('QR code scanning library (jsQR) is not available. Please check the console for errors.');
@@ -1567,30 +1605,34 @@ async function startUpdateScanner() {
         inversionAttempts: 'dontInvert',
       });
 
-      if (code) {
+      if (code && code.data) {
         document.getElementById('updateScanResult').textContent = `Scanned Code: ${code.data}`;
         
-        // Call addBatchEntry() first. It internally modifies `batchUpdates` array 
-        // and sets up the HTML structure. The new entry's ID will be based on the new length.
-        addBatchEntry(); 
-        
-        // `addBatchEntry` creates an ID like `batch-${batchUpdates.length}` *before* pushing the new ID to batchUpdates.
-        // So, after `addBatchEntry` has run and `batchUpdates.push(entryId)` has happened,
-        // the ID of the input field for the *just added* entry is `batch-${batchUpdates[batchUpdates.length - 1]}-id`.
-        // However, `addBatchEntry` internally generates `entryId = batch-${batchUpdates.length}` (old length).
-        // Let's re-check addBatchEntry logic.
-        // `const entryId = batch-${batchUpdates.length};` then `batchUpdates.push(entryId);`
-        // So the ID for the input is indeed `batch-${batchUpdates.length -1}-id` if we refer to the array *after* push.
-        // Or, more robustly, get the ID that `addBatchEntry` *just created*.
-        // The `addBatchEntry` function creates an input with ID like `${entryId}-id`.
-        // `batchUpdates` stores `entryId`. So the last one is `batchUpdates[batchUpdates.length - 1]`.
-        // The input field ID is `batchUpdates[batchUpdates.length - 1] + '-id'`.
-        const lastEntryArrayId = batchUpdates[batchUpdates.length - 1]; // This is something like "batch-0", "batch-1"
-        const targetInputId = `${lastEntryArrayId}-id`; // This constructs "batch-0-id", "batch-1-id" etc.
-        document.getElementById(targetInputId).value = code.data;
+        // Populate the ID field of the last batch entry (which should be focused or just added)
+        if (batchUpdates.length > 0) {
+          const lastEntryArrayId = batchUpdates[batchUpdates.length - 1];
+          const targetInputId = `${lastEntryArrayId}-id`;
+          const targetInput = document.getElementById(targetInputId);
+          if (targetInput) {
+            targetInput.value = code.data;
+            // Move focus to the quantity field of the same entry
+            const quantityInput = document.getElementById(`${lastEntryArrayId}-quantity`);
+            if (quantityInput) {
+              quantityInput.focus();
+            }
+          } else {
+            console.warn(`Target input ${targetInputId} not found for scanned QR code.`);
+            // Fallback: if the target input wasn't found, maybe add a new entry with this code
+            // addBatchEntry(); // This will create a new row
+            // const newLastEntryArrayId = batchUpdates[batchUpdates.length - 1];
+            // document.getElementById(`${newLastEntryArrayId}-id`).value = code.data;
+            // document.getElementById(`${newLastEntryArrayId}-quantity`).focus();
+          }
+        }
         
         stopUpdateScanner(); // Clean up and stop the loop
       } else {
+        // If no code is found, continue the loop
         animationFrameId = requestAnimationFrame(scanUpdateQR);
       }
     } else {
@@ -1616,6 +1658,7 @@ async function startUpdateScanner() {
 }
 
 function stopUpdateScanner() {
+  console.log('stopUpdateScanner called. Stream and UI cleanup executed.');
   if (window.updateScannerAnimationFrameId) {
     cancelAnimationFrame(window.updateScannerAnimationFrameId);
     window.updateScannerAnimationFrameId = null;
@@ -1780,6 +1823,12 @@ async function updateInventoryDashboard() {
 }
 
 async function startEditScanner() {
+  isEditScanModeActive = true;
+  editScanInputBuffer = "";
+  console.log('Edit scan mode activated, listening for barcode scanner.');
+  const scanResultP = document.getElementById('editScanResult');
+  if (scanResultP) scanResultP.textContent = 'Scanning with camera OR use barcode scanner...';
+
   console.log('[EditScanner] Starting startEditScanner...');
   if (typeof jsQR === 'undefined' && typeof window.jsQR === 'undefined') {
     console.error('jsQR library not found.');
@@ -1871,6 +1920,12 @@ async function startEditScanner() {
 }
 
 function stopEditScanner() {
+  if (isEditScanModeActive) {
+    isEditScanModeActive = false;
+    editScanInputBuffer = "";
+    console.log('Edit scan mode deactivated.');
+  }
+
   if (window.editScannerAnimationFrameId) {
     cancelAnimationFrame(window.editScannerAnimationFrameId);
     window.editScannerAnimationFrameId = null;
@@ -1967,6 +2022,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('scanToEditBtn').addEventListener('click', startEditScanner);
   document.getElementById('stopEditScannerBtn').addEventListener('click', stopEditScanner);
   document.getElementById('addSupplierBtn').addEventListener('click', addSupplier);
+
+  // Handle "Enter" key in moveProductId input field
+  const moveProductIdInput = document.getElementById('moveProductId');
+  if (moveProductIdInput) {
+    moveProductIdInput.addEventListener('keypress', function(event) {
+      if ((event.key === 'Enter' || event.keyCode === 13) && moveProductIdInput.value.trim() !== '') {
+        event.preventDefault(); // Prevent default form submission
+        const currentVal = moveProductIdInput.value; // Capture value before stopMoveScanner might clear it indirectly
+        stopMoveScanner(); // Stop camera if active
+        console.log('Enter key processed for moveProductId. Value:', currentVal);
+        // The existing moveProduct() function will be called by the user clicking the "Move Product" button
+        // or could be called here if direct submission on Enter is desired.
+        // For now, just stopping scanner and logging. User still needs to click "Move Product".
+      }
+    });
+  }
+
   const addLocationBtn = document.getElementById('addLocationBtn');
   if (addLocationBtn) {
     addLocationBtn.addEventListener('click', addLocation);
@@ -2175,6 +2247,35 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
   }
   // --- END NEW NAVIGATION LOGIC ---
+
+  // Global keypress listener for barcode scanner input during edit mode
+  document.addEventListener('keypress', (event) => {
+    if (!isEditScanModeActive) {
+      return;
+    }
+
+    // Prevent default action if we are in edit scan mode and capturing input
+    // This stops the character from appearing in any focused input field.
+    event.preventDefault();
+
+    if (event.key === 'Enter' || event.keyCode === 13) {
+      if (editScanInputBuffer.trim() !== '') {
+        const scannedId = editScanInputBuffer.trim();
+        console.log('Enter key processed by global listener for editScan. Buffer:', scannedId);
+        editProduct(scannedId); // This function should populate the form
+
+        // stopEditScanner() is crucial here to reset mode, UI, and buffer.
+        // The camera scan path (scanEditQR) calls editProduct then stopEditScanner.
+        // We must do the same for the barcode scanner path.
+        stopEditScanner(); 
+      }
+      editScanInputBuffer = ""; // Reset buffer after Enter, even if it was empty
+    } else {
+      // Append other characters to buffer.
+      // Barcode scanners usually send characters one by one, like keyboard input.
+      editScanInputBuffer += event.key;
+    }
+  });
 
   } catch (error) {
     console.error('Initialization failed:', error);
