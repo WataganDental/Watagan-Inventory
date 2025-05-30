@@ -1856,7 +1856,7 @@ async function startEditScanner() {
   const video = document.getElementById('editVideo');
   const stopBtn = document.getElementById('stopEditScannerBtn');
   const startBtn = document.getElementById('scanToEditBtn');
-  const scanResultP = document.getElementById('editScanResult');
+  // scanResultP is already declared at the beginning of the function.
   console.log('[EditScanner] DOM elements obtained:', { video, stopBtn, startBtn, scanResultP });
 
   // Dynamically create canvas, it's not in HTML for this scanner
