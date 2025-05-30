@@ -605,15 +605,25 @@ function addBatchEntry() {
 
   // The keypress listener for quantityInput has been removed as per the requirement.
 
-  document.querySelectorAll('.removeBatchEntryBtn').forEach(button => {
-    button.addEventListener('click', () => removeBatchEntry(button.getAttribute('data-entry-id')));
-  });
+  // Attach listener to the new remove button directly
+  const newRemoveButton = entryDiv.querySelector('.removeBatchEntryBtn');
+  if (newRemoveButton) {
+      newRemoveButton.addEventListener('click', () => {
+          removeBatchEntry(newRemoveButton.getAttribute('data-entry-id'));
+      });
+  }
+
+  // The old loop for attaching listeners to all remove buttons has been removed.
 }
 
 function removeBatchEntry(entryId) {
-  const entryDiv = document.getElementById('batchUpdates').querySelector(`[id="${entryId}-id"]`).parentElement;
-  entryDiv.remove();
-  batchUpdates = batchUpdates.filter(id => id !== entryId);
+  const idInput = document.getElementById('batchUpdates').querySelector(`[id="${entryId}-id"]`);
+  if (idInput && idInput.parentElement) {
+      idInput.parentElement.remove();
+      batchUpdates = batchUpdates.filter(id => id !== entryId);
+  } else {
+      console.error(`Could not find element or its parent to remove for entryId: ${entryId}. idInput found: ${!!idInput}`);
+  }
 }
 
 async function submitBatchUpdates() {
