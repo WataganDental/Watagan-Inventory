@@ -14,6 +14,11 @@ let db; // Declare db globally
 let storage; // Declare storage globally
 let originalPhotoUrlForEdit = ''; // Stores the original photo URL when editing a product
 
+// Modal DOM element variables (module-scoped)
+let imageModal = null;
+let modalImage = null;
+let closeImageModalBtn = null;
+
 // Dark Mode Toggle Functionality
 const userPreference = localStorage.getItem('darkMode');
 const systemPreference = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -758,7 +763,7 @@ function updateInventoryTable(itemsToDisplay) {
       <td class="border dark:border-slate-600 p-2">${item.location}</td>
       <td class="border dark:border-slate-600 p-2">${item.quantityOrdered || 0}</td>
       <td class="border dark:border-slate-600 p-2">${item.quantityBackordered || 0}</td>
-      <td class="border dark:border-slate-600 p-2">${item.photo ? `<img src="${item.photo}" class="w-16 h-16 object-cover mx-auto" alt="Product Photo">` : 'No Photo'}</td>
+      <td class="border dark:border-slate-600 p-2">${item.photo ? `<img src="${item.photo}" alt="Product Photo: ${item.name}" class="w-16 h-16 object-cover mx-auto cursor-pointer inventory-photo-thumbnail">` : 'No Photo'}</td>
       <td class="border dark:border-slate-600 p-2"><div id="qrcode-${item.id}" class="mx-auto w-24 h-24"></div></td>
       <td class="border dark:border-slate-600 p-2">
         <button data-id="${item.id}" class="editProductBtn text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 mr-2">Edit</button>
@@ -766,6 +771,23 @@ function updateInventoryTable(itemsToDisplay) {
       </td>
     `;
     tableBody.appendChild(row);
+
+    // Event listener for image thumbnail click
+    if (item.photo) {
+      const thumbnailImg = row.querySelector('.inventory-photo-thumbnail');
+      if (thumbnailImg) {
+        thumbnailImg.addEventListener('click', () => {
+          // These modal elements are expected to be globally available (defined in DOMContentLoaded)
+          if (imageModal && modalImage) { 
+            modalImage.src = item.photo;
+            imageModal.classList.remove('hidden');
+            console.log('Opening image modal for:', item.photo);
+          } else {
+            console.error('Modal elements not available for image click.');
+          }
+        });
+      }
+    }
 
     const qrCodeDiv = document.getElementById(`qrcode-${item.id}`);
     try {
@@ -1969,6 +1991,53 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initialize Sidebar State on Load
   let initialSidebarMinimized = localStorage.getItem(SIDEBAR_STATE_KEY) === 'true';
   applySidebarState(initialSidebarMinimized);
+
+  // Assign Modal DOM Elements to module-scoped variables
+  imageModal = document.getElementById('imageModal');
+  modalImage = document.getElementById('modalImage');
+  closeImageModalBtn = document.getElementById('closeImageModalBtn');
+
+  if (imageModal && modalImage && closeImageModalBtn) {
+      // Listener for the close button
+      closeImageModalBtn.addEventListener('click', () => {
+          imageModal.classList.add('hidden');
+          modalImage.src = ''; // Clear the image src when modal is closed
+      });
+
+      // Listener for clicking on the modal overlay (to close it)
+      imageModal.addEventListener('click', (event) => {
+          // If the click is directly on the imageModal (the overlay)
+          // and not on any of its children (like the image content area)
+          if (event.target === imageModal) {
+              imageModal.classList.add('hidden');
+              modalImage.src = ''; // Clear the image src
+          }
+      });
+  } else {
+      console.error('Image modal HTML elements not all found. Enlarging images may not work.');
+  }
+
+  // Make Product Form Preview Image Clickable
+  const productPhotoPreviewImg = document.getElementById('productPhotoPreview');
+  if (productPhotoPreviewImg) {
+    productPhotoPreviewImg.addEventListener('click', () => {
+      if (productPhotoPreviewImg.src && 
+          !productPhotoPreviewImg.src.endsWith('#') && // Check for placeholder/empty src
+          !productPhotoPreviewImg.classList.contains('hidden') && // Check if image is visible
+          productPhotoPreviewImg.src !== window.location.href) { // Check if src is not just the page URL
+
+        if (imageModal && modalImage) {
+          modalImage.src = productPhotoPreviewImg.src;
+          imageModal.classList.remove('hidden');
+          console.log('Opening image modal for product form preview:', productPhotoPreviewImg.src);
+        } else {
+          console.error('Modal elements not available for product form image click.');
+        }
+      } else {
+        console.log('Product photo preview clicked, but no valid image src to enlarge or image is hidden.');
+      }
+    });
+  }
 
   // Add Event Listener for the Toggle Button
   const sidebarToggleBtnEl = document.getElementById('sidebarToggleBtn');
