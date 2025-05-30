@@ -606,6 +606,17 @@ function addBatchEntry() {
     });
   }
 
+  const quantityInput = document.getElementById(`${entryId}-quantity`);
+  if (quantityInput) {
+    quantityInput.addEventListener('keypress', function(event) {
+      if (event.key === 'Enter' || event.keyCode === 13) {
+        event.preventDefault();
+        console.log('Enter pressed in quantity field for ' + entryId + '. Adding new batch entry.');
+        addBatchEntry(); // Add a new row and focus its ID field
+      }
+    });
+  }
+
   document.querySelectorAll('.removeBatchEntryBtn').forEach(button => {
     button.addEventListener('click', () => removeBatchEntry(button.getAttribute('data-entry-id')));
   });
