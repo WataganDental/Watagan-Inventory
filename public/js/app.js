@@ -299,6 +299,133 @@ async function startQuickStockUpdateScanner() {
 
 // END OF FUNCTIONS TO ADD
 
+function debounce(func, delay) {
+  let timeout;
+  return function(...args) {
+    const context = this;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), delay);
+  };
+}
+
+function displaySearchResults(products) {
+  const resultsContainer = document.getElementById('productSearchResults');
+  resultsContainer.innerHTML = ''; // Clear previous results
+
+  if (products.length === 0) {
+    resultsContainer.innerHTML = '<p class="p-2 text-gray-500 dark:text-gray-400">No products found.</p>';
+    return;
+  }
+
+  products.forEach(product => {
+    const resultItem = document.createElement('div');
+    resultItem.className = 'p-2 hover:bg-gray-100 dark:hover:bg-slate-600 cursor-pointer border-b dark:border-slate-500';
+    resultItem.textContent = `${product.name} (Qty: ${product.quantity}, ID: ${product.id})`; // Display some info
+    resultItem.addEventListener('click', () => {
+      handleProductSelection(product); // This function will be created in the next plan step
+      resultsContainer.innerHTML = ''; // Clear results after selection
+      document.getElementById('interactiveProductSearch').value = product.name; // Fill search bar with selected name
+    });
+    resultsContainer.appendChild(resultItem);
+  });
+}
+
+async function handleProductSearch(searchTerm) {
+  const resultsContainer = document.getElementById('productSearchResults');
+  if (!searchTerm.trim()) {
+    resultsContainer.innerHTML = '';
+    return;
+  }
+
+  console.log(`Searching for: ${searchTerm}`);
+  resultsContainer.innerHTML = '<p class="p-2 text-gray-500 dark:text-gray-400">Searching...</p>';
+
+  try {
+    // Assumption: 'name_lowercase' field exists for case-insensitive prefix search.
+    // If not, this query needs adjustment or search will be case-sensitive on 'name'.
+    const searchTermLower = searchTerm.toLowerCase();
+    const productsRef = db.collection('inventory');
+    const snapshot = await productsRef
+      .where('name_lowercase', '>=', searchTermLower)
+      .where('name_lowercase', '<=', searchTermLower + '\uf8ff')
+      .limit(10)
+      .get();
+
+    const products = [];
+    snapshot.forEach(doc => {
+      products.push({ id: doc.id, ...doc.data() });
+    });
+
+    displaySearchResults(products);
+
+  } catch (error) {
+    console.error('Error searching products:', error);
+    resultsContainer.innerHTML = '<p class="p-2 text-red-500 dark:text-red-400">Error during search.</p>';
+  }
+}
+
+function handleProductSelection(product) {
+  console.log('Product selected for QR display and action:', product);
+  currentScannedProductId = product.id; // Store the selected product's ID
+
+  const qrDisplayContainer = document.getElementById('searchedProductQRDisplay');
+  const feedbackElem = document.getElementById('quickStockUpdateFeedback');
+  const productSearchInput = document.getElementById('interactiveProductSearch');
+  const searchResultsContainer = document.getElementById('productSearchResults');
+
+
+  // Clear previous QR code and set placeholder text
+  qrDisplayContainer.innerHTML = ''; // Clear previous QR
+  const placeholderText = document.createElement('span');
+  placeholderText.className = 'text-xs text-gray-400 dark:text-gray-300';
+
+  if (!product || !product.id) {
+    placeholderText.textContent = 'Error: Invalid product selected.';
+    qrDisplayContainer.appendChild(placeholderText);
+    if(feedbackElem) feedbackElem.textContent = "Error selecting product. Please try again.";
+    return;
+  }
+
+  placeholderText.textContent = `QR for ${product.name}`; // Will be replaced by QR code
+  qrDisplayContainer.appendChild(placeholderText);
+
+
+  // Generate new QR code for the selected product's ID
+  try {
+    new QRCode(qrDisplayContainer, { // Target the container directly
+      text: product.id,
+      width: 128, // e.g., 128x128, slightly larger than action QRs
+      height: 128,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H // High correction for product ID
+    });
+    // QRCode.js replaces the content of qrDisplayContainer, so placeholder is gone.
+  } catch (e) {
+    console.error('Error generating product QR code:', e);
+    qrDisplayContainer.innerHTML = '<span class="text-xs text-red-500">QR Error</span>'; // Show error in QR box
+  }
+
+  if (feedbackElem) {
+    feedbackElem.textContent = `Product '${product.name}' selected. Scan an Action QR with camera.`;
+  }
+
+  // Update state for action scanning
+  quickScanState = 'WAITING_FOR_ACTION';
+  isQuickStockBarcodeActive = false; // Expecting camera scan for action
+  quickStockBarcodeBuffer = "";    // Clear barcode buffer
+
+  // Clear search input and results
+  if(productSearchInput) productSearchInput.value = product.name; // Keep name in search for context
+  if(searchResultsContainer) searchResultsContainer.innerHTML = '';
+
+  // The user will now need to use the camera (potentially by clicking "Start Camera for Action")
+  // to scan one of the physical Action QR codes.
+  // The `startQuickStockScannerBtn`'s existing event listener for `startQuickStockUpdateScanner`
+  // will handle initializing the camera for scanning the action.
+  // `startQuickStockUpdateScanner` should already correctly handle being in 'WAITING_FOR_ACTION' state.
+}
+
 // Modal DOM element variables (module-scoped)
 let imageModal = null;
 let modalImage = null;
@@ -2783,6 +2910,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // The switchQuickUpdateTab function was also added previously.
   // --- END QUICK STOCK UPDATE SCANNER FUNCTIONS ---
 
+  // Event listener for interactive product search
+  const productSearchInput = document.getElementById('interactiveProductSearch');
+  if (productSearchInput) {
+    const debouncedSearchHandler = debounce(async () => {
+      await handleProductSearch(productSearchInput.value);
+    }, 400); // 400ms debounce delay
+    productSearchInput.addEventListener('input', debouncedSearchHandler);
+  }
 
   // Global keypress listener for barcode scanner input (both edit mode and quick stock)
   document.addEventListener('keypress', (event) => {
