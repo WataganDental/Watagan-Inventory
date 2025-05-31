@@ -20,6 +20,8 @@ let quickScanState = 'IDLE'; // States: IDLE, WAITING_FOR_PRODUCT, WAITING_FOR_A
 let quickStockUpdateStream = null;
 let quickStockUpdateCanvas = null; // For jsQR
 let quickStockUpdateAnimationFrameId = null;
+let quickStockBarcodeBuffer = "";
+let isQuickStockBarcodeActive = false;
 
 // Modal DOM element variables (module-scoped)
 let imageModal = null;
@@ -2128,14 +2130,35 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('stopEditScannerBtn').addEventListener('click', stopEditScanner);
   document.getElementById('addSupplierBtn').addEventListener('click', addSupplier);
 
-  // Quick Stock Update Button Listeners
-  const startQuickStockScannerBtn = document.getElementById('startQuickStockScannerBtn');
-  if (startQuickStockScannerBtn) {
-    startQuickStockScannerBtn.addEventListener('click', startQuickStockUpdateScanner);
+  // Quick Stock Update Button Listeners (Camera for Quick Scan Tab)
+  const startQuickStockCameraBtn = document.getElementById('startQuickStockScannerBtn'); // ID from HTML for this button
+  if (startQuickStockCameraBtn) {
+    startQuickStockCameraBtn.addEventListener('click', startQuickStockUpdateScanner);
   }
-  const stopQuickStockScannerBtn = document.getElementById('stopQuickStockScannerBtn');
-  if (stopQuickStockScannerBtn) {
-    stopQuickStockScannerBtn.addEventListener('click', stopQuickStockUpdateScanner);
+  const stopQuickStockCameraBtn = document.getElementById('stopQuickStockScannerBtn'); // ID from HTML for this button
+  if (stopQuickStockCameraBtn) {
+    stopQuickStockCameraBtn.addEventListener('click', stopQuickStockUpdateScanner);
+  }
+
+  // Batch Update Scanner Buttons (Manual Batch Tab - these use the original start/stopUpdateScanner functions)
+  // Note: Their IDs are startUpdateScannerBtn and stopUpdateScannerBtn as per original HTML for batch section
+  const startBatchScannerBtn = document.getElementById('startUpdateScannerBtn');
+  if (startBatchScannerBtn) {
+    startBatchScannerBtn.addEventListener('click', startUpdateScanner); // Original function for batch scanner
+  }
+  const stopBatchScannerBtn = document.getElementById('stopUpdateScannerBtn');
+  if (stopBatchScannerBtn) {
+    stopBatchScannerBtn.addEventListener('click', stopUpdateScanner); // Original function for batch scanner
+  }
+
+  // Tab Button Event Listeners for Quick Stock Update & Batch Entry Section
+  const quickScanModeTabBtn = document.getElementById('quickScanModeTab');
+  if (quickScanModeTabBtn) {
+    quickScanModeTabBtn.addEventListener('click', () => switchQuickUpdateTab('quickScanModeTab'));
+  }
+  const manualBatchModeTabBtn = document.getElementById('manualBatchModeTab');
+  if (manualBatchModeTabBtn) {
+    manualBatchModeTabBtn.addEventListener('click', () => switchQuickUpdateTab('manualBatchModeTab'));
   }
 
   // Handle "Enter" key in moveProductId input field
@@ -2317,10 +2340,23 @@ document.addEventListener('DOMContentLoaded', async () => {
               container.classList.remove('hidden');
               viewFound = true;
               console.log(`Showing: ${container.id}`);
+              if (container.id === 'quickStockUpdateContainer') {
+                // Default to Quick Scan tab when the main section is shown
+                switchQuickUpdateTab('quickScanModeTab');
+                // isQuickStockBarcodeActive and initial feedback for quickScanModeTab are now handled by switchQuickUpdateTab
+                // However, we still need to set isQuickStockBarcodeActive = true here for the global keypress listener
+                // if the user *doesn't* click the tab but barcode scans immediately.
+                // The feedback text is also set in switchQuickUpdateTab.
+                isQuickStockBarcodeActive = true;
+              }
           } else {
-              // If hiding the Quick Stock Update container, ensure its scanner is stopped
-              if (container.id === 'quickStockUpdateContainer' && quickScanState !== 'IDLE') {
-                  stopQuickStockUpdateScanner();
+              // If hiding the Quick Stock Update container, ensure its scanner is stopped and barcode input is deactivated
+              if (container.id === 'quickStockUpdateContainer') {
+                  isQuickStockBarcodeActive = false;
+                  quickStockBarcodeBuffer = ""; // Clear buffer when navigating away
+                  if (quickScanState !== 'IDLE') {
+                    stopQuickStockUpdateScanner(); // This also sets quickScanState to IDLE
+                  }
               }
               container.classList.add('hidden');
               console.log(`Hiding: ${container.id}`);
@@ -2393,12 +2429,100 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   // --- END NEW NAVIGATION LOGIC ---
 
+  // --- TAB SWITCHING LOGIC FOR QUICK STOCK UPDATE & BATCH ENTRY ---
+  function switchQuickUpdateTab(selectedTabId) {
+    const quickScanModeTabBtn = document.getElementById('quickScanModeTab');
+    const manualBatchModeTabBtn = document.getElementById('manualBatchModeTab');
+    const quickScanModeContentPane = document.getElementById('quickScanModeContent');
+    const manualBatchModeContentPane = document.getElementById('manualBatchModeContent');
+
+    if (!quickScanModeTabBtn || !manualBatchModeTabBtn || !quickScanModeContentPane || !manualBatchModeContentPane) {
+      console.error("Tab switching UI elements not all found.");
+      return;
+    }
+
+    // Tailwind classes for active tab: border-blue-600 text-blue-600 dark:border-blue-500 dark:text-blue-500
+    // Tailwind classes for inactive tab: border-transparent hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300
+    const activeTabClasses = ['border-blue-600', 'text-blue-600', 'dark:border-blue-500', 'dark:text-blue-500'];
+    const inactiveTabClasses = ['border-transparent', 'hover:text-gray-600', 'hover:border-gray-300', 'dark:hover:text-gray-300'];
+    // Base classes that should remain on both: 'inline-block', 'p-4', 'border-b-2', 'rounded-t-lg' (already in HTML)
+
+    if (selectedTabId === 'quickScanModeTab' || selectedTabId === 'quickScanModeContent') {
+        quickScanModeTabBtn.setAttribute('aria-selected', 'true');
+        manualBatchModeTabBtn.setAttribute('aria-selected', 'false');
+
+        quickScanModeTabBtn.classList.add(...activeTabClasses);
+        quickScanModeTabBtn.classList.remove(...inactiveTabClasses);
+
+        manualBatchModeTabBtn.classList.add(...inactiveTabClasses);
+        manualBatchModeTabBtn.classList.remove(...activeTabClasses);
+
+        quickScanModeContentPane.classList.remove('hidden');
+        manualBatchModeContentPane.classList.add('hidden');
+
+        if (typeof stopUpdateScanner === 'function') {
+            const batchVideo = document.getElementById('updateVideo');
+            const batchScanResult = document.getElementById('updateScanResult');
+            if(batchVideo && !batchVideo.classList.contains('hidden')) {
+                console.log("Switching to Quick Scan: Attempting to stop batch update scanner.");
+                stopUpdateScanner(); // stopUpdateScanner should handle its own UI (video, buttons, result text)
+            } else if (batchScanResult && batchScanResult.textContent !== '') {
+                // Clear batch scanner result text if it was left over and scanner wasn't running
+                batchScanResult.textContent = '';
+            }
+        }
+        isQuickStockBarcodeActive = true; // Enable barcode for product ID in quick scan
+        const quickStockUpdateFeedbackElem = document.getElementById('quickStockUpdateFeedback');
+        if (quickStockUpdateFeedbackElem && (quickScanState === 'IDLE' || quickScanState === 'WAITING_FOR_PRODUCT')) {
+             // Only reset feedback if we are truly ready for a new product ID, either by camera or barcode
+            quickStockUpdateFeedbackElem.textContent = 'Scan Product QR with Camera or Barcode Scanner.';
+        } else if (quickStockUpdateFeedbackElem && quickScanState === 'WAITING_FOR_ACTION' && currentScannedProductId) {
+            // If a product is already scanned and waiting for action, preserve that message
+            quickStockUpdateFeedbackElem.textContent = `Product ID: ${currentScannedProductId}. Use CAMERA to scan Action QR.`;
+        }
+        console.log("Switched to Quick Scan Mode Tab.");
+
+    } else if (selectedTabId === 'manualBatchModeTab' || selectedTabId === 'manualBatchModeContent') {
+        manualBatchModeTabBtn.setAttribute('aria-selected', 'true');
+        quickScanModeTabBtn.setAttribute('aria-selected', 'false');
+
+        manualBatchModeTabBtn.classList.add(...activeTabClasses);
+        manualBatchModeTabBtn.classList.remove(...inactiveTabClasses);
+
+        quickScanModeTabBtn.classList.add(...inactiveTabClasses);
+        quickScanModeTabBtn.classList.remove(...activeTabClasses);
+
+        manualBatchModeContentPane.classList.remove('hidden');
+        quickScanModeContentPane.classList.add('hidden');
+
+        if (quickScanState !== 'IDLE' && typeof stopQuickStockUpdateScanner === 'function') {
+            console.log("Switching to Manual Batch: Attempting to stop quick stock update scanner.");
+            stopQuickStockUpdateScanner(); // This will set quickScanState to IDLE and isQuickStockBarcodeActive to true
+        }
+        isQuickStockBarcodeActive = false; // Barcode input not used for batch list itself
+        quickStockBarcodeBuffer = "";    // Clear buffer
+
+        // Ensure the batch update form's own scanner feedback is managed by its own functions (start/stopUpdateScanner)
+        // For example, if switching to batch and its scanner was previously stopped, its feedback should reflect that.
+        const batchScanResult = document.getElementById('updateScanResult');
+        const batchVideo = document.getElementById('updateVideo');
+        if(batchScanResult && batchVideo && batchVideo.classList.contains('hidden')) {
+            // If batch scanner is not running, ensure its feedback is neutral or reflects its state
+            // batchScanResult.textContent = batchScanResult.textContent || "Ready for batch scanning."; // Or clear it
+        }
+        console.log("Switched to Manual Batch Mode Tab.");
+    }
+  }
+
   // --- START QUICK STOCK UPDATE SCANNER FUNCTIONS ---
   function startQuickStockUpdateScanner() {
     const video = document.getElementById('quickStockUpdateVideo');
     const feedback = document.getElementById('quickStockUpdateFeedback');
     const startBtn = document.getElementById('startQuickStockScannerBtn');
     const stopBtn = document.getElementById('stopQuickStockScannerBtn');
+
+    isQuickStockBarcodeActive = false; // Camera scanning takes precedence, disable barcode listener
+    quickStockBarcodeBuffer = ""; // Clear any pending barcode buffer
 
     if (!video || !feedback || !startBtn || !stopBtn) {
         console.error('Quick Stock Update scanner DOM elements not found.');
@@ -2526,7 +2650,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Validate product ID exists? Optional, but good for immediate feedback.
         // For now, just assume it's a product ID and wait for action.
         quickScanState = 'WAITING_FOR_ACTION';
-        feedback.textContent = `Product ID: ${currentScannedProductId}. Scan Action QR (e.g., Add 1).`;
+        isQuickStockBarcodeActive = false; // Disable barcode input once product is locked in by camera, action must be camera
+        feedback.textContent = `Product ID: ${currentScannedProductId}. Use CAMERA to scan Action QR.`;
         quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner); // Continue for action QR
 
     } else if (quickScanState === 'WAITING_FOR_ACTION') {
@@ -2634,8 +2759,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if(stopBtn) stopBtn.classList.add('hidden');
     if(startBtn) startBtn.classList.remove('hidden');
-    if(feedback) feedback.textContent = 'Scanner stopped. Click Start Scanner to begin.';
+    if(feedback) feedback.textContent = 'Scanner stopped. Scan Product QR with Camera or Barcode Scanner.';
     currentScannedProductId = null;
+    isQuickStockBarcodeActive = true; // Re-enable barcode input when camera stops
+    quickStockBarcodeBuffer = ""; // Clear buffer
   }
   // --- END QUICK STOCK UPDATE SCANNER FUNCTIONS ---
 
@@ -2725,10 +2852,39 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Prevent default action if we are in edit scan mode and capturing input
     // This stops the character from appearing in any focused input field.
-    event.preventDefault();
+    // event.preventDefault(); // Decided against global preventDefault for this listener initially.
 
     if (event.key === 'Enter' || event.keyCode === 13) {
-      if (editScanInputBuffer.trim() !== '') {
+      const quickStockUpdateContainerEl = document.getElementById('quickStockUpdateContainer');
+      const quickStockUpdateContainerVisible = quickStockUpdateContainerEl && !quickStockUpdateContainerEl.classList.contains('hidden');
+      const quickScanModeTabActive = document.getElementById('quickScanModeTab')?.getAttribute('aria-selected') === 'true';
+
+      // Priority to Quick Stock Barcode Input if its specific conditions are met
+      if (isQuickStockBarcodeActive && quickStockUpdateContainerVisible && quickScanModeTabActive &&
+          (quickScanState === 'WAITING_FOR_PRODUCT' || quickScanState === 'IDLE') &&
+          quickStockBarcodeBuffer.trim() !== '') {
+
+        event.preventDefault();
+        const scannedId = quickStockBarcodeBuffer.trim();
+        quickStockBarcodeBuffer = "";
+        const feedbackElem = document.getElementById('quickStockUpdateFeedback');
+
+        if (quickScanState === 'WAITING_FOR_PRODUCT' || quickScanState === 'IDLE') {
+            currentScannedProductId = scannedId;
+            quickScanState = 'WAITING_FOR_ACTION';
+            if(feedbackElem) feedbackElem.textContent = `Product ID: ${currentScannedProductId}. Use CAMERA to scan Action QR.`;
+            isQuickStockBarcodeActive = false; // Barcode input done for this product, action must be camera
+
+            if (!quickStockUpdateStream && feedbackElem) { // If camera isn't already running
+                 feedbackElem.textContent += ' Press Start Scanner for Action QR.';
+            }
+        }
+        return; // Handled by Quick Stock, do not proceed to edit scan logic
+      }
+
+      // Existing Edit Product Barcode Input
+      if (isEditScanModeActive && editScanInputBuffer.trim() !== '') {
+        event.preventDefault(); // Prevent default if handling for edit mode
         const scannedId = editScanInputBuffer.trim();
         console.log('Enter key processed by global listener for editScan. Buffer:', scannedId);
         editProduct(scannedId); // This function should populate the form
@@ -2738,11 +2894,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         // We must do the same for the barcode scanner path.
         stopEditScanner(); 
       }
-      editScanInputBuffer = ""; // Reset buffer after Enter, even if it was empty
+      editScanInputBuffer = ""; // Reset buffer after Enter, even if it was empty for edit mode
     } else {
-      // Append other characters to buffer.
-      // Barcode scanners usually send characters one by one, like keyboard input.
-      editScanInputBuffer += event.key;
+      // Append other characters to respective buffers based on active state
+      const quickStockUpdateContainerEl = document.getElementById('quickStockUpdateContainer');
+      const quickStockUpdateContainerVisible = quickStockUpdateContainerEl && !quickStockUpdateContainerEl.classList.contains('hidden');
+      const quickScanModeTabActive = document.getElementById('quickScanModeTab')?.getAttribute('aria-selected') === 'true';
+
+      if (isQuickStockBarcodeActive && quickStockUpdateContainerVisible && quickScanModeTabActive &&
+          (quickScanState === 'WAITING_FOR_PRODUCT' || quickScanState === 'IDLE')) {
+        // Only append to quickStockBarcodeBuffer if its section is active, correct tab, and waiting for product ID
+        quickStockBarcodeBuffer += event.key;
+      } else if (isEditScanModeActive) {
+        // This is to avoid characters appearing in focused fields when barcode scanner is used.
+        // Only prevent default if no standard input field is focused.
+        const activeElement = document.activeElement;
+        if (!activeElement || (activeElement.tagName !== 'INPUT' && activeElement.tagName !== 'TEXTAREA' && activeElement.tagName !== 'SELECT')) {
+             event.preventDefault();
+        }
+        editScanInputBuffer += event.key;
+      }
     }
   });
 
