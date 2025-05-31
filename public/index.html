@@ -33,6 +33,14 @@
             </div>
             <ul class="space-y-2">
                 <li>
+                    <a href="#" id="menuQuickStockUpdate" class="group flex items-center p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-slate-700 rounded-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 7.5h-.75A2.25 2.25 0 004.5 9.75v7.5a2.25 2.25 0 002.25 2.25h7.5a2.25 2.25 0 002.25-2.25v-7.5a2.25 2.25 0 00-2.25-2.25h-.75m0-3l-3-3m0 0l-3 3m3-3v11.25m6-2.25h.75a2.25 2.25 0 012.25 2.25v7.5a2.25 2.25 0 01-2.25 2.25h-7.5a2.25 2.25 0 01-2.25-2.25v-.75" />
+                        </svg>
+                        <span class="menu-text ml-2">Quick Stock Update</span>
+                    </a>
+                </li>
+                <li>
                     <a href="#" id="menuInventory" class="group flex items-center p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-slate-700 rounded-md">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10.5 21V3.375c0-.621.504-1.125 1.125-1.125h.75c.621 0 1.125.504 1.125 1.125V21M3.75 7.5h16.5M2.25 9h19.5" />
@@ -62,14 +70,6 @@
                           <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
                         </svg>
                         <span class="menu-text ml-2">Reports</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" id="menuQuickStockUpdate" class="group flex items-center p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-slate-700 rounded-md">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 7.5h-.75A2.25 2.25 0 004.5 9.75v7.5a2.25 2.25 0 002.25 2.25h7.5a2.25 2.25 0 002.25-2.25v-7.5a2.25 2.25 0 00-2.25-2.25h-.75m0-3l-3-3m0 0l-3 3m3-3v11.25m6-2.25h.75a2.25 2.25 0 012.25 2.25v7.5a2.25 2.25 0 01-2.25 2.25h-7.5a2.25 2.25 0 01-2.25-2.25v-.75" />
-                        </svg>
-                        <span class="menu-text ml-2">Quick Stock Update</span>
                     </a>
                 </li>
             </ul>
@@ -124,23 +124,8 @@
             </section>
 
             <section id="batchActions" class="mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
-                <h2 class="text-2xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">Batch & Quick Actions</h2>
+                <h2 class="text-2xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">Other Product Tools</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="p-4 border dark:border-slate-700 rounded-md">
-                      <h3 id="toggleUpdateProductFormBtn" class="text-xl font-semibold mb-4 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-md p-2">Update Product Quantity</h3>
-                      <div id="updateProductFormContent" class="hidden grid grid-cols-1 gap-4">
-                        <div id="batchUpdates" class="space-y-2"></div>
-                        <button id="addBatchEntryBtn" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded dark:bg-blue-700 dark:hover:bg-blue-600">Add Product to Update</button>
-                        <button id="submitBatchUpdatesBtn" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded dark:bg-green-700 dark:hover:bg-green-600">Submit Updates</button>
-                      </div>
-                      <div class="mt-4">
-                        <video id="updateVideo" class="w-full max-w-md mx-auto mb-4 hidden" autoplay playsinline></video>
-                        <canvas id="updateCanvas" class="hidden"></canvas>
-                        <button id="startUpdateScannerBtn" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded dark:bg-green-700 dark:hover:bg-green-600">Scan QR Code</button>
-                        <button id="stopUpdateScannerBtn" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded dark:bg-red-700 dark:hover:bg-red-600">Stop Scanner</button>
-                        <p id="updateScanResult" class="mt-4 text-center"></p>
-                      </div>
-                    </div>
                     <div class="p-4 border dark:border-slate-700 rounded-md">
                       <h3 id="toggleMoveProductFormBtn" class="text-xl font-semibold mb-4 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-md p-2">Move Product</h3>
                       <div id="moveProductFormContent" class="hidden">
@@ -207,19 +192,49 @@
         </div>
 
         <section id="quickStockUpdateContainer" class="hidden mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
-            <h2 class="text-2xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">QR Code Quick Stock Update</h2>
+            <h2 class="text-2xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">Quick Stock Update & Batch Entry</h2>
 
-            <div id="actionQRCodesContainer" class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 p-4 border dark:border-slate-700 rounded-md">
-                <!-- Action QR Codes will be dynamically added here -->
-                <p class="text-sm text-gray-500 dark:text-gray-400 col-span-full">Action QR codes (e.g., +1, -1, Set to 0) will appear here once generated.</p>
+            <div class="mb-4 border-b border-gray-200 dark:border-slate-700">
+                <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="quickStockUpdateTabs" role="tablist">
+                    <li class="mr-2" role="presentation">
+                        <button class="inline-block p-4 border-b-2 rounded-t-lg" id="quickScanModeTab" data-tabs-target="#quickScanModeContent" type="button" role="tab" aria-controls="quickScanModeContent" aria-selected="true">Quick Scan Mode</button>
+                    </li>
+                    <li class="mr-2" role="presentation">
+                        <button class="inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" id="manualBatchModeTab" data-tabs-target="#manualBatchModeContent" type="button" role="tab" aria-controls="manualBatchModeContent" aria-selected="false">Manual Batch Entry</button>
+                    </li>
+                </ul>
             </div>
 
-            <div class="mt-4 text-center">
-                <video id="quickStockUpdateVideo" class="w-full max-w-md mx-auto mb-4 hidden bg-gray-200 dark:bg-slate-700 rounded" autoplay playsinline></video>
-                <p id="quickStockUpdateFeedback" class="mt-4 text-center text-lg mb-4">Scan Product QR Code to begin.</p>
-                <div class="space-x-2">
-                    <button id="startQuickStockScannerBtn" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded dark:bg-green-700 dark:hover:bg-green-600">Start Quick Scanner</button>
-                    <button id="stopQuickStockScannerBtn" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded dark:bg-red-700 dark:hover:bg-red-600 hidden">Stop Quick Scanner</button>
+            <div>
+                <div id="quickScanModeContent" role="tabpanel" aria-labelledby="quickScanModeTab">
+                    <h3 class="text-xl font-semibold mb-3">Quick Scan Mode (2-Step)</h3>
+                    <div id="actionQRCodesContainer" class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 p-4 border dark:border-slate-700 rounded-md">
+                        <!-- Action QR Codes will be dynamically added here -->
+                        <p class="text-sm text-gray-500 dark:text-gray-400 col-span-full">Action QR codes (e.g., +1, -1, Set to 0) will appear here once generated.</p>
+                    </div>
+                    <div class="mt-4 text-center">
+                        <video id="quickStockUpdateVideo" class="w-full max-w-md mx-auto mb-4 hidden bg-gray-200 dark:bg-slate-700 rounded" autoplay playsinline></video>
+                        <p id="quickStockUpdateFeedback" class="mt-4 text-center text-lg mb-4">Scan Product QR with Camera or Barcode Scanner.</p>
+                        <div class="space-x-2">
+                            <button id="startQuickStockScannerBtn" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded dark:bg-green-700 dark:hover:bg-green-600">Start Camera Scanner</button>
+                            <button id="stopQuickStockScannerBtn" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded dark:bg-red-700 dark:hover:bg-red-600 hidden">Stop Camera Scanner</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="hidden" id="manualBatchModeContent" role="tabpanel" aria-labelledby="manualBatchModeTab">
+                    <h3 class="text-xl font-semibold mb-3">Manual Batch Update</h3>
+                    <div id="updateProductFormContent" class="grid grid-cols-1 gap-4"> {/* Removed 'hidden' class here as tab controls visibility */}
+                        <div id="batchUpdates" class="space-y-2"></div>
+                        <button id="addBatchEntryBtn" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded dark:bg-blue-700 dark:hover:bg-blue-600">Add Product to Update</button>
+                        <button id="submitBatchUpdatesBtn" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded dark:bg-green-700 dark:hover:bg-green-600">Submit Updates</button>
+                    </div>
+                    <div class="mt-4">
+                        <video id="updateVideo" class="w-full max-w-md mx-auto mb-4 hidden" autoplay playsinline></video>
+                        <canvas id="updateCanvas" class="hidden"></canvas>
+                        <p id="updateScanResult" class="mt-4 text-center"></p>
+                        <button id="startUpdateScannerBtn" class="bg-purple-500 hover:bg-purple-600 text-white p-2 rounded dark:bg-purple-700 dark:hover:bg-purple-600">Scan Product ID for Batch</button>
+                        <button id="stopUpdateScannerBtn" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded dark:bg-red-700 dark:hover:bg-red-600 hidden">Stop Batch Scanner</button> {/* Initially hidden */}
+                    </div>
                 </div>
             </div>
         </section>
