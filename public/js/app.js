@@ -23,6 +23,247 @@ let quickStockUpdateAnimationFrameId = null;
 let quickStockBarcodeBuffer = "";
 let isQuickStockBarcodeActive = false;
 
+// START OF FUNCTIONS TO ADD
+
+async function displayActionQRCodes() {
+  const container = document.getElementById('actionQRCodesContainer');
+  if (!container) {
+    console.error('Action QR Codes container not found.');
+    return;
+  }
+  container.innerHTML = ''; // Clear previous QRs
+
+  const actions = [
+    { label: '+1 Unit', data: 'ACTION_ADD_1' },
+    { label: '-1 Unit', data: 'ACTION_SUB_1' },
+    { label: '+5 Units', data: 'ACTION_ADD_5' },
+    { label: '-5 Units', data: 'ACTION_SUB_5' },
+    { label: 'Set to 0', data: 'ACTION_SET_0' },
+    { label: 'Set to 10', data: 'ACTION_SET_10' },
+    { label: 'Set to 20', data: 'ACTION_SET_20' },
+    { label: 'Cancel Action', data: 'ACTION_CANCEL' }
+  ];
+
+  if (typeof QRCode === 'undefined') {
+    console.error('QRCode library is not loaded. Cannot display action QR codes.');
+    container.innerHTML = '<p class="text-red-500 dark:text-red-400 col-span-full">Error: QRCode library not loaded.</p>';
+    return;
+  }
+
+  actions.forEach(action => {
+    const actionDiv = document.createElement('div');
+    actionDiv.className = 'flex flex-col items-center p-2 border dark:border-slate-700 rounded-md shadow';
+
+    const qrCodeElem = document.createElement('div');
+    qrCodeElem.id = `action-qr-${action.data}`;
+    actionDiv.appendChild(qrCodeElem);
+
+    const labelElem = document.createElement('p');
+    labelElem.textContent = action.label;
+    labelElem.className = 'text-sm mt-1 dark:text-gray-300';
+    actionDiv.appendChild(labelElem);
+
+    container.appendChild(actionDiv);
+
+    try {
+      new QRCode(qrCodeElem, {
+        text: action.data,
+        width: 80,
+        height: 80,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } catch (e) {
+      console.error(`Error generating QR code for action ${action.label}:`, e);
+      qrCodeElem.textContent = 'Error';
+    }
+  });
+  console.log('Action QR codes displayed.');
+}
+
+function stopQuickStockUpdateScanner() {
+  console.log('Stopping Quick Stock Update Scanner...');
+  if (quickStockUpdateStream) {
+    quickStockUpdateStream.getTracks().forEach(track => track.stop());
+    quickStockUpdateStream = null;
+  }
+
+  if (quickStockUpdateAnimationFrameId) {
+    cancelAnimationFrame(quickStockUpdateAnimationFrameId);
+    quickStockUpdateAnimationFrameId = null;
+  }
+
+  const video = document.getElementById('quickStockUpdateVideo');
+  if (video) {
+    video.srcObject = null;
+    video.classList.add('hidden');
+  }
+
+  const startBtn = document.getElementById('startQuickStockScannerBtn');
+  const stopBtn = document.getElementById('stopQuickStockScannerBtn');
+  if (startBtn) startBtn.classList.remove('hidden');
+  if (stopBtn) stopBtn.classList.add('hidden');
+
+  const feedbackElem = document.getElementById('quickStockUpdateFeedback');
+  if (feedbackElem) {
+    const quickScanModeTabActive = document.getElementById('quickScanModeTab')?.getAttribute('aria-selected') === 'true';
+    if (quickScanModeTabActive) {
+        feedbackElem.textContent = 'Scan Product QR with Camera or Barcode Scanner.';
+    }
+  }
+
+  quickScanState = 'IDLE';
+  currentScannedProductId = null;
+  quickStockBarcodeBuffer = "";
+
+  const quickScanModeTabActive = document.getElementById('quickScanModeTab')?.getAttribute('aria-selected') === 'true';
+  const quickStockUpdateContainerVisible = !document.getElementById('quickStockUpdateContainer')?.classList.contains('hidden');
+
+  if (quickStockUpdateContainerVisible && quickScanModeTabActive) {
+    isQuickStockBarcodeActive = true;
+  } else {
+    isQuickStockBarcodeActive = false;
+  }
+  console.log('Quick Stock Update Scanner stopped. State reset.');
+}
+
+async function startQuickStockUpdateScanner() {
+  console.log('Attempting to start Quick Stock Update Scanner...');
+
+  if (typeof jsQR === 'undefined') {
+    console.error('jsQR library not found.');
+    alert('QR code scanning library (jsQR) is not available.');
+    return;
+  }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('Camera access not supported by this browser.');
+    return;
+  }
+
+  const video = document.getElementById('quickStockUpdateVideo');
+  const feedbackElem = document.getElementById('quickStockUpdateFeedback');
+  const startBtn = document.getElementById('startQuickStockScannerBtn');
+  const stopBtn = document.getElementById('stopQuickStockScannerBtn');
+
+  const canvasElement = document.createElement('canvas');
+  const canvas = canvasElement.getContext('2d', { willReadFrequently: true });
+
+  async function processQuickStockScan(scannedData) {
+    if (!scannedData) return;
+    console.log(`Processing scanned data: ${scannedData}, current state: ${quickScanState}`);
+
+    if (scannedData === 'ACTION_CANCEL') {
+        feedbackElem.textContent = 'Action cancelled. Scan Product QR.';
+        stopQuickStockUpdateScanner();
+        return;
+    }
+
+    if (quickScanState === 'IDLE' || quickScanState === 'WAITING_FOR_PRODUCT') {
+        currentScannedProductId = scannedData;
+        quickScanState = 'WAITING_FOR_ACTION';
+        isQuickStockBarcodeActive = false;
+        quickStockBarcodeBuffer = "";
+        feedbackElem.textContent = `Product ID: ${currentScannedProductId}. Scan Action QR (e.g., +1, -1).`;
+    } else if (quickScanState === 'WAITING_FOR_ACTION') {
+        stopQuickStockUpdateScanner();
+
+        const action = scannedData;
+        const productId = currentScannedProductId;
+
+        if (!productId) {
+            feedbackElem.textContent = 'Error: Product ID was not captured. Please rescan product.';
+            return;
+        }
+        feedbackElem.textContent = `Processing action '${action}' for product ${productId}...`;
+        try {
+            const productRef = db.collection('inventory').doc(productId);
+            const doc = await productRef.get();
+            if (!doc.exists) {
+                feedbackElem.textContent = `Error: Product ID ${productId} not found.`;
+                return;
+            }
+            let currentQuantity = doc.data().quantity;
+            let newQuantity = currentQuantity;
+
+            if (action === 'ACTION_ADD_1') newQuantity += 1;
+            else if (action === 'ACTION_SUB_1') newQuantity -= 1;
+            else if (action === 'ACTION_ADD_5') newQuantity += 5;
+            else if (action === 'ACTION_SUB_5') newQuantity -= 5;
+            else if (action === 'ACTION_SET_0') newQuantity = 0;
+            else if (action === 'ACTION_SET_10') newQuantity = 10;
+            else if (action === 'ACTION_SET_20') newQuantity = 20;
+            else {
+                feedbackElem.textContent = `Unknown action: ${action}. Rescan Product QR.`;
+                return;
+            }
+            if (newQuantity < 0) newQuantity = 0;
+            await productRef.update({ quantity: newQuantity });
+            feedbackElem.textContent = `Success! Product ${doc.data().name} (ID: ${productId}) quantity updated to ${newQuantity}. Scan next Product QR.`;
+            if (typeof loadInventory === 'function') {
+                await loadInventory();
+            }
+        } catch (error) {
+            console.error('Error updating product quantity:', error);
+            feedbackElem.textContent = `Error updating product ${productId}: ${error.message}. Rescan Product QR.`;
+        }
+    }
+  }
+
+  function tickQuickStockScanner() {
+    if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
+      canvasElement.height = video.videoHeight;
+      canvasElement.width = video.videoWidth;
+      canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+      const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'dontInvert',
+      });
+      if (code && code.data) {
+        processQuickStockScan(code.data);
+      }
+    }
+    if (quickStockUpdateAnimationFrameId) {
+      quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner);
+    }
+  }
+
+  try {
+    quickStockUpdateStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = quickStockUpdateStream;
+    video.setAttribute('playsinline', true);
+    await video.play();
+    video.classList.remove('hidden');
+    if (startBtn) startBtn.classList.add('hidden');
+    if (stopBtn) stopBtn.classList.remove('hidden');
+
+    if (quickScanState === 'IDLE' || quickScanState === 'WAITING_FOR_PRODUCT') {
+        feedbackElem.textContent = 'Scanning for Product QR Code...';
+        isQuickStockBarcodeActive = false;
+    } else if (quickScanState === 'WAITING_FOR_ACTION') {
+        feedbackElem.textContent = `Product ID: ${currentScannedProductId}. Scanning for Action QR Code...`;
+        isQuickStockBarcodeActive = false;
+    }
+
+    if (quickStockUpdateAnimationFrameId) {
+        cancelAnimationFrame(quickStockUpdateAnimationFrameId);
+    }
+    quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner);
+
+  } catch (err) {
+    console.error('Error starting Quick Stock Update scanner:', err);
+    feedbackElem.textContent = 'Error accessing camera: ' + err.message;
+    if (video) video.classList.add('hidden');
+    if (startBtn) startBtn.classList.remove('hidden');
+    if (stopBtn) stopBtn.classList.add('hidden');
+    quickStockUpdateStream = null;
+    isQuickStockBarcodeActive = true;
+  }
+}
+
+// END OF FUNCTIONS TO ADD
+
 // Modal DOM element variables (module-scoped)
 let imageModal = null;
 let modalImage = null;
