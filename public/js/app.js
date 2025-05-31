@@ -14,6 +14,13 @@ let db; // Declare db globally
 let storage; // Declare storage globally
 let originalPhotoUrlForEdit = ''; // Stores the original photo URL when editing a product
 
+// Global variables for Quick Stock Update
+let currentScannedProductId = null;
+let quickScanState = 'IDLE'; // States: IDLE, WAITING_FOR_PRODUCT, WAITING_FOR_ACTION
+let quickStockUpdateStream = null;
+let quickStockUpdateCanvas = null; // For jsQR
+let quickStockUpdateAnimationFrameId = null;
+
 // Modal DOM element variables (module-scoped)
 let imageModal = null;
 let modalImage = null;
@@ -2121,6 +2128,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('stopEditScannerBtn').addEventListener('click', stopEditScanner);
   document.getElementById('addSupplierBtn').addEventListener('click', addSupplier);
 
+  // Quick Stock Update Button Listeners
+  const startQuickStockScannerBtn = document.getElementById('startQuickStockScannerBtn');
+  if (startQuickStockScannerBtn) {
+    startQuickStockScannerBtn.addEventListener('click', startQuickStockUpdateScanner);
+  }
+  const stopQuickStockScannerBtn = document.getElementById('stopQuickStockScannerBtn');
+  if (stopQuickStockScannerBtn) {
+    stopQuickStockScannerBtn.addEventListener('click', stopQuickStockUpdateScanner);
+  }
+
   // Handle "Enter" key in moveProductId input field
   const moveProductIdInput = document.getElementById('moveProductId');
   if (moveProductIdInput) {
@@ -2241,21 +2258,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   const menuSuppliers = document.getElementById('menuSuppliers');
   const menuOrders = document.getElementById('menuOrders');
   const menuReports = document.getElementById('menuReports');
+  const menuQuickStockUpdate = document.getElementById('menuQuickStockUpdate'); // Added for new menu item
 
-  const menuItems = [menuInventory, menuSuppliers, menuOrders, menuReports].filter(item => item !== null);
+  const menuItems = [menuInventory, menuSuppliers, menuOrders, menuReports, menuQuickStockUpdate].filter(item => item !== null);
 
   const inventoryViewContainer = document.getElementById('inventoryViewContainer');
   const suppliersSectionContainer = document.getElementById('suppliersSectionContainer');
   const locationsAdminSectionContainer = document.getElementById('locationsAdminSectionContainer'); // Keep for future
   const ordersSectionContainer = document.getElementById('ordersSectionContainer');
   const reportsSectionContainer = document.getElementById('reportsSectionContainer');
+  const quickStockUpdateContainer = document.getElementById('quickStockUpdateContainer'); // Added for new section
 
   const allViewContainers = [
       inventoryViewContainer,
       suppliersSectionContainer,
       // locationsAdminSectionContainer, // Removed as it's now part of suppliersSectionContainer
       ordersSectionContainer,
-      reportsSectionContainer
+      reportsSectionContainer,
+      quickStockUpdateContainer // Added for new section
   ].filter(container => container !== null); 
 
   // Define CSS classes for active and inactive states
@@ -2298,6 +2318,10 @@ document.addEventListener('DOMContentLoaded', async () => {
               viewFound = true;
               console.log(`Showing: ${container.id}`);
           } else {
+              // If hiding the Quick Stock Update container, ensure its scanner is stopped
+              if (container.id === 'quickStockUpdateContainer' && quickScanState !== 'IDLE') {
+                  stopQuickStockUpdateScanner();
+              }
               container.classList.add('hidden');
               console.log(`Hiding: ${container.id}`);
           }
@@ -2337,6 +2361,21 @@ document.addEventListener('DOMContentLoaded', async () => {
           updateInventoryDashboard(); // Call to update dashboard data
       });
   }
+
+  if (menuQuickStockUpdate) { // Added for new menu item
+    menuQuickStockUpdate.addEventListener('click', (e) => {
+        e.preventDefault();
+        showView('quickStockUpdateContainer', menuQuickStockUpdate.id);
+        // Ensure QRCode library is available before calling displayActionQRCodes
+        ensureQRCodeIsAvailable().then(() => {
+            displayActionQRCodes(); // Generate QR codes when this view is shown
+        }).catch(error => {
+            console.error("QRCode library not available for Quick Stock Update:", error);
+            const container = document.getElementById('actionQRCodesContainer');
+            if(container) container.innerHTML = "<p class='text-red-500'>Error: QR Code library failed to load. Cannot display action QR codes.</p>";
+        });
+    });
+  }
   
   // Initial View State: Show Inventory View by default and set its menu item active.
   if (inventoryViewContainer && menuInventory) {
@@ -2353,6 +2392,330 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
   }
   // --- END NEW NAVIGATION LOGIC ---
+
+  // --- START QUICK STOCK UPDATE SCANNER FUNCTIONS ---
+  function startQuickStockUpdateScanner() {
+    const video = document.getElementById('quickStockUpdateVideo');
+    const feedback = document.getElementById('quickStockUpdateFeedback');
+    const startBtn = document.getElementById('startQuickStockScannerBtn');
+    const stopBtn = document.getElementById('stopQuickStockScannerBtn');
+
+    if (!video || !feedback || !startBtn || !stopBtn) {
+        console.error('Quick Stock Update scanner DOM elements not found.');
+        if(feedback) feedback.textContent = 'Error: UI elements missing.';
+        return;
+    }
+
+    if (!quickStockUpdateCanvas) {
+        quickStockUpdateCanvas = document.createElement('canvas');
+    }
+
+    quickScanState = 'WAITING_FOR_PRODUCT';
+    feedback.textContent = 'Scan Product QR Code...';
+    video.classList.remove('hidden');
+    stopBtn.classList.remove('hidden');
+    startBtn.classList.add('hidden');
+    currentScannedProductId = null;
+
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        feedback.textContent = 'Camera access not supported by this browser.';
+        console.error('getUserMedia not supported.');
+        stopQuickStockUpdateScanner(); // Reset UI
+        return;
+    }
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(stream => {
+            quickStockUpdateStream = stream;
+            video.srcObject = stream;
+            video.play()
+                .then(() => {
+                    quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner);
+                })
+                .catch(playError => {
+                    console.error('Error playing video stream:', playError);
+                    feedback.textContent = 'Error starting video stream.';
+                    stopQuickStockUpdateScanner();
+                });
+        })
+        .catch(err => {
+            console.error('Error accessing camera:', err);
+            feedback.textContent = 'Error accessing camera. Check permissions.';
+            stopQuickStockUpdateScanner();
+        });
+  }
+
+  function tickQuickStockScanner() {
+    if (quickScanState === 'IDLE') {
+        return;
+    }
+
+    const video = document.getElementById('quickStockUpdateVideo');
+    // quickStockUpdateCanvas is already initialized in startQuickStockUpdateScanner
+
+    if (!video || !quickStockUpdateCanvas) {
+        console.error("Video or canvas not ready for quick stock scanning tick.");
+        if (quickStockUpdateAnimationFrameId) cancelAnimationFrame(quickStockUpdateAnimationFrameId);
+        return;
+    }
+
+    if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
+        quickStockUpdateCanvas.height = video.videoHeight;
+        quickStockUpdateCanvas.width = video.videoWidth;
+        const ctx = quickStockUpdateCanvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, quickStockUpdateCanvas.width, quickStockUpdateCanvas.height);
+
+        try {
+            const imageData = ctx.getImageData(0, 0, quickStockUpdateCanvas.width, quickStockUpdateCanvas.height);
+            if (typeof jsQR === 'undefined') {
+                console.error('jsQR library is not loaded.');
+                // Optionally, update feedback to user and stop scanner
+                const feedbackElem = document.getElementById('quickStockUpdateFeedback');
+                if(feedbackElem) feedbackElem.textContent = 'Error: QR processing library missing.';
+                stopQuickStockUpdateScanner();
+                return;
+            }
+            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                inversionAttempts: 'dontInvert',
+            });
+
+            if (code && code.data) {
+                processQuickStockScan(code.data); // Process the scanned code
+                // processQuickStockScan will decide if scanning continues
+            } else {
+                quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner); // Continue scanning
+            }
+        } catch(e) {
+            console.error("Error in QR processing: ", e);
+            // Potentially update feedback for the user
+            const feedbackElem = document.getElementById('quickStockUpdateFeedback');
+            if(feedbackElem) feedbackElem.textContent = 'Error processing image for QR code.';
+            // Decide if to stop or continue
+            quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner);
+        }
+
+    } else {
+        quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner); // Wait for video
+    }
+  }
+
+  async function processQuickStockScan(decodedQRData) {
+    const feedback = document.getElementById('quickStockUpdateFeedback');
+    if (!feedback) {
+        console.error("Quick stock update feedback element not found.");
+        stopQuickStockUpdateScanner(); // Stop if UI is broken
+        return;
+    }
+
+    if (quickScanState === 'WAITING_FOR_PRODUCT') {
+        try {
+            const potentialAction = JSON.parse(decodedQRData);
+            if (potentialAction && potentialAction.action && typeof potentialAction.quantity !== 'undefined') {
+                feedback.textContent = 'Error: Scanned an Action QR. Please scan a Product QR first.';
+                setTimeout(() => {
+                    if (quickScanState === 'WAITING_FOR_PRODUCT') feedback.textContent = 'Scan Product QR Code...';
+                }, 2000);
+                quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner); // Continue scanning for product
+                return;
+            }
+        } catch (e) {
+            // Not JSON, likely a product ID string, proceed
+        }
+        currentScannedProductId = decodedQRData.trim();
+        // Validate product ID exists? Optional, but good for immediate feedback.
+        // For now, just assume it's a product ID and wait for action.
+        quickScanState = 'WAITING_FOR_ACTION';
+        feedback.textContent = `Product ID: ${currentScannedProductId}. Scan Action QR (e.g., Add 1).`;
+        quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner); // Continue for action QR
+
+    } else if (quickScanState === 'WAITING_FOR_ACTION') {
+        let actionData;
+        try {
+            actionData = JSON.parse(decodedQRData);
+        } catch (e) {
+            feedback.textContent = 'Invalid Action QR. Not valid JSON. Scan Action QR or new Product QR.';
+            currentScannedProductId = null;
+            quickScanState = 'WAITING_FOR_PRODUCT';
+            setTimeout(() => { if(quickScanState === 'WAITING_FOR_PRODUCT') feedback.textContent = 'Scan Product QR Code...'; }, 3000);
+            quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner);
+            return;
+        }
+
+        if (!actionData || !actionData.action || typeof actionData.quantity === 'undefined') {
+            feedback.textContent = 'Invalid Action QR. Format: {"action":"type", "quantity":num}. Scan Action QR or new Product QR.';
+            currentScannedProductId = null;
+            quickScanState = 'WAITING_FOR_PRODUCT';
+            setTimeout(() => { if(quickScanState === 'WAITING_FOR_PRODUCT') feedback.textContent = 'Scan Product QR Code...'; }, 3000);
+            quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner);
+            return;
+        }
+
+        if (!currentScannedProductId) { // Should not happen if logic is correct, but as a safeguard
+            feedback.textContent = 'Error: No Product ID context. Scan Product QR first.';
+            quickScanState = 'WAITING_FOR_PRODUCT';
+            setTimeout(() => { if(quickScanState === 'WAITING_FOR_PRODUCT') feedback.textContent = 'Scan Product QR Code...'; }, 3000);
+            quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner);
+            return;
+        }
+
+        try {
+            const productRef = db.collection('inventory').doc(currentScannedProductId);
+            const productDoc = await productRef.get();
+
+            if (!productDoc.exists) {
+                feedback.textContent = `Error: Product ID ${currentScannedProductId} not found.`;
+                currentScannedProductId = null; quickScanState = 'WAITING_FOR_PRODUCT';
+                setTimeout(() => { if(quickScanState === 'WAITING_FOR_PRODUCT') feedback.textContent = 'Scan Product QR Code...'; }, 3000);
+                quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner);
+                return;
+            }
+
+            const product = productDoc.data();
+            let newQuantity = product.quantity;
+
+            switch (actionData.action) {
+                case 'add':
+                    newQuantity += actionData.quantity;
+                    break;
+                case 'remove':
+                    newQuantity -= actionData.quantity;
+                    newQuantity = Math.max(0, newQuantity); // Prevent negative quantity
+                    break;
+                case 'set':
+                    newQuantity = actionData.quantity;
+                    newQuantity = Math.max(0, newQuantity); // Prevent negative quantity
+                    break;
+                default:
+                    feedback.textContent = `Invalid action: ${actionData.action}. Scan Action QR or new Product QR.`;
+                    currentScannedProductId = null; quickScanState = 'WAITING_FOR_PRODUCT';
+                    setTimeout(() => { if(quickScanState === 'WAITING_FOR_PRODUCT') feedback.textContent = 'Scan Product QR Code...'; }, 3000);
+                    quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner);
+                    return;
+            }
+
+            await productRef.update({ quantity: newQuantity });
+            feedback.textContent = `Success: ${product.name} quantity updated to ${newQuantity}. Scan next Product QR.`;
+            await loadInventory(); // Refresh local inventory and UI tables
+            await updateToOrderTable(); // Refresh order table specifically
+
+        } catch (error) {
+            console.error("Error processing action or updating Firestore:", error);
+            feedback.textContent = 'Error updating database. Please try again.';
+        } finally {
+            currentScannedProductId = null;
+            quickScanState = 'WAITING_FOR_PRODUCT'; // Reset for next sequence
+            setTimeout(() => {
+                if(quickScanState === 'WAITING_FOR_PRODUCT') feedback.textContent = 'Scan Product QR Code...';
+            }, 3000);
+            quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner); // Continue scanning for the next product
+        }
+    }
+  }
+
+  function stopQuickStockUpdateScanner() {
+    const video = document.getElementById('quickStockUpdateVideo');
+    const feedback = document.getElementById('quickStockUpdateFeedback');
+    const startBtn = document.getElementById('startQuickStockScannerBtn');
+    const stopBtn = document.getElementById('stopQuickStockScannerBtn');
+
+    quickScanState = 'IDLE';
+    if (quickStockUpdateAnimationFrameId) {
+        cancelAnimationFrame(quickStockUpdateAnimationFrameId);
+        quickStockUpdateAnimationFrameId = null;
+    }
+    if (quickStockUpdateStream) {
+        quickStockUpdateStream.getTracks().forEach(track => track.stop());
+        quickStockUpdateStream = null;
+    }
+    if (video) {
+      video.srcObject = null;
+      video.classList.add('hidden');
+    }
+    if(stopBtn) stopBtn.classList.add('hidden');
+    if(startBtn) startBtn.classList.remove('hidden');
+    if(feedback) feedback.textContent = 'Scanner stopped. Click Start Scanner to begin.';
+    currentScannedProductId = null;
+  }
+  // --- END QUICK STOCK UPDATE SCANNER FUNCTIONS ---
+
+  // Function to display Action QR Codes for Quick Stock Update
+  function displayActionQRCodes() {
+    const actionQRCodesContainer = document.getElementById('actionQRCodesContainer');
+    if (!actionQRCodesContainer) {
+      console.error('actionQRCodesContainer not found in the DOM.');
+      return;
+    }
+    actionQRCodesContainer.innerHTML = ''; // Clear existing content
+
+    const quantities = [1, 2, 3, 4, 5, 10, 20, 30];
+    const actions = [
+      { type: 'add', label: 'Add', colorClass: 'bg-green-100 dark:bg-green-800' },
+      { type: 'remove', label: 'Remove', colorClass: 'bg-red-100 dark:bg-red-800' },
+      { type: 'set', label: 'Set to', colorClass: 'bg-blue-100 dark:bg-blue-800'}
+    ];
+
+    // Always add "Set to 0"
+    const zeroQtyData = { action: 'set', quantity: 0 };
+    const zeroQrJson = JSON.stringify(zeroQtyData);
+    const zeroWrapperDiv = document.createElement('div');
+    zeroWrapperDiv.className = `text-center p-2 rounded-md shadow ${actions.find(a => a.type === 'set').colorClass}`;
+    const zeroQrCodeElement = document.createElement('div');
+    const zeroLabel = document.createElement('p');
+    zeroLabel.className = 'text-xs mt-1 font-semibold text-gray-700 dark:text-gray-200';
+    zeroLabel.textContent = `Set to 0`;
+    zeroWrapperDiv.appendChild(zeroQrCodeElement);
+    zeroWrapperDiv.appendChild(zeroLabel);
+    actionQRCodesContainer.appendChild(zeroWrapperDiv);
+    try {
+        if (typeof window.QRCode !== 'function') throw new Error('QRCode lib not ready');
+        new QRCode(zeroQrCodeElement, { text: zeroQrJson, width: 70, height: 70, correctLevel: QRCode.CorrectLevel.M });
+    } catch (error) {
+        console.error(`Error generating QR for Set to 0:`, error);
+        zeroQrCodeElement.innerHTML = `<p class="text-red-500 text-xs">${error.message}</p>`;
+    }
+
+    actions.forEach(actionInfo => {
+      quantities.forEach(qty => {
+        // Skip "Set to 0" here as it's already added. Only add other "Set to" quantities if they are small.
+        if (actionInfo.type === 'set' && qty === 0) return;
+        if (actionInfo.type === 'set' && qty > 10) return;
+
+
+        const qrData = { action: actionInfo.type, quantity: qty };
+        const qrJson = JSON.stringify(qrData);
+
+        const wrapperDiv = document.createElement('div');
+        wrapperDiv.className = `text-center p-2 rounded-md shadow ${actionInfo.colorClass}`;
+
+        const qrCodeElement = document.createElement('div');
+        // qrcodejs will append a canvas/img here.
+
+        const label = document.createElement('p');
+        label.className = 'text-xs mt-1 font-semibold text-gray-700 dark:text-gray-200';
+        label.textContent = `${actionInfo.label} ${qty}`;
+
+        wrapperDiv.appendChild(qrCodeElement);
+        wrapperDiv.appendChild(label);
+        actionQRCodesContainer.appendChild(wrapperDiv);
+
+        try {
+          if (typeof window.QRCode !== 'function') {
+            throw new Error('QRCode library is not available.');
+          }
+          new QRCode(qrCodeElement, {
+            text: qrJson,
+            width: 70,
+            height: 70,
+            correctLevel: QRCode.CorrectLevel.M
+          });
+        } catch (error) {
+          console.error(`Error generating QR code for ${actionInfo.label} ${qty}:`, error);
+          qrCodeElement.innerHTML = `<p class="text-red-500 text-xs">${error.message}</p>`;
+        }
+      });
+    });
+  }
 
   // Global keypress listener for barcode scanner input during edit mode
   document.addEventListener('keypress', (event) => {
