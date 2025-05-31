@@ -228,6 +228,12 @@
             <h2 class="text-2xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">Orders & Reordering</h2>
             <div id="toOrderContentMoved" class="mt-4">
                  <h3 id="toggleToOrderTableBtn" class="text-xl font-semibold mb-4 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-md p-2">Products to Order</h3>
+                 <div class="mb-4 flex flex-wrap gap-2 items-center">
+                    <select id="filterToOrderSupplier" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 sm:col-span-1">
+                        <option value="">Filter by Supplier (All)</option>
+                    </select>
+                    <button id="clearToOrderFilterBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded dark:bg-gray-700 dark:hover:bg-gray-600 h-10 sm:col-span-1">Clear Supplier Filter</button>
+                 </div>
                  <div id="toOrderTableContainer" class="hidden"> 
                     <div class="mb-4 flex flex-wrap gap-2">
                         <button id="toggleToOrderIDColumnBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded dark:bg-gray-700 dark:hover:bg-gray-600">Show IDs</button>
