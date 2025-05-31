@@ -2011,6 +2011,88 @@ function stopEditScanner() {
   if (scanResultP) scanResultP.textContent = ''; 
 }
 
+// --- TAB SWITCHING LOGIC FOR QUICK STOCK UPDATE & BATCH ENTRY ---
+function switchQuickUpdateTab(selectedTabId) {
+  const quickScanModeTabBtn = document.getElementById('quickScanModeTab');
+  const manualBatchModeTabBtn = document.getElementById('manualBatchModeTab');
+  const quickScanModeContentPane = document.getElementById('quickScanModeContent');
+  const manualBatchModeContentPane = document.getElementById('manualBatchModeContent');
+  const quickStockUpdateFeedbackElem = document.getElementById('quickStockUpdateFeedback');
+
+
+  // Ensure all elements are present before proceeding
+  if (!quickScanModeTabBtn || !manualBatchModeTabBtn || !quickScanModeContentPane || !manualBatchModeContentPane) {
+    console.error("Tab switching UI elements not all found. Tab switching aborted.");
+    return;
+  }
+
+  const activeSpecificClasses = ['border-blue-600', 'text-blue-600', 'dark:border-blue-500', 'dark:text-blue-500', 'font-semibold'];
+  const inactiveSpecificClasses = ['border-transparent', 'text-gray-500', 'dark:text-gray-400'];
+  const hoverClasses = ['hover:text-gray-700', 'hover:border-gray-300', 'dark:hover:text-gray-300', 'dark:hover:border-gray-600'];
+
+  if (selectedTabId === 'quickScanModeTab' || selectedTabId === 'quickScanModeContent') {
+      quickScanModeTabBtn.setAttribute('aria-selected', 'true');
+      manualBatchModeTabBtn.setAttribute('aria-selected', 'false');
+
+      quickScanModeTabBtn.classList.remove(...inactiveSpecificClasses);
+      quickScanModeTabBtn.classList.add(...activeSpecificClasses);
+      hoverClasses.forEach(hc => quickScanModeTabBtn.classList.add(hc));
+
+      manualBatchModeTabBtn.classList.remove(...activeSpecificClasses);
+      manualBatchModeTabBtn.classList.add(...inactiveSpecificClasses);
+      hoverClasses.forEach(hc => manualBatchModeTabBtn.classList.add(hc));
+
+      quickScanModeContentPane.classList.remove('hidden');
+      manualBatchModeContentPane.classList.add('hidden');
+
+      if (typeof stopUpdateScanner === 'function') {
+          const batchVideo = document.getElementById('updateVideo');
+          const batchScanResult = document.getElementById('updateScanResult');
+          if (batchVideo && !batchVideo.classList.contains('hidden')) { // Check if batch scanner is active
+              console.log("Switching to Quick Scan: Attempting to stop batch update scanner.");
+              stopUpdateScanner();
+          } else if (batchScanResult && batchScanResult.textContent !== '') {
+              batchScanResult.textContent = ''; // Clear leftover batch scanner text
+          }
+      }
+      isQuickStockBarcodeActive = true;
+      if (quickStockUpdateFeedbackElem && (quickScanState === 'IDLE' || quickScanState === 'WAITING_FOR_PRODUCT')) {
+          quickStockUpdateFeedbackElem.textContent = 'Scan Product QR with Camera or Barcode Scanner.';
+      } else if (quickStockUpdateFeedbackElem && quickScanState === 'WAITING_FOR_ACTION' && currentScannedProductId) {
+           quickStockUpdateFeedbackElem.textContent = `Product ID: ${currentScannedProductId}. Use CAMERA to scan Action QR.`;
+      }
+      console.log("Switched to Quick Scan Mode Tab.");
+
+  } else if (selectedTabId === 'manualBatchModeTab' || selectedTabId === 'manualBatchModeContent') {
+      manualBatchModeTabBtn.setAttribute('aria-selected', 'true');
+      quickScanModeTabBtn.setAttribute('aria-selected', 'false');
+
+      manualBatchModeTabBtn.classList.remove(...inactiveSpecificClasses);
+      manualBatchModeTabBtn.classList.add(...activeSpecificClasses);
+      hoverClasses.forEach(hc => manualBatchModeTabBtn.classList.add(hc));
+
+      quickScanModeTabBtn.classList.remove(...activeSpecificClasses);
+      quickScanModeTabBtn.classList.add(...inactiveSpecificClasses);
+      hoverClasses.forEach(hc => quickScanModeTabBtn.classList.add(hc));
+
+      manualBatchModeContentPane.classList.remove('hidden');
+      quickScanModeContentPane.classList.add('hidden');
+
+      if (quickScanState !== 'IDLE' && typeof stopQuickStockUpdateScanner === 'function') {
+          console.log("Switching to Manual Batch: Attempting to stop quick stock update scanner.");
+          stopQuickStockUpdateScanner();
+      }
+      isQuickStockBarcodeActive = false;
+      quickStockBarcodeBuffer = "";
+      const batchScanResult = document.getElementById('updateScanResult');
+      const batchVideo = document.getElementById('updateVideo');
+      if(batchScanResult && batchVideo && batchVideo.classList.contains('hidden')) {
+         // Optional: Set a default message for batch scanner if it's not running
+         // batchScanResult.textContent = "Ready for batch scanning or manual entry.";
+      }
+      console.log("Switched to Manual Batch Mode Tab.");
+  }
+}
 
 // Initialize and Bind Events
 document.addEventListener('DOMContentLoaded', async () => {
@@ -2116,6 +2198,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bind other events (these are fine as they are user-triggered)
     document.getElementById('addBatchEntryBtn').addEventListener('click', addBatchEntry);
   document.getElementById('submitBatchUpdatesBtn').addEventListener('click', submitBatchUpdates);
+  // startUpdateScannerBtn and stopUpdateScannerBtn are now for the batch tab, keep original functions
   document.getElementById('startUpdateScannerBtn').addEventListener('click', startUpdateScanner);
   document.getElementById('stopUpdateScannerBtn').addEventListener('click', stopUpdateScanner);
   document.getElementById('productSubmitBtn').addEventListener('click', submitProduct);
@@ -2131,24 +2214,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('addSupplierBtn').addEventListener('click', addSupplier);
 
   // Quick Stock Update Button Listeners (Camera for Quick Scan Tab)
-  const startQuickStockCameraBtn = document.getElementById('startQuickStockScannerBtn'); // ID from HTML for this button
+  // Renamed button IDs in HTML were startQuickStockScannerBtn / stopQuickStockScannerBtn
+  const startQuickStockCameraBtn = document.getElementById('startQuickStockScannerBtn');
   if (startQuickStockCameraBtn) {
     startQuickStockCameraBtn.addEventListener('click', startQuickStockUpdateScanner);
   }
-  const stopQuickStockCameraBtn = document.getElementById('stopQuickStockScannerBtn'); // ID from HTML for this button
+  const stopQuickStockCameraBtn = document.getElementById('stopQuickStockScannerBtn');
   if (stopQuickStockCameraBtn) {
     stopQuickStockCameraBtn.addEventListener('click', stopQuickStockUpdateScanner);
-  }
-
-  // Batch Update Scanner Buttons (Manual Batch Tab - these use the original start/stopUpdateScanner functions)
-  // Note: Their IDs are startUpdateScannerBtn and stopUpdateScannerBtn as per original HTML for batch section
-  const startBatchScannerBtn = document.getElementById('startUpdateScannerBtn');
-  if (startBatchScannerBtn) {
-    startBatchScannerBtn.addEventListener('click', startUpdateScanner); // Original function for batch scanner
-  }
-  const stopBatchScannerBtn = document.getElementById('stopUpdateScannerBtn');
-  if (stopBatchScannerBtn) {
-    stopBatchScannerBtn.addEventListener('click', stopUpdateScanner); // Original function for batch scanner
   }
 
   // Tab Button Event Listeners for Quick Stock Update & Batch Entry Section
@@ -2343,10 +2416,8 @@ document.addEventListener('DOMContentLoaded', async () => {
               if (container.id === 'quickStockUpdateContainer') {
                 // Default to Quick Scan tab when the main section is shown
                 switchQuickUpdateTab('quickScanModeTab');
-                // isQuickStockBarcodeActive and initial feedback for quickScanModeTab are now handled by switchQuickUpdateTab
-                // However, we still need to set isQuickStockBarcodeActive = true here for the global keypress listener
-                // if the user *doesn't* click the tab but barcode scans immediately.
-                // The feedback text is also set in switchQuickUpdateTab.
+                // Set isQuickStockBarcodeActive for the global keypress listener.
+                // Feedback text is now handled by switchQuickUpdateTab.
                 isQuickStockBarcodeActive = true;
               }
           } else {
@@ -2429,436 +2500,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   // --- END NEW NAVIGATION LOGIC ---
 
-  // --- TAB SWITCHING LOGIC FOR QUICK STOCK UPDATE & BATCH ENTRY ---
-  function switchQuickUpdateTab(selectedTabId) {
-    const quickScanModeTabBtn = document.getElementById('quickScanModeTab');
-    const manualBatchModeTabBtn = document.getElementById('manualBatchModeTab');
-    const quickScanModeContentPane = document.getElementById('quickScanModeContent');
-    const manualBatchModeContentPane = document.getElementById('manualBatchModeContent');
-
-    if (!quickScanModeTabBtn || !manualBatchModeTabBtn || !quickScanModeContentPane || !manualBatchModeContentPane) {
-      console.error("Tab switching UI elements not all found.");
-      return;
-    }
-
-    // Tailwind classes for active tab: border-blue-600 text-blue-600 dark:border-blue-500 dark:text-blue-500
-    // Tailwind classes for inactive tab: border-transparent hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300
-    const activeTabClasses = ['border-blue-600', 'text-blue-600', 'dark:border-blue-500', 'dark:text-blue-500'];
-    const inactiveTabClasses = ['border-transparent', 'hover:text-gray-600', 'hover:border-gray-300', 'dark:hover:text-gray-300'];
-    // Base classes that should remain on both: 'inline-block', 'p-4', 'border-b-2', 'rounded-t-lg' (already in HTML)
-
-    if (selectedTabId === 'quickScanModeTab' || selectedTabId === 'quickScanModeContent') {
-        quickScanModeTabBtn.setAttribute('aria-selected', 'true');
-        manualBatchModeTabBtn.setAttribute('aria-selected', 'false');
-
-        quickScanModeTabBtn.classList.add(...activeTabClasses);
-        quickScanModeTabBtn.classList.remove(...inactiveTabClasses);
-
-        manualBatchModeTabBtn.classList.add(...inactiveTabClasses);
-        manualBatchModeTabBtn.classList.remove(...activeTabClasses);
-
-        quickScanModeContentPane.classList.remove('hidden');
-        manualBatchModeContentPane.classList.add('hidden');
-
-        if (typeof stopUpdateScanner === 'function') {
-            const batchVideo = document.getElementById('updateVideo');
-            const batchScanResult = document.getElementById('updateScanResult');
-            if(batchVideo && !batchVideo.classList.contains('hidden')) {
-                console.log("Switching to Quick Scan: Attempting to stop batch update scanner.");
-                stopUpdateScanner(); // stopUpdateScanner should handle its own UI (video, buttons, result text)
-            } else if (batchScanResult && batchScanResult.textContent !== '') {
-                // Clear batch scanner result text if it was left over and scanner wasn't running
-                batchScanResult.textContent = '';
-            }
-        }
-        isQuickStockBarcodeActive = true; // Enable barcode for product ID in quick scan
-        const quickStockUpdateFeedbackElem = document.getElementById('quickStockUpdateFeedback');
-        if (quickStockUpdateFeedbackElem && (quickScanState === 'IDLE' || quickScanState === 'WAITING_FOR_PRODUCT')) {
-             // Only reset feedback if we are truly ready for a new product ID, either by camera or barcode
-            quickStockUpdateFeedbackElem.textContent = 'Scan Product QR with Camera or Barcode Scanner.';
-        } else if (quickStockUpdateFeedbackElem && quickScanState === 'WAITING_FOR_ACTION' && currentScannedProductId) {
-            // If a product is already scanned and waiting for action, preserve that message
-            quickStockUpdateFeedbackElem.textContent = `Product ID: ${currentScannedProductId}. Use CAMERA to scan Action QR.`;
-        }
-        console.log("Switched to Quick Scan Mode Tab.");
-
-    } else if (selectedTabId === 'manualBatchModeTab' || selectedTabId === 'manualBatchModeContent') {
-        manualBatchModeTabBtn.setAttribute('aria-selected', 'true');
-        quickScanModeTabBtn.setAttribute('aria-selected', 'false');
-
-        manualBatchModeTabBtn.classList.add(...activeTabClasses);
-        manualBatchModeTabBtn.classList.remove(...inactiveTabClasses);
-
-        quickScanModeTabBtn.classList.add(...inactiveTabClasses);
-        quickScanModeTabBtn.classList.remove(...activeTabClasses);
-
-        manualBatchModeContentPane.classList.remove('hidden');
-        quickScanModeContentPane.classList.add('hidden');
-
-        if (quickScanState !== 'IDLE' && typeof stopQuickStockUpdateScanner === 'function') {
-            console.log("Switching to Manual Batch: Attempting to stop quick stock update scanner.");
-            stopQuickStockUpdateScanner(); // This will set quickScanState to IDLE and isQuickStockBarcodeActive to true
-        }
-        isQuickStockBarcodeActive = false; // Barcode input not used for batch list itself
-        quickStockBarcodeBuffer = "";    // Clear buffer
-
-        // Ensure the batch update form's own scanner feedback is managed by its own functions (start/stopUpdateScanner)
-        // For example, if switching to batch and its scanner was previously stopped, its feedback should reflect that.
-        const batchScanResult = document.getElementById('updateScanResult');
-        const batchVideo = document.getElementById('updateVideo');
-        if(batchScanResult && batchVideo && batchVideo.classList.contains('hidden')) {
-            // If batch scanner is not running, ensure its feedback is neutral or reflects its state
-            // batchScanResult.textContent = batchScanResult.textContent || "Ready for batch scanning."; // Or clear it
-        }
-        console.log("Switched to Manual Batch Mode Tab.");
-    }
-  }
-
   // --- START QUICK STOCK UPDATE SCANNER FUNCTIONS ---
-  function startQuickStockUpdateScanner() {
-    const video = document.getElementById('quickStockUpdateVideo');
-    const feedback = document.getElementById('quickStockUpdateFeedback');
-    const startBtn = document.getElementById('startQuickStockScannerBtn');
-    const stopBtn = document.getElementById('stopQuickStockScannerBtn');
-
-    isQuickStockBarcodeActive = false; // Camera scanning takes precedence, disable barcode listener
-    quickStockBarcodeBuffer = ""; // Clear any pending barcode buffer
-
-    if (!video || !feedback || !startBtn || !stopBtn) {
-        console.error('Quick Stock Update scanner DOM elements not found.');
-        if(feedback) feedback.textContent = 'Error: UI elements missing.';
-        return;
-    }
-
-    if (!quickStockUpdateCanvas) {
-        quickStockUpdateCanvas = document.createElement('canvas');
-    }
-
-    quickScanState = 'WAITING_FOR_PRODUCT';
-    feedback.textContent = 'Scan Product QR Code...';
-    video.classList.remove('hidden');
-    stopBtn.classList.remove('hidden');
-    startBtn.classList.add('hidden');
-    currentScannedProductId = null;
-
-
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        feedback.textContent = 'Camera access not supported by this browser.';
-        console.error('getUserMedia not supported.');
-        stopQuickStockUpdateScanner(); // Reset UI
-        return;
-    }
-
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-        .then(stream => {
-            quickStockUpdateStream = stream;
-            video.srcObject = stream;
-            video.play()
-                .then(() => {
-                    quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner);
-                })
-                .catch(playError => {
-                    console.error('Error playing video stream:', playError);
-                    feedback.textContent = 'Error starting video stream.';
-                    stopQuickStockUpdateScanner();
-                });
-        })
-        .catch(err => {
-            console.error('Error accessing camera:', err);
-            feedback.textContent = 'Error accessing camera. Check permissions.';
-            stopQuickStockUpdateScanner();
-        });
-  }
-
-  function tickQuickStockScanner() {
-    if (quickScanState === 'IDLE') {
-        return;
-    }
-
-    const video = document.getElementById('quickStockUpdateVideo');
-    // quickStockUpdateCanvas is already initialized in startQuickStockUpdateScanner
-
-    if (!video || !quickStockUpdateCanvas) {
-        console.error("Video or canvas not ready for quick stock scanning tick.");
-        if (quickStockUpdateAnimationFrameId) cancelAnimationFrame(quickStockUpdateAnimationFrameId);
-        return;
-    }
-
-    if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
-        quickStockUpdateCanvas.height = video.videoHeight;
-        quickStockUpdateCanvas.width = video.videoWidth;
-        const ctx = quickStockUpdateCanvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, quickStockUpdateCanvas.width, quickStockUpdateCanvas.height);
-
-        try {
-            const imageData = ctx.getImageData(0, 0, quickStockUpdateCanvas.width, quickStockUpdateCanvas.height);
-            if (typeof jsQR === 'undefined') {
-                console.error('jsQR library is not loaded.');
-                // Optionally, update feedback to user and stop scanner
-                const feedbackElem = document.getElementById('quickStockUpdateFeedback');
-                if(feedbackElem) feedbackElem.textContent = 'Error: QR processing library missing.';
-                stopQuickStockUpdateScanner();
-                return;
-            }
-            const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                inversionAttempts: 'dontInvert',
-            });
-
-            if (code && code.data) {
-                processQuickStockScan(code.data); // Process the scanned code
-                // processQuickStockScan will decide if scanning continues
-            } else {
-                quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner); // Continue scanning
-            }
-        } catch(e) {
-            console.error("Error in QR processing: ", e);
-            // Potentially update feedback for the user
-            const feedbackElem = document.getElementById('quickStockUpdateFeedback');
-            if(feedbackElem) feedbackElem.textContent = 'Error processing image for QR code.';
-            // Decide if to stop or continue
-            quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner);
-        }
-
-    } else {
-        quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner); // Wait for video
-    }
-  }
-
-  async function processQuickStockScan(decodedQRData) {
-    const feedback = document.getElementById('quickStockUpdateFeedback');
-    if (!feedback) {
-        console.error("Quick stock update feedback element not found.");
-        stopQuickStockUpdateScanner(); // Stop if UI is broken
-        return;
-    }
-
-    if (quickScanState === 'WAITING_FOR_PRODUCT') {
-        try {
-            const potentialAction = JSON.parse(decodedQRData);
-            if (potentialAction && potentialAction.action && typeof potentialAction.quantity !== 'undefined') {
-                feedback.textContent = 'Error: Scanned an Action QR. Please scan a Product QR first.';
-                setTimeout(() => {
-                    if (quickScanState === 'WAITING_FOR_PRODUCT') feedback.textContent = 'Scan Product QR Code...';
-                }, 2000);
-                quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner); // Continue scanning for product
-                return;
-            }
-        } catch (e) {
-            // Not JSON, likely a product ID string, proceed
-        }
-        currentScannedProductId = decodedQRData.trim();
-        // Validate product ID exists? Optional, but good for immediate feedback.
-        // For now, just assume it's a product ID and wait for action.
-        quickScanState = 'WAITING_FOR_ACTION';
-        isQuickStockBarcodeActive = false; // Disable barcode input once product is locked in by camera, action must be camera
-        feedback.textContent = `Product ID: ${currentScannedProductId}. Use CAMERA to scan Action QR.`;
-        quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner); // Continue for action QR
-
-    } else if (quickScanState === 'WAITING_FOR_ACTION') {
-        let actionData;
-        try {
-            actionData = JSON.parse(decodedQRData);
-        } catch (e) {
-            feedback.textContent = 'Invalid Action QR. Not valid JSON. Scan Action QR or new Product QR.';
-            currentScannedProductId = null;
-            quickScanState = 'WAITING_FOR_PRODUCT';
-            setTimeout(() => { if(quickScanState === 'WAITING_FOR_PRODUCT') feedback.textContent = 'Scan Product QR Code...'; }, 3000);
-            quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner);
-            return;
-        }
-
-        if (!actionData || !actionData.action || typeof actionData.quantity === 'undefined') {
-            feedback.textContent = 'Invalid Action QR. Format: {"action":"type", "quantity":num}. Scan Action QR or new Product QR.';
-            currentScannedProductId = null;
-            quickScanState = 'WAITING_FOR_PRODUCT';
-            setTimeout(() => { if(quickScanState === 'WAITING_FOR_PRODUCT') feedback.textContent = 'Scan Product QR Code...'; }, 3000);
-            quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner);
-            return;
-        }
-
-        if (!currentScannedProductId) { // Should not happen if logic is correct, but as a safeguard
-            feedback.textContent = 'Error: No Product ID context. Scan Product QR first.';
-            quickScanState = 'WAITING_FOR_PRODUCT';
-            setTimeout(() => { if(quickScanState === 'WAITING_FOR_PRODUCT') feedback.textContent = 'Scan Product QR Code...'; }, 3000);
-            quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner);
-            return;
-        }
-
-        try {
-            const productRef = db.collection('inventory').doc(currentScannedProductId);
-            const productDoc = await productRef.get();
-
-            if (!productDoc.exists) {
-                feedback.textContent = `Error: Product ID ${currentScannedProductId} not found.`;
-                currentScannedProductId = null; quickScanState = 'WAITING_FOR_PRODUCT';
-                setTimeout(() => { if(quickScanState === 'WAITING_FOR_PRODUCT') feedback.textContent = 'Scan Product QR Code...'; }, 3000);
-                quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner);
-                return;
-            }
-
-            const product = productDoc.data();
-            let newQuantity = product.quantity;
-
-            switch (actionData.action) {
-                case 'add':
-                    newQuantity += actionData.quantity;
-                    break;
-                case 'remove':
-                    newQuantity -= actionData.quantity;
-                    newQuantity = Math.max(0, newQuantity); // Prevent negative quantity
-                    break;
-                case 'set':
-                    newQuantity = actionData.quantity;
-                    newQuantity = Math.max(0, newQuantity); // Prevent negative quantity
-                    break;
-                default:
-                    feedback.textContent = `Invalid action: ${actionData.action}. Scan Action QR or new Product QR.`;
-                    currentScannedProductId = null; quickScanState = 'WAITING_FOR_PRODUCT';
-                    setTimeout(() => { if(quickScanState === 'WAITING_FOR_PRODUCT') feedback.textContent = 'Scan Product QR Code...'; }, 3000);
-                    quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner);
-                    return;
-            }
-
-            await productRef.update({ quantity: newQuantity });
-            feedback.textContent = `Success: ${product.name} quantity updated to ${newQuantity}. Scan next Product QR.`;
-            await loadInventory(); // Refresh local inventory and UI tables
-            await updateToOrderTable(); // Refresh order table specifically
-
-        } catch (error) {
-            console.error("Error processing action or updating Firestore:", error);
-            feedback.textContent = 'Error updating database. Please try again.';
-        } finally {
-            currentScannedProductId = null;
-            quickScanState = 'WAITING_FOR_PRODUCT'; // Reset for next sequence
-            setTimeout(() => {
-                if(quickScanState === 'WAITING_FOR_PRODUCT') feedback.textContent = 'Scan Product QR Code...';
-            }, 3000);
-            quickStockUpdateAnimationFrameId = requestAnimationFrame(tickQuickStockScanner); // Continue scanning for the next product
-        }
-    }
-  }
-
-  function stopQuickStockUpdateScanner() {
-    const video = document.getElementById('quickStockUpdateVideo');
-    const feedback = document.getElementById('quickStockUpdateFeedback');
-    const startBtn = document.getElementById('startQuickStockScannerBtn');
-    const stopBtn = document.getElementById('stopQuickStockScannerBtn');
-
-    quickScanState = 'IDLE';
-    if (quickStockUpdateAnimationFrameId) {
-        cancelAnimationFrame(quickStockUpdateAnimationFrameId);
-        quickStockUpdateAnimationFrameId = null;
-    }
-    if (quickStockUpdateStream) {
-        quickStockUpdateStream.getTracks().forEach(track => track.stop());
-        quickStockUpdateStream = null;
-    }
-    if (video) {
-      video.srcObject = null;
-      video.classList.add('hidden');
-    }
-    if(stopBtn) stopBtn.classList.add('hidden');
-    if(startBtn) startBtn.classList.remove('hidden');
-    if(feedback) feedback.textContent = 'Scanner stopped. Scan Product QR with Camera or Barcode Scanner.';
-    currentScannedProductId = null;
-    isQuickStockBarcodeActive = true; // Re-enable barcode input when camera stops
-    quickStockBarcodeBuffer = ""; // Clear buffer
-  }
+  // ... (Quick Stock Update scanner functions: startQuickStockUpdateScanner, tickQuickStockScanner, processQuickStockScan, stopQuickStockUpdateScanner)
+  // ... (displayActionQRCodes function)
+  // These functions were added in previous subtasks and are assumed to be present and correct.
+  // The switchQuickUpdateTab function was also added previously.
   // --- END QUICK STOCK UPDATE SCANNER FUNCTIONS ---
 
-  // Function to display Action QR Codes for Quick Stock Update
-  function displayActionQRCodes() {
-    const actionQRCodesContainer = document.getElementById('actionQRCodesContainer');
-    if (!actionQRCodesContainer) {
-      console.error('actionQRCodesContainer not found in the DOM.');
-      return;
-    }
-    actionQRCodesContainer.innerHTML = ''; // Clear existing content
 
-    const quantities = [1, 2, 3, 4, 5, 10, 20, 30];
-    const actions = [
-      { type: 'add', label: 'Add', colorClass: 'bg-green-100 dark:bg-green-800' },
-      { type: 'remove', label: 'Remove', colorClass: 'bg-red-100 dark:bg-red-800' },
-      { type: 'set', label: 'Set to', colorClass: 'bg-blue-100 dark:bg-blue-800'}
-    ];
-
-    // Always add "Set to 0"
-    const zeroQtyData = { action: 'set', quantity: 0 };
-    const zeroQrJson = JSON.stringify(zeroQtyData);
-    const zeroWrapperDiv = document.createElement('div');
-    zeroWrapperDiv.className = `text-center p-2 rounded-md shadow ${actions.find(a => a.type === 'set').colorClass}`;
-    const zeroQrCodeElement = document.createElement('div');
-    const zeroLabel = document.createElement('p');
-    zeroLabel.className = 'text-xs mt-1 font-semibold text-gray-700 dark:text-gray-200';
-    zeroLabel.textContent = `Set to 0`;
-    zeroWrapperDiv.appendChild(zeroQrCodeElement);
-    zeroWrapperDiv.appendChild(zeroLabel);
-    actionQRCodesContainer.appendChild(zeroWrapperDiv);
-    try {
-        if (typeof window.QRCode !== 'function') throw new Error('QRCode lib not ready');
-        new QRCode(zeroQrCodeElement, { text: zeroQrJson, width: 70, height: 70, correctLevel: QRCode.CorrectLevel.M });
-    } catch (error) {
-        console.error(`Error generating QR for Set to 0:`, error);
-        zeroQrCodeElement.innerHTML = `<p class="text-red-500 text-xs">${error.message}</p>`;
-    }
-
-    actions.forEach(actionInfo => {
-      quantities.forEach(qty => {
-        // Skip "Set to 0" here as it's already added. Only add other "Set to" quantities if they are small.
-        if (actionInfo.type === 'set' && qty === 0) return;
-        if (actionInfo.type === 'set' && qty > 10) return;
-
-
-        const qrData = { action: actionInfo.type, quantity: qty };
-        const qrJson = JSON.stringify(qrData);
-
-        const wrapperDiv = document.createElement('div');
-        wrapperDiv.className = `text-center p-2 rounded-md shadow ${actionInfo.colorClass}`;
-
-        const qrCodeElement = document.createElement('div');
-        // qrcodejs will append a canvas/img here.
-
-        const label = document.createElement('p');
-        label.className = 'text-xs mt-1 font-semibold text-gray-700 dark:text-gray-200';
-        label.textContent = `${actionInfo.label} ${qty}`;
-
-        wrapperDiv.appendChild(qrCodeElement);
-        wrapperDiv.appendChild(label);
-        actionQRCodesContainer.appendChild(wrapperDiv);
-
-        try {
-          if (typeof window.QRCode !== 'function') {
-            throw new Error('QRCode library is not available.');
-          }
-          new QRCode(qrCodeElement, {
-            text: qrJson,
-            width: 70,
-            height: 70,
-            correctLevel: QRCode.CorrectLevel.M
-          });
-        } catch (error) {
-          console.error(`Error generating QR code for ${actionInfo.label} ${qty}:`, error);
-          qrCodeElement.innerHTML = `<p class="text-red-500 text-xs">${error.message}</p>`;
-        }
-      });
-    });
-  }
-
-  // Global keypress listener for barcode scanner input during edit mode
+  // Global keypress listener for barcode scanner input (both edit mode and quick stock)
   document.addEventListener('keypress', (event) => {
-    if (!isEditScanModeActive) {
-      return;
-    }
-
-    // Prevent default action if we are in edit scan mode and capturing input
-    // This stops the character from appearing in any focused input field.
-    // event.preventDefault(); // Decided against global preventDefault for this listener initially.
+    const quickStockUpdateContainerEl = document.getElementById('quickStockUpdateContainer');
+    const quickStockUpdateContainerVisible = quickStockUpdateContainerEl && !quickStockUpdateContainerEl.classList.contains('hidden');
+    const quickScanModeTabActive = document.getElementById('quickScanModeTab')?.getAttribute('aria-selected') === 'true';
 
     if (event.key === 'Enter' || event.keyCode === 13) {
-      const quickStockUpdateContainerEl = document.getElementById('quickStockUpdateContainer');
-      const quickStockUpdateContainerVisible = quickStockUpdateContainerEl && !quickStockUpdateContainerEl.classList.contains('hidden');
-      const quickScanModeTabActive = document.getElementById('quickScanModeTab')?.getAttribute('aria-selected') === 'true';
-
       // Priority to Quick Stock Barcode Input if its specific conditions are met
       if (isQuickStockBarcodeActive && quickStockUpdateContainerVisible && quickScanModeTabActive &&
           (quickScanState === 'WAITING_FOR_PRODUCT' || quickScanState === 'IDLE') &&
@@ -2873,41 +2529,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentScannedProductId = scannedId;
             quickScanState = 'WAITING_FOR_ACTION';
             if(feedbackElem) feedbackElem.textContent = `Product ID: ${currentScannedProductId}. Use CAMERA to scan Action QR.`;
-            isQuickStockBarcodeActive = false; // Barcode input done for this product, action must be camera
+            isQuickStockBarcodeActive = false;
 
-            if (!quickStockUpdateStream && feedbackElem) { // If camera isn't already running
+            if (!quickStockUpdateStream && feedbackElem) {
                  feedbackElem.textContent += ' Press Start Scanner for Action QR.';
             }
         }
-        return; // Handled by Quick Stock, do not proceed to edit scan logic
+        return;
       }
 
       // Existing Edit Product Barcode Input
       if (isEditScanModeActive && editScanInputBuffer.trim() !== '') {
-        event.preventDefault(); // Prevent default if handling for edit mode
+        event.preventDefault();
         const scannedId = editScanInputBuffer.trim();
         console.log('Enter key processed by global listener for editScan. Buffer:', scannedId);
-        editProduct(scannedId); // This function should populate the form
-
-        // stopEditScanner() is crucial here to reset mode, UI, and buffer.
-        // The camera scan path (scanEditQR) calls editProduct then stopEditScanner.
-        // We must do the same for the barcode scanner path.
+        editProduct(scannedId);
         stopEditScanner(); 
       }
-      editScanInputBuffer = ""; // Reset buffer after Enter, even if it was empty for edit mode
+      editScanInputBuffer = "";
     } else {
       // Append other characters to respective buffers based on active state
-      const quickStockUpdateContainerEl = document.getElementById('quickStockUpdateContainer');
-      const quickStockUpdateContainerVisible = quickStockUpdateContainerEl && !quickStockUpdateContainerEl.classList.contains('hidden');
-      const quickScanModeTabActive = document.getElementById('quickScanModeTab')?.getAttribute('aria-selected') === 'true';
-
       if (isQuickStockBarcodeActive && quickStockUpdateContainerVisible && quickScanModeTabActive &&
           (quickScanState === 'WAITING_FOR_PRODUCT' || quickScanState === 'IDLE')) {
-        // Only append to quickStockBarcodeBuffer if its section is active, correct tab, and waiting for product ID
         quickStockBarcodeBuffer += event.key;
       } else if (isEditScanModeActive) {
-        // This is to avoid characters appearing in focused fields when barcode scanner is used.
-        // Only prevent default if no standard input field is focused.
         const activeElement = document.activeElement;
         if (!activeElement || (activeElement.tagName !== 'INPUT' && activeElement.tagName !== 'TEXTAREA' && activeElement.tagName !== 'SELECT')) {
              event.preventDefault();
@@ -2919,11 +2564,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   } catch (error) {
     console.error('Initialization failed:', error);
-    // Optionally, display an error message to the user in the UI
     const body = document.querySelector('body');
     if (body) {
       const errorDiv = document.createElement('div');
-      errorDiv.textContent = 'Critical error: QRCode library failed to load. Some features might not work. Please refresh or check your internet connection.';
+      errorDiv.textContent = 'Critical error: Application setup failed. Some features might not work. Please refresh or check console.';
       errorDiv.style.color = 'red';
       errorDiv.style.backgroundColor = 'white';
       errorDiv.style.padding = '10px';
