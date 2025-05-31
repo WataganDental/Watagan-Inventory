@@ -275,6 +275,7 @@ function updateSupplierList() {
 function updateSupplierDropdown() {
   const productSupplierDropdown = document.getElementById('productSupplier');
   const filterSupplierDropdown = document.getElementById('filterSupplier');
+  const filterToOrderSupplierDropdown = document.getElementById('filterToOrderSupplier');
 
   const populate = (dropdown, includeAllOption) => {
     if (!dropdown) return;
@@ -294,6 +295,7 @@ function updateSupplierDropdown() {
 
   populate(productSupplierDropdown, false);
   populate(filterSupplierDropdown, true);
+  populate(filterToOrderSupplierDropdown, true); // Added this line
   console.log('Supplier dropdowns updated.');
 }
 
@@ -608,6 +610,17 @@ function addBatchEntry() {
     });
   }
 
+  const clearToOrderFilterBtnEl = document.getElementById('clearToOrderFilterBtn');
+  if (clearToOrderFilterBtnEl) {
+    clearToOrderFilterBtnEl.addEventListener('click', () => {
+      const filterToOrderSupplierDropdown = document.getElementById('filterToOrderSupplier');
+      if (filterToOrderSupplierDropdown) {
+        filterToOrderSupplierDropdown.value = "";
+      }
+      updateToOrderTable(); // Refresh the table
+    });
+  }
+
   // The keypress listener for quantityInput has been removed as per the requirement.
 
   // Attach listener to the new remove button directly
@@ -819,9 +832,16 @@ function updateInventoryTable(itemsToDisplay) {
 
 async function updateToOrderTable() {
   const snapshot = await db.collection('inventory').get();
-  const toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity);
+  let toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity); // Made toOrderItems mutable
   const toOrderTable = document.getElementById('toOrderTable');
   toOrderTable.innerHTML = '';
+
+  // Filter by supplier
+  const filterToOrderSupplierDropdown = document.getElementById('filterToOrderSupplier');
+  const selectedSupplier = filterToOrderSupplierDropdown ? filterToOrderSupplierDropdown.value : "";
+  if (selectedSupplier) {
+    toOrderItems = toOrderItems.filter(item => item.supplier === selectedSupplier);
+  }
 
   const reorderNotificationBar = document.getElementById('reorderNotificationBar');
   if (toOrderItems.length > 0) {
@@ -2143,6 +2163,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (filterLocationEl) filterLocationEl.value = '';
       if (inventorySearchInputEl) inventorySearchInputEl.value = '';
       applyAndRenderInventoryFilters();
+    });
+  }
+
+  // Event listener for the "Products to Order" supplier filter
+  const filterToOrderSupplierDropdown = document.getElementById('filterToOrderSupplier');
+  if (filterToOrderSupplierDropdown) {
+    filterToOrderSupplierDropdown.addEventListener('change', () => {
+      updateToOrderTable(); // Refresh the table with the new filter
     });
   }
   
