@@ -2176,7 +2176,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setupCollapsibleSection('toggleSupplierFormBtn', 'supplierFormContent', true);
         setupCollapsibleSection('toggleLocationFormBtn', 'locationFormContent', true);
         setupCollapsibleSection('toggleMoveProductFormBtn', 'moveProductFormContent', true);
-        setupCollapsibleSection('toggleUpdateProductFormBtn', 'updateProductFormContent', true); // Added this line
+        // setupCollapsibleSection('toggleUpdateProductFormBtn', 'updateProductFormContent', true); // Added this line
         
         // Tables expanded by default (remains true)
         setupCollapsibleSection('toggleInventoryTableBtn', 'inventoryTableContent', true);
