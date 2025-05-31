@@ -34,14 +34,29 @@ async function displayActionQRCodes() {
   container.innerHTML = ''; // Clear previous QRs
 
   const actions = [
-    { label: '+1 Unit', data: 'ACTION_ADD_1' },
-    { label: '-1 Unit', data: 'ACTION_SUB_1' },
-    { label: '+5 Units', data: 'ACTION_ADD_5' },
-    { label: '-5 Units', data: 'ACTION_SUB_5' },
-    { label: 'Set to 0', data: 'ACTION_SET_0' },
-    { label: 'Set to 10', data: 'ACTION_SET_10' },
-    { label: 'Set to 20', data: 'ACTION_SET_20' },
-    { label: 'Cancel Action', data: 'ACTION_CANCEL' }
+    // Additions
+    { label: '+1 Unit', data: 'ACTION_ADD_1', type: 'add' },
+    { label: '-1 Unit', data: 'ACTION_SUB_1', type: 'subtract' },
+    { label: '+2 Units', data: 'ACTION_ADD_2', type: 'add' },
+    { label: '-2 Units', data: 'ACTION_SUB_2', type: 'subtract' },
+    { label: '+3 Units', data: 'ACTION_ADD_3', type: 'add' },
+    { label: '-3 Units', data: 'ACTION_SUB_3', type: 'subtract' },
+    { label: '+4 Units', data: 'ACTION_ADD_4', type: 'add' },
+    { label: '-4 Units', data: 'ACTION_SUB_4', type: 'subtract' },
+    { label: '+5 Units', data: 'ACTION_ADD_5', type: 'add' },
+    { label: '-5 Units', data: 'ACTION_SUB_5', type: 'subtract' },
+    { label: '+10 Units', data: 'ACTION_ADD_10', type: 'add' },
+    { label: '-10 Units', data: 'ACTION_SUB_10', type: 'subtract' },
+    // Set actions
+    { label: 'Set to 0', data: 'ACTION_SET_0', type: 'set' },
+    { label: 'Set to 1', data: 'ACTION_SET_1', type: 'set' },
+    { label: 'Set to 5', data: 'ACTION_SET_5', type: 'set' },
+    { label: 'Set to 10', data: 'ACTION_SET_10', type: 'set' },
+    { label: 'Set to 20', data: 'ACTION_SET_20', type: 'set' },
+    { label: 'Set to 30', data: 'ACTION_SET_30', type: 'set' },
+    { label: 'Set to 40', data: 'ACTION_SET_40', type: 'set' },
+    // Cancel
+    { label: 'Cancel Action', data: 'ACTION_CANCEL', type: 'cancel' }
   ];
 
   if (typeof QRCode === 'undefined') {
@@ -52,7 +67,15 @@ async function displayActionQRCodes() {
 
   actions.forEach(action => {
     const actionDiv = document.createElement('div');
-    actionDiv.className = 'flex flex-col items-center p-2 border dark:border-slate-700 rounded-md shadow';
+    let bgColorClass = 'bg-gray-100 dark:bg-gray-700'; // Default/cancel
+    if (action.type === 'add') {
+      bgColorClass = 'bg-green-100 hover:bg-green-200 dark:bg-green-700 dark:hover:bg-green-600';
+    } else if (action.type === 'subtract') {
+      bgColorClass = 'bg-red-100 hover:bg-red-200 dark:bg-red-700 dark:hover:bg-red-600';
+    } else if (action.type === 'set') {
+      bgColorClass = 'bg-blue-100 hover:bg-blue-200 dark:bg-blue-700 dark:hover:bg-blue-600';
+    }
+    actionDiv.className = `flex flex-col items-center p-2 border dark:border-slate-600 rounded-md shadow ${bgColorClass} transition-colors duration-150`;
 
     const qrCodeElem = document.createElement('div');
     qrCodeElem.id = `action-qr-${action.data}`;
@@ -60,7 +83,7 @@ async function displayActionQRCodes() {
 
     const labelElem = document.createElement('p');
     labelElem.textContent = action.label;
-    labelElem.className = 'text-sm mt-1 dark:text-gray-300';
+    labelElem.className = 'text-sm mt-1 dark:text-gray-200';
     actionDiv.appendChild(labelElem);
 
     container.appendChild(actionDiv);
@@ -79,7 +102,7 @@ async function displayActionQRCodes() {
       qrCodeElem.textContent = 'Error';
     }
   });
-  console.log('Action QR codes displayed.');
+  console.log('Action QR codes displayed with new actions and colors.');
 }
 
 function stopQuickStockUpdateScanner() {
@@ -187,17 +210,29 @@ async function startQuickStockUpdateScanner() {
             let currentQuantity = doc.data().quantity;
             let newQuantity = currentQuantity;
 
-            if (action === 'ACTION_ADD_1') newQuantity += 1;
-            else if (action === 'ACTION_SUB_1') newQuantity -= 1;
-            else if (action === 'ACTION_ADD_5') newQuantity += 5;
-            else if (action === 'ACTION_SUB_5') newQuantity -= 5;
-            else if (action === 'ACTION_SET_0') newQuantity = 0;
-            else if (action === 'ACTION_SET_10') newQuantity = 10;
-            else if (action === 'ACTION_SET_20') newQuantity = 20;
-            else {
-                feedbackElem.textContent = `Unknown action: ${action}. Rescan Product QR.`;
-                return;
-            }
+                if (action === 'ACTION_ADD_1') newQuantity += 1;
+                else if (action === 'ACTION_SUB_1') newQuantity -= 1;
+                else if (action === 'ACTION_ADD_2') newQuantity += 2;
+                else if (action === 'ACTION_SUB_2') newQuantity -= 2;
+                else if (action === 'ACTION_ADD_3') newQuantity += 3;
+                else if (action === 'ACTION_SUB_3') newQuantity -= 3;
+                else if (action === 'ACTION_ADD_4') newQuantity += 4;
+                else if (action === 'ACTION_SUB_4') newQuantity -= 4;
+                else if (action === 'ACTION_ADD_5') newQuantity += 5;
+                else if (action === 'ACTION_SUB_5') newQuantity -= 5;
+                else if (action === 'ACTION_ADD_10') newQuantity += 10;
+                else if (action === 'ACTION_SUB_10') newQuantity -= 10;
+                else if (action === 'ACTION_SET_0') newQuantity = 0;
+                else if (action === 'ACTION_SET_1') newQuantity = 1;
+                else if (action === 'ACTION_SET_5') newQuantity = 5;
+                else if (action === 'ACTION_SET_10') newQuantity = 10;
+                else if (action === 'ACTION_SET_20') newQuantity = 20;
+                else if (action === 'ACTION_SET_30') newQuantity = 30;
+                else if (action === 'ACTION_SET_40') newQuantity = 40;
+                else {
+                    feedbackElem.textContent = `Unknown action: ${action}. Rescan Product QR.`;
+                    return;
+                }
             if (newQuantity < 0) newQuantity = 0;
             await productRef.update({ quantity: newQuantity });
             feedbackElem.textContent = `Success! Product ${doc.data().name} (ID: ${productId}) quantity updated to ${newQuantity}. Scan next Product QR.`;
