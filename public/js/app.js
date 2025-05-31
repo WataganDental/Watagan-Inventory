@@ -2072,8 +2072,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadInventory(); 
     
     // Other initializations that don't depend on QRCode can be here or remain
-    loadSuppliers(); // This will also populate filterSupplier dropdown
-    loadLocations(); // This will also populate filterLocation dropdown
+    await loadSuppliers(); // This will also populate filterSupplier dropdown
+    await loadLocations(); // This will also populate filterLocation dropdown
     addBatchEntry(); 
 
     console.log('DOMContentLoaded: About to schedule collapsible section initialization.');
