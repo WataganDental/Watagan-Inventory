@@ -212,6 +212,11 @@ async function startQuickStockUpdateScanner() {
     if (scannedData === 'ACTION_COMPLETE') {
         if (quickScanState === 'PRODUCT_SELECTED') {
             if (feedbackElem) feedbackElem.textContent = 'ACTION_COMPLETE scanned. Submitting update...';
+
+            // Add these lines:
+            quickStockBarcodeBuffer = "";
+            isQuickStockBarcodeActive = false;
+
             await handleSubmitQuickScanUpdate();
         } else {
             if (feedbackElem) feedbackElem.textContent = 'Please select a product before completing.';
@@ -249,9 +254,11 @@ async function startQuickStockUpdateScanner() {
                         nameParagraph.className = 'text-xs mt-1 text-center dark:text-gray-200';
                         searchedProductQRDisplay.appendChild(nameParagraph);
                     }
+                    if (quickScanQuantityInput) quickScanQuantityInput.value = product.quantity; // Populate quantity
                     if (feedbackElem) feedbackElem.textContent = `Product: '${product.name}'. Enter Quantity or scan Action/Complete QR.`;
                 } else {
                     if (searchedProductQRDisplay) searchedProductQRDisplay.innerHTML = '<span class="text-xs text-red-400 dark:text-red-300">Scanned ID not in DB.</span>';
+                    if (quickScanQuantityInput) quickScanQuantityInput.value = 0; // Set to 0 if not found
                     if (feedbackElem) feedbackElem.textContent = `Product ID '${productNameForFeedback}' (not found). Enter Quantity or scan Action/Complete QR.`;
                 }
             }).catch(error => {
@@ -269,21 +276,31 @@ async function startQuickStockUpdateScanner() {
 
         if (scannedData.startsWith('ACTION_')) {
             const action = scannedData;
-            let currentQuantity = parseInt(quickScanQuantityInput.value) || 0;
-            let newQuantity = currentQuantity;
+            // let currentQuantity = parseInt(quickScanQuantityInput.value) || 0; // Removed
 
-            if (action === 'ACTION_ADD_1') newQuantity += 1;
-            else if (action === 'ACTION_SUB_1') newQuantity -= 1;
-            else if (action === 'ACTION_ADD_2') newQuantity += 2;
-            else if (action === 'ACTION_SUB_2') newQuantity -= 2;
-            else if (action === 'ACTION_ADD_3') newQuantity += 3;
-            else if (action === 'ACTION_SUB_3') newQuantity -= 3;
-            else if (action === 'ACTION_ADD_4') newQuantity += 4;
-            else if (action === 'ACTION_SUB_4') newQuantity -= 4;
-            else if (action === 'ACTION_ADD_5') newQuantity += 5;
-            else if (action === 'ACTION_SUB_5') newQuantity -= 5;
-            else if (action === 'ACTION_ADD_10') newQuantity += 10;
-            else if (action === 'ACTION_SUB_10') newQuantity -= 10;
+            const currentProductIdForAction = quickScanProductIdInput.value; // Renamed for clarity
+            const productData = inventory.find(p => p.id === currentProductIdForAction);
+
+            if (!productData) {
+                if (feedbackElem) feedbackElem.textContent = 'Error: Could not find product data. Please re-select product.';
+                console.error('Error: productData not found in processQuickStockScan for action processing. Product ID:', currentProductIdForAction);
+                return;
+            }
+            let actualCurrentQuantity = parseInt(productData.quantity) || 0;
+            let newQuantity = actualCurrentQuantity; // Initialize with actual current quantity
+
+            if (action === 'ACTION_ADD_1') newQuantity = actualCurrentQuantity + 1;
+            else if (action === 'ACTION_SUB_1') newQuantity = actualCurrentQuantity - 1;
+            else if (action === 'ACTION_ADD_2') newQuantity = actualCurrentQuantity + 2;
+            else if (action === 'ACTION_SUB_2') newQuantity = actualCurrentQuantity - 2;
+            else if (action === 'ACTION_ADD_3') newQuantity = actualCurrentQuantity + 3;
+            else if (action === 'ACTION_SUB_3') newQuantity = actualCurrentQuantity - 3;
+            else if (action === 'ACTION_ADD_4') newQuantity = actualCurrentQuantity + 4;
+            else if (action === 'ACTION_SUB_4') newQuantity = actualCurrentQuantity - 4;
+            else if (action === 'ACTION_ADD_5') newQuantity = actualCurrentQuantity + 5;
+            else if (action === 'ACTION_SUB_5') newQuantity = actualCurrentQuantity - 5;
+            else if (action === 'ACTION_ADD_10') newQuantity = actualCurrentQuantity + 10;
+            else if (action === 'ACTION_SUB_10') newQuantity = actualCurrentQuantity - 10;
             else if (action === 'ACTION_SET_0') newQuantity = 0;
             else if (action === 'ACTION_SET_1') newQuantity = 1;
             else if (action === 'ACTION_SET_5') newQuantity = 5;
@@ -303,7 +320,7 @@ async function startQuickStockUpdateScanner() {
             // Scanned data is another Product ID
             currentScannedProductId = scannedData;
             quickScanProductIdInput.value = scannedData;
-            quickScanQuantityInput.value = '';
+            // quickScanQuantityInput.value = ''; // Keep existing or set based on new product
             quickScanQuantityInput.focus();
 
             db.collection('inventory').doc(scannedData).get().then(doc => {
@@ -323,9 +340,11 @@ async function startQuickStockUpdateScanner() {
                         nameParagraph.className = 'text-xs mt-1 text-center dark:text-gray-200';
                         searchedProductQRDisplay.appendChild(nameParagraph);
                     }
+                    if (quickScanQuantityInput) quickScanQuantityInput.value = product.quantity; // Populate quantity
                     if (feedbackElem) feedbackElem.textContent = `Switched to Product: '${product.name}'. Enter Quantity or scan Action/Complete QR.`;
                 } else {
                      if (searchedProductQRDisplay) searchedProductQRDisplay.innerHTML = '<span class="text-xs text-red-400 dark:text-red-300">New Scanned ID not in DB.</span>';
+                     if (quickScanQuantityInput) quickScanQuantityInput.value = 0; // Set to 0 if new product not found
                      if (feedbackElem) feedbackElem.textContent = `Switched to Product ID '${productNameForFeedback}' (not found). Enter Quantity or scan Action/Complete QR.`;
                 }
             }).catch(error => {
@@ -436,16 +455,34 @@ async function handleProductSearch(searchTerm) {
     const lowerSearchTerm = searchTerm.toLowerCase();
     console.log("DEBUG: Querying with name_lowercase >= '" + lowerSearchTerm + "' AND name_lowercase <= '" + lowerSearchTerm + "\uf8ff" + "'");
     const productsRef = db.collection('inventory');
-    const snapshot = await productsRef
+    let snapshot = await productsRef
       .where('name_lowercase', '>=', lowerSearchTerm)
       .where('name_lowercase', '<=', lowerSearchTerm + '\uf8ff')
       .limit(10)
       .get();
 
-    const products = [];
+    let products = [];
     snapshot.forEach(doc => {
       products.push({ id: doc.id, ...doc.data() });
     });
+
+    // Check if products were found with the primary query
+    if (products.length === 0 && searchTerm.trim() !== "") {
+        console.log("DEBUG: No products found with name_lowercase. Falling back to querying by 'name' field.");
+        // Fallback query against the 'name' field
+        // Note: This fallback will be case-sensitive as the original 'name' field is.
+        const fallbackSnapshot = await productsRef
+            .where('name', '>=', searchTerm) // Use original searchTerm
+            .where('name', '<=', searchTerm + '\uf8ff') // Use original searchTerm
+            .limit(10)
+            .get();
+
+        fallbackSnapshot.forEach(doc => {
+            // Add to products array, could add a check for duplicates if absolutely necessary,
+            // but given the primary query failed, duplicates are unlikely here.
+            products.push({ id: doc.id, ...doc.data() });
+        });
+    }
 
     displaySearchResults(products);
 
@@ -507,8 +544,10 @@ function handleProductSelection(product) {
   if (feedbackElem) {
     feedbackElem.textContent = `Product: '${product.name}'. Enter Quantity or scan Action/Complete QR.`;
   }
-
-  if(quickScanQuantityInput) quickScanQuantityInput.focus();
+  if(quickScanQuantityInput) {
+    quickScanQuantityInput.value = product.quantity; // Populate quantity
+    quickScanQuantityInput.focus();
+  }
 
   isQuickStockBarcodeActive = false;
   quickStockBarcodeBuffer = "";
