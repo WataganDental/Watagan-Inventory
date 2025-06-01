@@ -341,9 +341,12 @@ async function handleProductSearch(searchTerm) {
   resultsContainer.innerHTML = '<p class="p-2 text-gray-500 dark:text-gray-400">Searching...</p>';
 
   try {
-    console.log(`DEBUG: Fetching ANY 10 products (searchTerm was: ${searchTerm})`);
     const productsRef = db.collection('inventory');
-    const snapshot = await productsRef.limit(10).get();
+    const snapshot = await productsRef
+      .where('name', '>=', searchTerm)
+      .where('name', '<=', searchTerm + '\uf8ff')
+      .limit(10)
+      .get();
 
     const products = [];
     snapshot.forEach(doc => {
@@ -367,57 +370,53 @@ function handleProductSelection(product) {
   const productSearchInput = document.getElementById('interactiveProductSearch');
   const searchResultsContainer = document.getElementById('productSearchResults');
 
-
-  // Clear previous QR code and set placeholder text
-  qrDisplayContainer.innerHTML = ''; // Clear previous QR
-  const placeholderText = document.createElement('span');
-  placeholderText.className = 'text-xs text-gray-400 dark:text-gray-300';
+  // Clear previous content (e.g., placeholder text or old QR)
+  qrDisplayContainer.innerHTML = '';
 
   if (!product || !product.id) {
-    placeholderText.textContent = 'Error: Invalid product selected.';
-    qrDisplayContainer.appendChild(placeholderText);
+    const errorText = document.createElement('span');
+    errorText.className = 'text-xs text-red-500 dark:text-red-400';
+    errorText.textContent = 'Error: Invalid product selected.';
+    qrDisplayContainer.appendChild(errorText);
     if(feedbackElem) feedbackElem.textContent = "Error selecting product. Please try again.";
     return;
   }
 
-  placeholderText.textContent = `QR for ${product.name}`; // Will be replaced by QR code
-  qrDisplayContainer.appendChild(placeholderText);
+  // Div to hold the QR Code (QRCode.js will append canvas/img to this)
+  const qrCodeElement = document.createElement('div');
+  qrDisplayContainer.appendChild(qrCodeElement);
 
-
-  // Generate new QR code for the selected product's ID
   try {
-    new QRCode(qrDisplayContainer, { // Target the container directly
+    new QRCode(qrCodeElement, { // Target the new inner div
       text: product.id,
-      width: 128, // e.g., 128x128, slightly larger than action QRs
-      height: 128,
+      width: 100, // Slightly smaller to give space for text below
+      height: 100,
       colorDark: '#000000',
       colorLight: '#ffffff',
-      correctLevel: QRCode.CorrectLevel.H // High correction for product ID
+      correctLevel: QRCode.CorrectLevel.H
     });
-    // QRCode.js replaces the content of qrDisplayContainer, so placeholder is gone.
   } catch (e) {
     console.error('Error generating product QR code:', e);
-    qrDisplayContainer.innerHTML = '<span class="text-xs text-red-500">QR Error</span>'; // Show error in QR box
+    qrCodeElement.innerHTML = '<span class="text-xs text-red-500">QR Error</span>';
   }
+
+  // Create and append the product name paragraph below the QR code
+  const nameParagraph = document.createElement('p');
+  nameParagraph.textContent = product.name;
+  nameParagraph.className = 'text-xs mt-1 text-center dark:text-gray-200'; // Added text-center
+  qrDisplayContainer.appendChild(nameParagraph);
+
 
   if (feedbackElem) {
     feedbackElem.textContent = `Product '${product.name}' selected. Scan an Action QR with camera.`;
   }
 
-  // Update state for action scanning
   quickScanState = 'WAITING_FOR_ACTION';
-  isQuickStockBarcodeActive = false; // Expecting camera scan for action
-  quickStockBarcodeBuffer = "";    // Clear barcode buffer
+  isQuickStockBarcodeActive = false;
+  quickStockBarcodeBuffer = "";
 
-  // Clear search input and results
-  if(productSearchInput) productSearchInput.value = product.name; // Keep name in search for context
+  if(productSearchInput) productSearchInput.value = product.name;
   if(searchResultsContainer) searchResultsContainer.innerHTML = '';
-
-  // The user will now need to use the camera (potentially by clicking "Start Camera for Action")
-  // to scan one of the physical Action QR codes.
-  // The `startQuickStockScannerBtn`'s existing event listener for `startQuickStockUpdateScanner`
-  // will handle initializing the camera for scanning the action.
-  // `startQuickStockUpdateScanner` should already correctly handle being in 'WAITING_FOR_ACTION' state.
 }
 
 // Modal DOM element variables (module-scoped)
