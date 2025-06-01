@@ -433,11 +433,12 @@ async function handleProductSearch(searchTerm) {
   resultsContainer.innerHTML = '<p class="p-2 text-gray-500 dark:text-gray-400">Searching...</p>';
 
   try {
-    console.log("DEBUG: Querying with name >= '" + searchTerm + "' AND name <= '" + searchTerm + "\uf8ff" + "'");
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    console.log("DEBUG: Querying with name_lowercase >= '" + lowerSearchTerm + "' AND name_lowercase <= '" + lowerSearchTerm + "\uf8ff" + "'");
     const productsRef = db.collection('inventory');
     const snapshot = await productsRef
-      .where('name', '>=', searchTerm)
-      .where('name', '<=', searchTerm + '\uf8ff')
+      .where('name_lowercase', '>=', lowerSearchTerm)
+      .where('name_lowercase', '<=', lowerSearchTerm + '\uf8ff')
       .limit(10)
       .get();
 
@@ -968,6 +969,7 @@ async function submitProduct() {
   const currentPhotoSrc = document.getElementById('productPhotoPreview').src;
 
   if (name && quantity >= 0 && cost >= 0 && minQuantity >= 0 && supplier && location) {
+    const name_lowercase = name.toLowerCase(); // Add this line
     try {
       let photoUrlToSave;
       const productIdValue = document.getElementById('productId').value;
@@ -985,6 +987,7 @@ async function submitProduct() {
       await db.collection('inventory').doc(id).set({
         id,
         name,
+        name_lowercase, // Add this line
         quantity, 
         cost, 
         minQuantity,
@@ -2390,6 +2393,32 @@ function stopEditScanner() {
   if (scanResultP) scanResultP.textContent = ''; 
 }
 
+function resetQuickScanUI(feedbackMessage) {
+  const quickScanProductIdInput = document.getElementById('quickScanProductId');
+  const quickScanQuantityInput = document.getElementById('quickScanQuantity');
+  const searchedProductQRDisplay = document.getElementById('searchedProductQRDisplay');
+  const feedbackElem = document.getElementById('quickStockUpdateFeedback');
+
+  if (quickScanProductIdInput) quickScanProductIdInput.value = '';
+  if (quickScanQuantityInput) quickScanQuantityInput.value = '';
+  if (searchedProductQRDisplay) searchedProductQRDisplay.innerHTML = '<span class="text-xs text-gray-400 dark:text-gray-300">Product QR will appear here</span>';
+
+  currentScannedProductId = null;
+  quickScanState = 'IDLE';
+  isQuickStockBarcodeActive = true;
+  quickStockBarcodeBuffer = "";
+
+  if (feedbackElem) feedbackElem.textContent = feedbackMessage || "Search for a product, scan Product ID, or type ID and press Enter.";
+
+  if (quickStockUpdateStream) {
+      stopQuickStockUpdateScanner();
+  }
+  const startBtn = document.getElementById('startQuickStockScannerBtn');
+  const stopBtn = document.getElementById('stopQuickStockScannerBtn');
+  if (startBtn) startBtn.classList.remove('hidden');
+  if (stopBtn) stopBtn.classList.add('hidden');
+}
+
 // --- TAB SWITCHING LOGIC FOR QUICK STOCK UPDATE & BATCH ENTRY ---
 function switchQuickUpdateTab(selectedTabId) {
   const quickScanModeTabBtn = document.getElementById('quickScanModeTab');
@@ -2834,32 +2863,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
   }
 
-  function resetQuickScanUI(feedbackMessage) { // Removed default parameter to use specific one below
-    const quickScanProductIdInput = document.getElementById('quickScanProductId');
-    const quickScanQuantityInput = document.getElementById('quickScanQuantity');
-    const searchedProductQRDisplay = document.getElementById('searchedProductQRDisplay');
-    const feedbackElem = document.getElementById('quickStockUpdateFeedback');
-
-    if (quickScanProductIdInput) quickScanProductIdInput.value = '';
-    if (quickScanQuantityInput) quickScanQuantityInput.value = '';
-    if (searchedProductQRDisplay) searchedProductQRDisplay.innerHTML = '<span class="text-xs text-gray-400 dark:text-gray-300">Product QR will appear here</span>';
-
-    currentScannedProductId = null;
-    quickScanState = 'IDLE';
-    isQuickStockBarcodeActive = true;
-    quickStockBarcodeBuffer = "";
-
-    if (feedbackElem) feedbackElem.textContent = feedbackMessage || "Search for a product, scan Product ID, or type ID and press Enter.";
-
-    if (quickStockUpdateStream) {
-        stopQuickStockUpdateScanner();
-    }
-    const startBtn = document.getElementById('startQuickStockScannerBtn');
-    const stopBtn = document.getElementById('stopQuickStockScannerBtn');
-    if (startBtn) startBtn.classList.remove('hidden');
-    if (stopBtn) stopBtn.classList.add('hidden');
-  }
-
   async function handleSubmitQuickScanUpdate() {
     const productId = document.getElementById('quickScanProductId').value.trim();
     const quantityStr = document.getElementById('quickScanQuantity').value.trim();
@@ -2886,7 +2889,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const productRef = db.collection('inventory').doc(productId);
         const doc = await productRef.get();
-        const productName = doc.exists() ? doc.data().name : productId;
+        const productName = doc.exists ? doc.data().name : productId;
 
         if (!doc.exists) {
             feedbackElem.textContent = `Error: Product ID '${productId}' not found in inventory.`;
