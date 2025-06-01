@@ -341,15 +341,9 @@ async function handleProductSearch(searchTerm) {
   resultsContainer.innerHTML = '<p class="p-2 text-gray-500 dark:text-gray-400">Searching...</p>';
 
   try {
-    // Assumption: 'name_lowercase' field exists for case-insensitive prefix search.
-    // If not, this query needs adjustment or search will be case-sensitive on 'name'.
-    const searchTermLower = searchTerm.toLowerCase();
+    console.log(`DEBUG: Fetching ANY 10 products (searchTerm was: ${searchTerm})`);
     const productsRef = db.collection('inventory');
-    const snapshot = await productsRef
-      .where('name_lowercase', '>=', searchTermLower)
-      .where('name_lowercase', '<=', searchTermLower + '\uf8ff')
-      .limit(10)
-      .get();
+    const snapshot = await productsRef.limit(10).get();
 
     const products = [];
     snapshot.forEach(doc => {
