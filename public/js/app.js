@@ -341,6 +341,7 @@ async function handleProductSearch(searchTerm) {
   resultsContainer.innerHTML = '<p class="p-2 text-gray-500 dark:text-gray-400">Searching...</p>';
 
   try {
+    console.log("DEBUG: Querying with name >= '" + searchTerm + "' AND name <= '" + searchTerm + "\uf8ff" + "'");
     const productsRef = db.collection('inventory');
     const snapshot = await productsRef
       .where('name', '>=', searchTerm)
