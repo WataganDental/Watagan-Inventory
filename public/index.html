@@ -218,6 +218,11 @@
                         <span class="text-xs text-gray-400 dark:text-gray-300">Product QR will appear here</span>
                     </div>
 
+                    <!-- New Input Fields and Submit Button -->
+                    <input type="text" id="quickScanProductId" placeholder="Scan or select Product ID" class="border dark:border-gray-600 p-2 rounded w-full mb-2 dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400" autofocus>
+                    <input type="number" id="quickScanQuantity" placeholder="Enter quantity or scan action" class="border dark:border-gray-600 p-2 rounded w-full mb-2 dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
+                    <button id="submitQuickScanUpdateBtn" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded w-full mb-4 dark:bg-blue-700 dark:hover:bg-blue-600">Submit Update</button>
+
                     <!-- Existing Action QR Codes Container -->
                     <h4 class="text-lg font-semibold mb-2 text-center">Scan Action QR Code</h4>
                     <div id="actionQRCodesContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mb-4 p-2 border-t dark:border-slate-700">
