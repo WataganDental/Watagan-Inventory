@@ -2903,7 +2903,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function handleSubmitQuickScanUpdate() {
-    const productId = document.getElementById('quickScanProductId').value.trim();
+    const productId = currentScannedProductId;
     const quantityStr = document.getElementById('quickScanQuantity').value.trim();
     const feedbackElem = document.getElementById('quickStockUpdateFeedback');
 
@@ -3094,6 +3094,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
   }
+
+    if (quickScanProductIdField) { // Ensure it exists
+
+        quickScanProductIdField.addEventListener('input', debounce(async () => {
+            const fieldVal = quickScanProductIdField.value.trim();
+            if (quickScanState === 'PRODUCT_SELECTED' && fieldVal === 'ACTION_COMPLETE') {
+                console.log('ACTION_COMPLETE detected in quickScanProductId field (debounced). Current actual product ID:', currentScannedProductId);
+
+                const feedbackElem = document.getElementById('quickStockUpdateFeedback');
+
+                if (currentScannedProductId && currentScannedProductId !== 'ACTION_COMPLETE') {
+                    // Restore the input field to display the actual product ID, as it was likely overwritten by "ACTION_COMPLETE"
+                    quickScanProductIdField.value = currentScannedProductId;
+
+                    console.log('Calling handleSubmitQuickScanUpdate for actual product ID:', currentScannedProductId);
+                    await handleSubmitQuickScanUpdate();
+                } else {
+                    if (feedbackElem) {
+                        feedbackElem.textContent = 'Error: ACTION_COMPLETE scanned, but no valid product is selected. Please scan a product first.';
+                    }
+                    console.error('ACTION_COMPLETE detected, but currentScannedProductId is invalid:', currentScannedProductId);
+                    // Clear the field or set to a known state if currentScannedProductId is also bad
+                    quickScanProductIdField.value = currentScannedProductId && currentScannedProductId !== 'ACTION_COMPLETE' ? currentScannedProductId : '';
+                }
+            }
+        }, 150)); // 150ms debounce
+    }
 
   } catch (error) {
     console.error('Initialization failed:', error);
