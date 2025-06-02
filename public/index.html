@@ -99,33 +99,42 @@
                   <button id="stopEditScannerBtn" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded dark:bg-red-700 dark:hover:bg-red-600 hidden mt-2">Stop Edit Scanner</button>
                 </div>
                 <div class="flex items-center mb-3">
-                    <label for="productName" class="w-1/3 text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">Product Name</label>
-                    <input id="productName" type="text" class="w-2/3 p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
+                    <label for="productName" class="w-auto text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Product Name</label>
+                    <input id="productName" type="text" class="flex-grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
                 </div>
                 <div class="flex items-center mb-3">
-                    <label for="productQuantity" class="w-1/3 text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">Quantity</label>
-                    <input id="productQuantity" type="number" class="w-2/3 p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
+                    <label for="productQuantity" class="w-auto text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Quantity</label>
+                    <input id="productQuantity" type="number" class="flex-grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
                 </div>
                 <div class="flex items-center mb-3">
-                    <label for="productCost" class="w-1/3 text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">Cost per Unit ($)</label>
-                    <input id="productCost" type="number" step="0.01" class="w-2/3 p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
+                    <label for="productCost" class="w-auto text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Cost per Unit ($)</label>
+                    <input id="productCost" type="number" step="0.01" class="flex-grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
                 </div>
                 <div class="flex items-center mb-3">
-                    <label for="productMinQuantity" class="w-1/3 text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">Minimum Quantity</label>
-                    <input id="productMinQuantity" type="number" class="w-2/3 p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
+                    <label for="productMinQuantity" class="w-auto text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Minimum Quantity</label>
+                    <input id="productMinQuantity" type="number" class="flex-grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
                 </div>
-                <input id="productQuantityOrdered" type="number" placeholder="Quantity Ordered (Optional)" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
-                <input id="productQuantityBackordered" type="number" placeholder="Quantity Backordered (Optional)" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
-                <input id="productReorderQuantity" type="number" placeholder="Reorder Quantity (Optional)" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
                 <div class="flex items-center mb-3">
-                    <label for="productSupplier" class="w-1/3 text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">Supplier</label>
-                    <select id="productSupplier" class="w-2/3 p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
+                    <label for="productQuantityOrdered" class="w-auto text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Quantity Ordered</label>
+                    <input id="productQuantityOrdered" type="number" class="flex-grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
+                </div>
+                <div class="flex items-center mb-3">
+                    <label for="productQuantityBackordered" class="w-auto text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Quantity Backordered</label>
+                    <input id="productQuantityBackordered" type="number" class="flex-grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
+                </div>
+                <div class="flex items-center mb-3">
+                    <label for="productReorderQuantity" class="w-auto text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Reorder Quantity</label>
+                    <input id="productReorderQuantity" type="number" class="flex-grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
+                </div>
+                <div class="flex items-center mb-3">
+                    <label for="productSupplier" class="w-auto text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Supplier</label>
+                    <select id="productSupplier" class="flex-grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
                         <option value="">Select Supplier</option>
                     </select>
                 </div>
                 <div class="flex items-center mb-3">
-                    <label for="productLocation" class="w-1/3 text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">Location</label>
-                    <select id="productLocation" class="w-2/3 p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
+                    <label for="productLocation" class="w-auto text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Location</label>
+                    <select id="productLocation" class="flex-grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
                     </select>
                 </div>
                 <div>
