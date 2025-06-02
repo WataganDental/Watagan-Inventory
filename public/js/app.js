@@ -3122,6 +3122,39 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 150)); // 150ms debounce
     }
 
+    const quickScanQuantityInput = document.getElementById('quickScanQuantity');
+    if (quickScanQuantityInput) {
+        quickScanQuantityInput.addEventListener('input', debounce(async () => {
+            const quantityFieldValue = quickScanQuantityInput.value.trim();
+
+            if (quickScanState === 'PRODUCT_SELECTED' && quantityFieldValue.startsWith('ACTION_')) {
+                const detectedAction = quantityFieldValue; // The full action string, e.g., "ACTION_ADD_1"
+                console.log(`Action string "${detectedAction}" detected in quickScanQuantity field (debounced).`);
+
+                const feedbackElem = document.getElementById('quickStockUpdateFeedback');
+                const currentProduct = inventory.find(p => p.id === currentScannedProductId);
+                const actualCurrentStoredQuantity = currentProduct ? (parseInt(currentProduct.quantity) || 0) : 0;
+
+                if (currentScannedProductId && currentScannedProductId !== 'ACTION_COMPLETE' && currentScannedProductId !== detectedAction) {
+                    // Before processing the action, restore the quantity field to the product's actual current quantity.
+                    // This prevents the action string from being briefly visible or misparsed if something else reads it.
+                    // processQuickStockScan will then update it again with the new calculated quantity.
+                    quickScanQuantityInput.value = actualCurrentStoredQuantity;
+
+                    console.log(`Calling processQuickStockScan with action: ${detectedAction} for product ID: ${currentScannedProductId}`);
+                    await processQuickStockScan(detectedAction);
+                } else {
+                    if (feedbackElem) {
+                        feedbackElem.textContent = 'Error: Action scanned, but no valid product is selected. Please scan a product first.';
+                    }
+                    console.error('Action detected in quantity field, but currentScannedProductId is invalid or matches action string:', currentScannedProductId);
+                    // Reset quantity field to avoid confusion
+                    quickScanQuantityInput.value = actualCurrentStoredQuantity;
+                }
+            }
+        }, 150)); // 150ms debounce. Adjust if needed.
+    }
+
   } catch (error) {
     console.error('Initialization failed:', error);
     const body = document.querySelector('body');
