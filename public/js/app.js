@@ -24,6 +24,14 @@ let quickStockUpdateAnimationFrameId = null;
 let quickStockBarcodeBuffer = "";
 let isQuickStockBarcodeActive = false;
 
+// Pagination Global Variables
+let currentPage = 1;
+const ITEMS_PER_PAGE = 25;
+let totalFilteredItems = 0;
+
+// Lazy Loading Global Variable
+let imageObserver = null;
+
 // START OF FUNCTIONS TO ADD
 
 async function displayActionQRCodes() {
@@ -1247,6 +1255,7 @@ async function loadInventory() {
     console.log('Inventory snapshot:', snapshot.size, 'documents');
     inventory = snapshot.docs.map(doc => doc.data());
     console.log('Inventory loaded:', inventory);
+    currentPage = 1; // Reset to page 1 on initial load
     applyAndRenderInventoryFilters();
     await updateToOrderTable();
   } catch (error) {
@@ -1275,9 +1284,50 @@ function applyAndRenderInventoryFilters() {
                (item.supplier && item.supplier.toLowerCase().includes(searchTerm)); 
     });
   }
-  updateInventoryTable(filteredInventory);
+
+  totalFilteredItems = filteredInventory.length;
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const itemsToDisplayOnPage = filteredInventory.slice(startIndex, endIndex);
+
+  updateInventoryTable(itemsToDisplayOnPage);
+  updatePaginationUI();
 }
 
+function updatePaginationUI() {
+    const pageInfo = document.getElementById('pageInfo');
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
+
+    if (!pageInfo || !prevPageBtn || !nextPageBtn) {
+        console.warn("Pagination UI elements not found.");
+        return;
+    }
+
+    const totalPages = Math.ceil(totalFilteredItems / ITEMS_PER_PAGE);
+
+    pageInfo.textContent = `Page ${currentPage} of ${totalPages > 0 ? totalPages : 1}`;
+
+    prevPageBtn.disabled = currentPage === 1;
+    nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+
+    observeLazyLoadImages();
+}
+
+function handlePreviousPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        applyAndRenderInventoryFilters();
+    }
+}
+
+function handleNextPage() {
+    const totalPages = Math.ceil(totalFilteredItems / ITEMS_PER_PAGE);
+    if (currentPage < totalPages) {
+        currentPage++;
+        applyAndRenderInventoryFilters();
+    }
+}
 
 function updateInventoryTable(itemsToDisplay) {
   const tableBody = document.getElementById('inventoryTable');
@@ -1296,6 +1346,13 @@ function updateInventoryTable(itemsToDisplay) {
   itemsToDisplay.forEach(item => {
     const row = document.createElement('tr');
     row.className = item.quantity <= item.minQuantity ? 'bg-red-100 dark:bg-red-800/60' : '';
+    // NOTE: Images are displayed as w-16 h-16 thumbnails via CSS.
+    // However, the item.photo URL likely points to the original uploaded image.
+    // For optimal performance and reduced data usage, it is highly recommended
+    // to implement backend image resizing (e.g., using a Firebase Extension like "Resize Images")
+    // to generate and serve actual thumbnail URLs. Lazy loading (implemented) helps,
+    // but serving smaller images is key.
+    const placeholderSrc = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
     row.innerHTML = `
       <td class="border dark:border-slate-600 p-2 id-column hidden">${item.id}</td>
       <td class="border dark:border-slate-600 p-2">${item.name}</td>
@@ -1307,7 +1364,7 @@ function updateInventoryTable(itemsToDisplay) {
       <td class="border dark:border-slate-600 p-2">${item.location}</td>
       <td class="border dark:border-slate-600 p-2">${item.quantityOrdered || 0}</td>
       <td class="border dark:border-slate-600 p-2">${item.quantityBackordered || 0}</td>
-      <td class="border dark:border-slate-600 p-2">${item.photo ? `<img src="${item.photo}" alt="Product Photo: ${item.name}" class="w-16 h-16 object-cover mx-auto cursor-pointer inventory-photo-thumbnail">` : 'No Photo'}</td>
+      <td class="border dark:border-slate-600 p-2">${item.photo ? `<img data-src="${item.photo}" src="${placeholderSrc}" alt="Product Photo: ${item.name}" class="w-16 h-16 object-cover mx-auto cursor-pointer inventory-photo-thumbnail lazy-load-image">` : 'No Photo'}</td>
       <td class="border dark:border-slate-600 p-2"><div id="qrcode-${item.id}" class="mx-auto w-24 h-24"></div></td>
       <td class="border dark:border-slate-600 p-2">
         <button data-id="${item.id}" class="editProductBtn text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 mr-2">Edit</button>
@@ -1404,24 +1461,25 @@ async function generateQRCodePDF() {
     }
 
     const JsPDF = await waitForJsPDF();
-
     const filterLocationDropdown = document.getElementById('filterLocation');
     const selectedLocationFilter = filterLocationDropdown ? filterLocationDropdown.value : '';
-    
-    let productGroups = {};
-    let productsToProcess = [];
+
+    let allProductsForPDF = [];
+    let preliminaryProductGroups = {}; // Used to hold structure for counting
 
     if (selectedLocationFilter) {
       const snapshot = await db.collection('inventory').where('location', '==', selectedLocationFilter).get();
-      productsToProcess = snapshot.docs.map(doc => doc.data());
-      if (productsToProcess.length > 0) {
-        productGroups[selectedLocationFilter] = productsToProcess;
+      allProductsForPDF = snapshot.docs.map(doc => doc.data());
+      if (allProductsForPDF.length > 0) {
+        preliminaryProductGroups[selectedLocationFilter] = allProductsForPDF; // Keep structure for grouping later
       }
     } else {
       const snapshot = await db.collection('inventory').get();
-      const allProducts = snapshot.docs.map(doc => doc.data());
-      if (allProducts.length > 0) {
-        productGroups = allProducts.reduce((acc, product) => {
+      allProductsForPDF = snapshot.docs.map(doc => doc.data());
+      // For "All Locations", we group them now to correctly count unique products if some are multi-location (though current model is 1 loc/product)
+      // and to prepare for the main productGroups logic later.
+      if (allProductsForPDF.length > 0) {
+        preliminaryProductGroups = allProductsForPDF.reduce((acc, product) => {
           const location = product.location || 'Unassigned';
           if (!acc[location]) {
             acc[location] = [];
@@ -1429,17 +1487,55 @@ async function generateQRCodePDF() {
           acc[location].push(product);
           return acc;
         }, {});
+      }
+    }
 
+    // Calculate total number of products from the fetched data
+    let totalNumberOfProductsInPDF = 0;
+    if (selectedLocationFilter) {
+        totalNumberOfProductsInPDF = allProductsForPDF.length;
+    } else {
+        // If not filtered, count all products that were fetched and grouped
+        Object.values(preliminaryProductGroups).forEach(group => {
+            totalNumberOfProductsInPDF += group.length;
+        });
+    }
+
+    const LARGE_PDF_THRESHOLD = 200;
+
+    if (totalNumberOfProductsInPDF > LARGE_PDF_THRESHOLD) {
+      const userConfirmed = confirm(
+        `You are about to generate a PDF with ${totalNumberOfProductsInPDF} QR codes. ` +
+        `This might take a long time and result in a large file. ` +
+        `It's recommended to filter by location for smaller, more manageable PDFs. ` +
+        `Do you want to proceed?`
+      );
+      if (!userConfirmed) {
+        alert("PDF generation cancelled by user.");
+        return;
+      }
+    }
+
+    // Now, finalize productGroups based on what was fetched for the warning
+    let productGroups = {};
+    if (selectedLocationFilter) {
+        if (allProductsForPDF.length > 0) {
+            productGroups[selectedLocationFilter] = allProductsForPDF;
+        }
+    } else {
+        // Use the already grouped products from preliminaryProductGroups
+        productGroups = { ...preliminaryProductGroups }; // Shallow copy is fine here
+
+        // Sort productGroups if it was for "All Locations"
         const sortedLocationNames = Object.keys(productGroups).sort();
         const sortedProductGroups = {};
         for (const locationName of sortedLocationNames) {
           sortedProductGroups[locationName] = productGroups[locationName];
         }
         productGroups = sortedProductGroups;
-      }
     }
 
-    if (Object.keys(productGroups).length === 0) {
+    if (Object.keys(productGroups).length === 0 && totalNumberOfProductsInPDF === 0) { // Adjusted condition
       alert('No products found for the selected location or in inventory to generate QR codes for.');
       return;
     }
@@ -1519,60 +1615,54 @@ async function generateQRCodePDF() {
           continue;
         }
         
-        const tempDiv = document.createElement('div');
-        tempDiv.id = `temp-qr-div-${product.id}`;
-        tempDiv.style.position = 'absolute';
-        tempDiv.style.left = '-9999px';
-        tempDiv.style.top = '-9999px';
-        tempDiv.style.width = QR_SIZE + 'px';
-        tempDiv.style.height = QR_SIZE + 'px';
-        document.body.appendChild(tempDiv);
+        const detachedQrContainer = document.createElement('div');
+        // We don't append detachedQrContainer to the live DOM.
+        // Set its size if QRCode.js relies on parent dimensions for sizing, though options usually control this.
+        // detachedQrContainer.style.width = QR_SIZE + 'px'; // May not be needed if options.width is set
+        // detachedQrContainer.style.height = QR_SIZE + 'px'; // May not be needed if options.height is set
 
         let qrImageFromCanvas = '';
-
         try {
-          const qrOptions = {
-              text: product.id,
-              width: QR_SIZE,
-              height: QR_SIZE,
-              colorDark: '#000000',
-              colorLight: '#ffffff',
-              correctLevel: window.QRCode.CorrectLevel.L
-          };
+            const qrOptions = {
+                text: product.id,
+                width: QR_SIZE, // QR_SIZE is a variable in the existing code
+                height: QR_SIZE,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: window.QRCode.CorrectLevel.L
+            };
 
-          new window.QRCode(tempDiv, qrOptions);
+            new window.QRCode(detachedQrContainer, qrOptions); // QRCode will append a canvas or img to detachedQrContainer
 
-          const qrCanvas = tempDiv.querySelector('canvas');
-          
-          if (qrCanvas) {
-            qrImageFromCanvas = qrCanvas.toDataURL('image/png');
-          } else {
-            const qrImgTag = tempDiv.querySelector('img');
-            if (qrImgTag) {
-                console.error('QRCode.js did not create a canvas, found img instead. Image data extraction from img.src needs review for jsPDF compatibility.');
-                qrImageFromCanvas = qrImgTag.src;
+            const qrCanvas = detachedQrContainer.querySelector('canvas');
+            if (qrCanvas) {
+                qrImageFromCanvas = qrCanvas.toDataURL('image/png');
             } else {
-                console.error('QRCode.js did not create a canvas or img in tempDiv for product: ' + product.id);
-                document.body.removeChild(tempDiv);
-                continue; 
+                const qrImgTag = detachedQrContainer.querySelector('img');
+                if (qrImgTag) {
+                    // If it's an img, we might need to draw it to a temporary canvas to get a data URL
+                    // if jsPDF cannot directly use the img.src (e.g. if src is also a data URL but jsPDF has issues)
+                    // For now, assume qrImgTag.src is usable or can be made usable.
+                    // jsPDF's addImage can often handle data URLs directly from img.src.
+                    qrImageFromCanvas = qrImgTag.src;
+                } else {
+                    console.error('QRCode.js did not create a canvas or img in detached container for product: ' + product.id);
+                    // continue; // Or handle error appropriately
+                }
             }
-          }
-          
-          if (qrImageFromCanvas) { 
-            doc.addImage(qrImageFromCanvas, 'PNG', x, y, QR_SIZE, QR_SIZE);
-          } else {
-            console.warn(`Skipping addImage for product ${product.id} due to missing QR image data.`);
-          }
+
+            if (qrImageFromCanvas) {
+                doc.addImage(qrImageFromCanvas, 'PNG', x, y, QR_SIZE, QR_SIZE);
+            } else {
+                console.warn(`Skipping addImage for product ${product.id} due to missing QR image data (detached method).`);
+            }
 
         } catch (qrError) {
-          console.error('Error generating QR code for product ID', product.id, ' (DOM method):', qrError);
-          doc.setFontSize(8);
-          doc.text('QR Error', x + QR_SIZE / 2, y + QR_SIZE / 2, { align: 'center' });
-        } finally {
-            if (tempDiv.parentElement === document.body) {
-                document.body.removeChild(tempDiv);
-            }
+            console.error('Error generating QR code for product ID', product.id, ' (detached method):', qrError);
+            doc.setFontSize(8);
+            doc.text('QR Error', x + QR_SIZE / 2, y + QR_SIZE / 2, { align: 'center' });
         }
+        // detachedQrContainer will be garbage collected as it's not in the DOM and no longer referenced after the loop iteration.
 
         doc.setFontSize(NAME_FONT_SIZE);
         const textYPosition = y + QR_SIZE + (TEXT_AREA_HEIGHT + NAME_FONT_SIZE) / 2;
@@ -1595,17 +1685,40 @@ async function generateQRCodePDF() {
 }
 
 // Order Reports
-async function generateOrderReport() {
+async function generateDetailedOrderReportPDFWithQRCodes() {
   try {
+    // Fetch data early for warning and reuse
     const snapshot = await db.collection('inventory').get();
     let toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity);
+
+    const filterToOrderSupplierDropdownEarly = document.getElementById('filterToOrderSupplier');
+    const selectedSupplierFilterEarly = filterToOrderSupplierDropdownEarly ? filterToOrderSupplierDropdownEarly.value : "";
+    if (selectedSupplierFilterEarly) {
+      toOrderItems = toOrderItems.filter(item => item.supplier === selectedSupplierFilterEarly);
+    }
+
+    const totalNumberOfItemsInReport = toOrderItems.length;
+    const LARGE_REPORT_THRESHOLD = 100; // Adjustable
+
+    if (totalNumberOfItemsInReport > LARGE_REPORT_THRESHOLD) {
+      const userConfirmed = confirm(
+        `You are about to generate a detailed order report with ${totalNumberOfItemsInReport} items (including QR codes). ` +
+        `This might take a very long time and result in a large file. ` +
+        `Do you want to proceed?`
+      );
+      if (!userConfirmed) {
+        alert("Detailed order report generation cancelled by user.");
+        return;
+      }
+    }
+
     if (toOrderItems.length === 0) {
       alert('No products need reordering.');
       return;
     }
 
-    await ensureQRCodeIsAvailable();
-    const JsPDF = await waitForJsPDF();
+    await ensureQRCodeIsAvailable(); // Still needed for QR codes
+    const JsPDF = await waitForJsPDF(); // Still needed for jsPDF
     const doc = new JsPDF();
 
     const margin = 20;
@@ -1655,12 +1768,8 @@ async function generateOrderReport() {
 
     y = drawPageHeaders(doc, y);
 
-    const filterToOrderSupplierDropdown = document.getElementById('filterToOrderSupplier');
-    const selectedSupplierFilter = filterToOrderSupplierDropdown ? filterToOrderSupplierDropdown.value : "";
-    if (selectedSupplierFilter) {
-      toOrderItems = toOrderItems.filter(item => item.supplier === selectedSupplierFilter);
-    }
-
+    // Data (`toOrderItems`) is already fetched and filtered.
+    // We just need to group it now.
     const itemsBySupplierGroup = toOrderItems.reduce((acc, item) => {
       const supplierName = item.supplier || 'Supplier Not Assigned';
       if (!acc[supplierName]) {
@@ -1762,7 +1871,7 @@ async function generateOrderReport() {
 
 
 // Order Reports - Alternative PDF generation with pdf-lib.js
-async function generateOrderReportWithPdfLib() {
+async function generateFastOrderReportPDF() {
   if (!window.PDFLib) {
     alert('Error: PDFLib library is not loaded. Cannot generate PDF.');
     console.error('PDFLib library not found on window object.');
@@ -1772,6 +1881,7 @@ async function generateOrderReportWithPdfLib() {
   const { PDFDocument, StandardFonts, rgb, PageSizes } = window.PDFLib;
 
   try {
+    // Fetch data early for warning and reuse
     const snapshot = await db.collection('inventory').get();
     let toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity);
 
@@ -1781,12 +1891,27 @@ async function generateOrderReportWithPdfLib() {
     if (selectedSupplier) {
       toOrderItems = toOrderItems.filter(item => item.supplier === selectedSupplier);
     }
+
+    const totalNumberOfItemsInReport = toOrderItems.length;
+    const LARGE_REPORT_THRESHOLD = 100; // Adjustable
+
+    if (totalNumberOfItemsInReport > LARGE_REPORT_THRESHOLD) {
+      const userConfirmed = confirm(
+        `You are about to generate an order report with ${totalNumberOfItemsInReport} items. ` +
+        `This might take some time. Do you want to proceed?`
+      );
+      if (!userConfirmed) {
+        alert("Order report generation cancelled by user.");
+        return;
+      }
+    }
     
     if (toOrderItems.length === 0) {
       alert('No products need reordering for the selected supplier (pdf-lib).');
       return;
     }
-
+    // Data (`toOrderItems`) is already fetched and filtered.
+    // We just need to group it now.
     const itemsBySupplier = toOrderItems.reduce((acc, item) => {
       const supplierName = item.supplier || 'Supplier Not Assigned';
       if (!acc[supplierName]) {
@@ -1942,7 +2067,7 @@ async function generateOrderReportWithPdfLib() {
 
   } catch (error) {
     console.error('Failed to generate Order Report PDF with pdf-lib:', error.message, error.stack);
-    alert('Failed to generate Order Report PDF with pdf-lib: ' + error.message);
+    alert('Failed to generate Fast Order Report PDF: ' + error.message);
   }
 }
 
@@ -2312,6 +2437,39 @@ async function updateInventoryDashboard() {
     console.log(`Dashboard updated with ${lowStockItems.length} low-stock items.`);
 }
 
+// Lazy Loading Functions
+function initializeImageObserver() {
+    if (imageObserver) {
+        imageObserver.disconnect();
+    }
+
+    imageObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                const dataSrc = img.getAttribute('data-src');
+                if (dataSrc) {
+                    img.src = dataSrc;
+                    img.removeAttribute('data-src');
+                }
+                img.classList.remove('lazy-load-image');
+                observer.unobserve(img);
+            }
+        });
+    }, {
+        rootMargin: '0px 0px 50px 0px',
+        threshold: 0.01
+    });
+
+    observeLazyLoadImages();
+}
+
+function observeLazyLoadImages() {
+    if (!imageObserver) return;
+    const imagesToObserve = document.querySelectorAll('img.lazy-load-image');
+    imagesToObserve.forEach(img => imageObserver.observe(img));
+}
+
 async function startEditScanner() {
   isEditScanModeActive = true;
   editScanInputBuffer = "";
@@ -2545,6 +2703,7 @@ function switchQuickUpdateTab(selectedTabId) {
 // Initialize and Bind Events
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('DOMContentLoaded fired'); 
+  console.warn("Image Handling Recommendation: For optimal performance, ensure that product images are resized to thumbnails on the backend (e.g., using a Firebase Extension like 'Resize Images') and that these thumbnail URLs are stored in Firestore. The application currently lazy-loads images and displays them as thumbnails via CSS, but loading full-size images can still be inefficient.");
   initialDarkModeCheck();
   
   let initialSidebarMinimized = localStorage.getItem(SIDEBAR_STATE_KEY) === 'true';
@@ -2596,6 +2755,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   try {
+    initializeImageObserver();
     await ensureQRCodeIsAvailable();
     loadInventory(); 
     
@@ -2683,19 +2843,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   const inventorySearchInputEl = document.getElementById('inventorySearchInput');
 
   if (filterSupplierEl) {
-    filterSupplierEl.addEventListener('change', applyAndRenderInventoryFilters);
+    filterSupplierEl.addEventListener('change', () => {
+        currentPage = 1;
+        applyAndRenderInventoryFilters();
+    });
   }
   if (filterLocationEl) {
-    filterLocationEl.addEventListener('change', applyAndRenderInventoryFilters);
+    filterLocationEl.addEventListener('change', () => {
+        currentPage = 1;
+        applyAndRenderInventoryFilters();
+    });
   }
   if (inventorySearchInputEl) {
-    inventorySearchInputEl.addEventListener('input', applyAndRenderInventoryFilters);
+    const debouncedSearchHandler = debounce(() => {
+        currentPage = 1;
+        applyAndRenderInventoryFilters();
+    }, 400);
+    inventorySearchInputEl.addEventListener('input', debouncedSearchHandler);
   }
   if (clearInventoryFiltersBtnEl) {
     clearInventoryFiltersBtnEl.addEventListener('click', () => {
       if (filterSupplierEl) filterSupplierEl.value = '';
       if (filterLocationEl) filterLocationEl.value = '';
       if (inventorySearchInputEl) inventorySearchInputEl.value = '';
+      currentPage = 1;
       applyAndRenderInventoryFilters();
     });
   }
@@ -2707,7 +2878,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
   
-  document.getElementById('generateOrderReportBtn').addEventListener('click', generateOrderReport);
+  document.getElementById('generateOrderReportBtn').addEventListener('click', generateFastOrderReportPDF);
   document.getElementById('emailOrderReportBtn').addEventListener('click', emailOrderReport);
 
   const qrCodePDFBtn = document.getElementById('generateQRCodePDFBtn');
@@ -3154,6 +3325,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }, 150)); // 150ms debounce. Adjust if needed.
     }
+
+    initializeImageObserver();
 
   } catch (error) {
     console.error('Initialization failed:', error);
