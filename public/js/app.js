@@ -1016,7 +1016,8 @@ async function submitProduct() {
   const currentPhotoSrc = document.getElementById('productPhotoPreview').src;
 
   if (name && quantity >= 0 && cost >= 0 && minQuantity >= 0 && supplier && location) {
-    const name_lowercase = name.toLowerCase(); // Add this line
+    const name_lowercase = name.toLowerCase();
+    const name_words_lc = name_lowercase.split(' ').filter(word => word.length > 0); // Create word array
     try {
       let photoUrlToSave;
       const productIdValue = document.getElementById('productId').value;
@@ -1034,9 +1035,10 @@ async function submitProduct() {
       await db.collection('inventory').doc(id).set({
         id,
         name,
-        name_lowercase, // Add this line
-        quantity, 
-        cost, 
+        name_lowercase,
+        name_words_lc, // Add this new field
+        quantity,
+        cost,
         minQuantity,
         quantityOrdered,
         quantityBackordered,
