@@ -1678,16 +1678,31 @@ async function generateQRCodePDF() {
         // Add product image
         console.log(`Product ${product.name} - Photo URL: ${product.photo ? product.photo : 'No photo URL'}`);
         if (product.photo) {
-          console.log(`Attempting to add image for ${product.name}: URL - ${product.photo}`);
-          const yForImage = y + QR_SIZE + TEXT_AREA_HEIGHT + 5; // 5 points padding below text area
+          const yForImage = y + QR_SIZE + TEXT_AREA_HEIGHT + 5; // Position for image
+          const imageX = x + (QR_SIZE - IMAGE_WIDTH) / 2;   // Centered X for image
+
           try {
-            const imageX = x + (QR_SIZE - IMAGE_WIDTH) / 2;
-            // Pass undefined for image type to let jsPDF infer
-            doc.addImage(product.photo, undefined, imageX, yForImage, IMAGE_WIDTH, IMAGE_HEIGHT);
-          } catch (imgError) {
-            console.error(`Error adding image for ${product.name} (ID: ${product.id}) with URL ${product.photo}: ${imgError.message}`, imgError);
+            console.log(`Fetching image for ${product.name} from URL: ${product.photo}`);
+            const response = await fetch(product.photo);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+            }
+            const blob = await response.blob();
+
+            const dataUrl = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.onerror = (error) => reject(new Error(`FileReader error for ${product.name} (URL: ${product.photo}): ${error.message}`));
+              reader.readAsDataURL(blob);
+            });
+
+            // console.log(`Successfully converted image to DataURL for ${product.name}. Length: ${dataUrl.length}`); // Optional: for debugging DataURL
+            doc.addImage(dataUrl, undefined, imageX, yForImage, IMAGE_WIDTH, IMAGE_HEIGHT);
+
+          } catch (err) { // Catch errors from fetch, blob, FileReader, or addImage
+            console.error(`Error processing or adding image for ${product.name} (ID: ${product.id}) from URL ${product.photo}: ${err.message}`, err);
             doc.setFontSize(6);
-            doc.text('Image Error', x + IMAGE_WIDTH / 2, yForImage + IMAGE_HEIGHT / 2, { align: 'center' });
+            doc.text('Image Error', imageX + IMAGE_WIDTH / 2, yForImage + IMAGE_HEIGHT / 2, { align: 'center' });
           }
         }
 
