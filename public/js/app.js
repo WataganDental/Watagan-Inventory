@@ -464,7 +464,7 @@ async function handleProductSearch(searchTerm) {
     const searchWords = lowerSearchTerm.split(' ').filter(word => word.length > 0);
 
     if (searchWords.length === 0) {
-      resultsContainer.innerHTML = ''; // Clear results if no valid search words
+      resultsContainer.innerHTML = '';
       return;
     }
 
@@ -481,9 +481,6 @@ async function handleProductSearch(searchTerm) {
     snapshot.forEach(doc => {
       products.push({ id: doc.id, ...doc.data() });
     });
-
-    // The fallback query is removed as per the plan.
-    // The new array-contains query on name_words_lc is expected to handle this better.
 
     displaySearchResults(products);
 
@@ -1545,22 +1542,25 @@ async function generateQRCodePDF() {
     const pageHeight = doc.internal.pageSize.getHeight();
 
     const COLS = 4;
-    const ROWS = 2; // Adjusted from 3 to 2
+    const ROWS = 2;
     const PRODUCTS_PER_PAGE = COLS * ROWS;
     const MARGIN = 40;
     const QR_SIZE = 60;
     const NAME_FONT_SIZE = 8;
     const TEXT_AREA_HEIGHT = 20;
-    const ADDITIONAL_VERTICAL_PADDING_POINTS = 158.4; // Adjusted from 113.4
+    const ADDITIONAL_VERTICAL_PADDING_POINTS = 158.4;
     const CELL_PADDING_VERTICAL = 10 + ADDITIONAL_VERTICAL_PADDING_POINTS;
 
-    const IMAGE_HEIGHT = 40; // New constant for image height
-    const IMAGE_WIDTH = QR_SIZE; // New constant for image width, aligned with QR_SIZE
+    const IMAGE_HEIGHT = 40;
+    const IMAGE_WIDTH = QR_SIZE;
 
     const USABLE_WIDTH = pageWidth - 2 * MARGIN;
     const QR_SPACING_HORIZONTAL = (USABLE_WIDTH - COLS * QR_SIZE) / (COLS - 1);
     
-    const CELL_HEIGHT = QR_SIZE + TEXT_AREA_HEIGHT + IMAGE_HEIGHT + 5 + CELL_PADDING_VERTICAL; // Recalculate to include image height + padding
+    // Correct CELL_HEIGHT calculation: QR_SIZE + TEXT_AREA_HEIGHT + (padding for name) + IMAGE_HEIGHT + (padding for image) + CELL_PADDING_VERTICAL
+    // The TEXT_AREA_HEIGHT already includes space for the name.
+    // The 5 points are for padding between text area and image.
+    const CELL_HEIGHT = QR_SIZE + TEXT_AREA_HEIGHT + IMAGE_HEIGHT + 5 + CELL_PADDING_VERTICAL;
 
     let pageNumber = 0;
 
@@ -1580,6 +1580,7 @@ async function generateQRCodePDF() {
     
     const generationDate = new Date().toLocaleDateString();
     const locationNames = Object.keys(productGroups);
+    console.log('Final product groups for PDF generation:', productGroups); // Added console log
 
     for (let i = 0; i < locationNames.length; i++) {
       const locationName = locationNames[i];
@@ -1593,6 +1594,7 @@ async function generateQRCodePDF() {
 
       for (let j = 0; j < productsInLocation.length; j++) {
         const product = productsInLocation[j];
+        console.log('Processing product for PDF QR:', product); // Added console log
 
         if (productCountInLocationOnPage === 0) {
           pageNumber++;
@@ -1674,15 +1676,16 @@ async function generateQRCodePDF() {
         });
 
         // Add product image
+        console.log(`Product ${product.name} - Photo URL: ${product.photo ? product.photo : 'No photo URL'}`);
         if (product.photo) {
+          console.log(`Attempting to add image for ${product.name}: URL - ${product.photo}`);
           const yForImage = y + QR_SIZE + TEXT_AREA_HEIGHT + 5; // 5 points padding below text area
           try {
-            // Ensure image is centered like the QR code itself
             const imageX = x + (QR_SIZE - IMAGE_WIDTH) / 2;
-            doc.addImage(product.photo, 'JPEG', imageX, yForImage, IMAGE_WIDTH, IMAGE_HEIGHT);
+            // Pass undefined for image type to let jsPDF infer
+            doc.addImage(product.photo, undefined, imageX, yForImage, IMAGE_WIDTH, IMAGE_HEIGHT);
           } catch (imgError) {
-            console.error(`Error adding image for ${product.name}: ${imgError.message}`);
-            // Draw a placeholder or error message for the image
+            console.error(`Error adding image for ${product.name} (ID: ${product.id}) with URL ${product.photo}: ${imgError.message}`, imgError);
             doc.setFontSize(6);
             doc.text('Image Error', x + IMAGE_WIDTH / 2, yForImage + IMAGE_HEIGHT / 2, { align: 'center' });
           }
