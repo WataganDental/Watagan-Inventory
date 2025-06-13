@@ -460,12 +460,20 @@ async function handleProductSearch(searchTerm) {
   resultsContainer.innerHTML = '<p class="p-2 text-gray-500 dark:text-gray-400">Searching...</p>';
 
   try {
-    const lowerSearchTerm = searchTerm.toLowerCase();
-    console.log("DEBUG: Querying with name_lowercase >= '" + lowerSearchTerm + "' AND name_lowercase <= '" + lowerSearchTerm + "\uf8ff" + "'");
+    const lowerSearchTerm = searchTerm.toLowerCase().trim();
+    const searchWords = lowerSearchTerm.split(' ').filter(word => word.length > 0);
+
+    if (searchWords.length === 0) {
+      resultsContainer.innerHTML = ''; // Clear results if no valid search words
+      return;
+    }
+
+    const firstWord = searchWords[0];
+    console.log(`DEBUG: Querying with name_words_lc array-contains '${firstWord}'`);
+
     const productsRef = db.collection('inventory');
     let snapshot = await productsRef
-      .where('name_lowercase', '>=', lowerSearchTerm)
-      .where('name_lowercase', '<=', lowerSearchTerm + '\uf8ff')
+      .where('name_words_lc', 'array-contains', firstWord)
       .limit(10)
       .get();
 
@@ -474,23 +482,8 @@ async function handleProductSearch(searchTerm) {
       products.push({ id: doc.id, ...doc.data() });
     });
 
-    // Check if products were found with the primary query
-    if (products.length === 0 && searchTerm.trim() !== "") {
-        console.log("DEBUG: No products found with name_lowercase. Falling back to querying by 'name' field.");
-        // Fallback query against the 'name' field
-        // Note: This fallback will be case-sensitive as the original 'name' field is.
-        const fallbackSnapshot = await productsRef
-            .where('name', '>=', searchTerm) // Use original searchTerm
-            .where('name', '<=', searchTerm + '\uf8ff') // Use original searchTerm
-            .limit(10)
-            .get();
-
-        fallbackSnapshot.forEach(doc => {
-            // Add to products array, could add a check for duplicates if absolutely necessary,
-            // but given the primary query failed, duplicates are unlikely here.
-            products.push({ id: doc.id, ...doc.data() });
-        });
-    }
+    // The fallback query is removed as per the plan.
+    // The new array-contains query on name_words_lc is expected to handle this better.
 
     displaySearchResults(products);
 
@@ -1552,19 +1545,22 @@ async function generateQRCodePDF() {
     const pageHeight = doc.internal.pageSize.getHeight();
 
     const COLS = 4;
-    const ROWS = 3;
+    const ROWS = 2; // Adjusted from 3 to 2
     const PRODUCTS_PER_PAGE = COLS * ROWS;
     const MARGIN = 40;
     const QR_SIZE = 60;
     const NAME_FONT_SIZE = 8;
     const TEXT_AREA_HEIGHT = 20;
-    const ADDITIONAL_VERTICAL_PADDING_POINTS = 113.4;
+    const ADDITIONAL_VERTICAL_PADDING_POINTS = 158.4; // Adjusted from 113.4
     const CELL_PADDING_VERTICAL = 10 + ADDITIONAL_VERTICAL_PADDING_POINTS;
+
+    const IMAGE_HEIGHT = 40; // New constant for image height
+    const IMAGE_WIDTH = QR_SIZE; // New constant for image width, aligned with QR_SIZE
 
     const USABLE_WIDTH = pageWidth - 2 * MARGIN;
     const QR_SPACING_HORIZONTAL = (USABLE_WIDTH - COLS * QR_SIZE) / (COLS - 1);
     
-    const CELL_HEIGHT = QR_SIZE + TEXT_AREA_HEIGHT + CELL_PADDING_VERTICAL; 
+    const CELL_HEIGHT = QR_SIZE + TEXT_AREA_HEIGHT + IMAGE_HEIGHT + 5 + CELL_PADDING_VERTICAL; // Recalculate to include image height + padding
 
     let pageNumber = 0;
 
@@ -1588,6 +1584,10 @@ async function generateQRCodePDF() {
     for (let i = 0; i < locationNames.length; i++) {
       const locationName = locationNames[i];
       const productsInLocation = productGroups[locationName];
+
+      // Sort productsInLocation by name alphabetically
+      productsInLocation.sort((a, b) => a.name.localeCompare(b.name));
+
       let productCountInLocationOnPage = 0;
       let currentYOffset = 0;
 
@@ -1667,11 +1667,26 @@ async function generateQRCodePDF() {
         // detachedQrContainer will be garbage collected as it's not in the DOM and no longer referenced after the loop iteration.
 
         doc.setFontSize(NAME_FONT_SIZE);
-        const textYPosition = y + QR_SIZE + (TEXT_AREA_HEIGHT + NAME_FONT_SIZE) / 2;
+        const textYPosition = y + QR_SIZE + (TEXT_AREA_HEIGHT + NAME_FONT_SIZE) / 2; // y for product name
         doc.text(product.name, x + QR_SIZE / 2, textYPosition, {
             align: 'center',
             maxWidth: QR_SIZE
         });
+
+        // Add product image
+        if (product.photo) {
+          const yForImage = y + QR_SIZE + TEXT_AREA_HEIGHT + 5; // 5 points padding below text area
+          try {
+            // Ensure image is centered like the QR code itself
+            const imageX = x + (QR_SIZE - IMAGE_WIDTH) / 2;
+            doc.addImage(product.photo, 'JPEG', imageX, yForImage, IMAGE_WIDTH, IMAGE_HEIGHT);
+          } catch (imgError) {
+            console.error(`Error adding image for ${product.name}: ${imgError.message}`);
+            // Draw a placeholder or error message for the image
+            doc.setFontSize(6);
+            doc.text('Image Error', x + IMAGE_WIDTH / 2, yForImage + IMAGE_HEIGHT / 2, { align: 'center' });
+          }
+        }
 
         productCountInLocationOnPage++;
         if (productCountInLocationOnPage >= PRODUCTS_PER_PAGE) {
