@@ -590,7 +590,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyC4I5X1Gca4VEvqRspnitNFSLu8C0jH7sQ",
   authDomain: "watagandental-inventory-e6e7b.firebaseapp.com",
   projectId: "watagandental-inventory-e6e7b",
-  storageBucket: "watagandental-inventory-e6e7b.firebasestorage.app",
+  storageBucket: "watagandental-inventory-e6e7b.appspot.com",
   messagingSenderId: "309417981178",
   appId: "1:309417981178:web:8fa5239801426e8b428543",
   measurementId: "G-PVQTBS5BSH"
