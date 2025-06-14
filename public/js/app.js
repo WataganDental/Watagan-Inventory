@@ -1734,12 +1734,25 @@ async function generateQRCodePDF() {
             const downloadURL = await imageRef.getDownloadURL();
             console.log(`Successfully got download URL for ${product.name}: ${downloadURL}`);
 
-            const response = await fetch(downloadURL, { mode: 'cors' });
-            if (!response.ok) {
-              throw new Error(`Failed to fetch image from download URL ${downloadURL}: ${response.status} ${response.statusText}`);
-            }
-            const blob = await response.blob();
-            console.log(`Successfully fetched blob for ${product.name} via download URL. Type: ${blob.type}, Size: ${blob.size}`);
+            const blob = await new Promise((resolve, reject) => {
+              const xhr = new XMLHttpRequest();
+              xhr.onload = function () {
+                if (xhr.status === 200) {
+                  resolve(xhr.response);
+                } else {
+                  reject(new Error(`XHR failed for ${downloadURL}: ${xhr.status} ${xhr.statusText}`));
+                }
+              };
+              xhr.onerror = function (e) {
+                console.error(`XHR onerror for ${downloadURL}:`, e);
+                reject(new TypeError(`Network request failed for ${downloadURL}`));
+              };
+              xhr.responseType = "blob";
+              xhr.open("GET", downloadURL, true);
+              xhr.send(null);
+            });
+
+            console.log(`Successfully fetched blob for ${product.name} via XHR. Type: ${blob.type}, Size: ${blob.size}`);
 
             const dataUrl = await new Promise((resolve, reject) => {
               const reader = new FileReader();
