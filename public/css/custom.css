@@ -61,11 +61,15 @@ body {
 /* No extra CSS needed for text-transparent itself if Tailwind is used. */
 /* However, ensure the bar's padding/layout in minimized state is acceptable. */
 #sidebar.sidebar-minimized #reorderNotificationBar {
-    /* Example: If you want to ensure it doesn't take up too much space or only shows a dot */
-    /* For now, just letting text-transparent hide the text is fine. */
-    /* Consider if padding needs to change, or if it should have a min-height */
-    font-size: 0; /* Another way to hide text, if text-transparent has issues or for full collapse */
-    padding: 0.25rem; /* Reduce padding to make it smaller */
+    /* Ensure the text is visible and centered within a small amber box */
+    padding: 0.125rem 0.25rem; /* Adjusted padding for vertical centering */
+    width: 2.5rem; /* Specific width for the minimized state */
+    height: 2.5rem; /* Specific height for the minimized state */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* font-size is not set to 0 anymore, so text will be visible */
+    /* The background color is handled by existing Tailwind classes on the element */
 }
 #sidebar.sidebar-minimized #reorderNotificationBar.hidden {
     display: none; /* Ensure it's still hidden if no items to reorder */

@@ -2406,13 +2406,11 @@ function applySidebarState(isMinimized) {
     if (isMinimized) {
         sidebar.classList.add('sidebar-minimized');
         mainContent.classList.add('main-content-expanded');
-        reorderNotificationBar.classList.add('text-transparent');
         sidebarToggleIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M5.25 4.5l7.5 7.5-7.5 7.5" />';
         localStorage.setItem(SIDEBAR_STATE_KEY, 'true');
     } else {
         sidebar.classList.remove('sidebar-minimized');
         mainContent.classList.remove('main-content-expanded');
-        reorderNotificationBar.classList.remove('text-transparent');
         sidebarToggleIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5" />';
         localStorage.setItem(SIDEBAR_STATE_KEY, 'false');
     }
