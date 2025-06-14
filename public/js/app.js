@@ -1690,7 +1690,7 @@ async function generateQRCodePDF() {
             const downloadURL = await imageRef.getDownloadURL();
             console.log(`Successfully got download URL for ${product.name}: ${downloadURL}`);
 
-            const response = await fetch(downloadURL);
+            const response = await fetch(downloadURL, { mode: 'cors' });
             if (!response.ok) {
               throw new Error(`Failed to fetch image from download URL ${downloadURL}: ${response.status} ${response.statusText}`);
             }
