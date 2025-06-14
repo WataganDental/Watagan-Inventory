@@ -1465,13 +1465,17 @@ async function updateToOrderTable() {
   }
 
   const reorderNotificationBar = document.getElementById('reorderNotificationBar');
+  reorderNotificationBar.dataset.reorderCount = toOrderItems.length; // Store the count
+
   if (toOrderItems.length > 0) {
-    reorderNotificationBar.textContent = `Products to reorder: ${toOrderItems.length}`;
+    // Text content will be set by applySidebarState or based on current sidebar state
     reorderNotificationBar.classList.remove('hidden');
   } else {
     reorderNotificationBar.classList.add('hidden');
-    reorderNotificationBar.textContent = 'Products to reorder: 0';
+    // Text content will be set by applySidebarState or based on current sidebar state
   }
+  // Call applySidebarState to update text based on current view
+  applySidebarState(localStorage.getItem(SIDEBAR_STATE_KEY) === 'true');
 
   toOrderItems.forEach(item => {
     const row = document.createElement('tr');
@@ -2403,14 +2407,18 @@ function applySidebarState(isMinimized) {
         return;
     }
 
+    const count = reorderNotificationBar.dataset.reorderCount !== undefined ? parseInt(reorderNotificationBar.dataset.reorderCount) : 0;
+
     if (isMinimized) {
         sidebar.classList.add('sidebar-minimized');
         mainContent.classList.add('main-content-expanded');
+        reorderNotificationBar.textContent = count; // Display only count
         sidebarToggleIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M5.25 4.5l7.5 7.5-7.5 7.5" />';
         localStorage.setItem(SIDEBAR_STATE_KEY, 'true');
     } else {
         sidebar.classList.remove('sidebar-minimized');
         mainContent.classList.remove('main-content-expanded');
+        reorderNotificationBar.textContent = `Products to reorder: ${count}`; // Display full text
         sidebarToggleIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5" />';
         localStorage.setItem(SIDEBAR_STATE_KEY, 'false');
     }
