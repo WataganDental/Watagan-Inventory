@@ -1724,18 +1724,22 @@ async function generateQRCodePDF() {
         if (product.photo) {
           const yForImage = y + QR_SIZE + TEXT_AREA_HEIGHT + 5; // Position for image
           const imageX = x + (QR_SIZE - IMAGE_WIDTH) / 2;   // Centered X for image
-          let imagePath = ''; // Define here to be accessible in catch if needed
+          let imagePath = ''; // Defined to be accessible in catch
 
           try {
-            // It's safer to assume product.id is the core identifier.
-            // The uploadPhoto function uses `products/${id}.jpg`. So product.id should be the id.
             imagePath = `products/${product.id}.jpg`;
-
-            console.log(`Product ${product.name} - Attempting to fetch from Firebase Storage path: ${imagePath}`);
+            console.log(`Processing image for ${product.name}. Path: ${imagePath}. Original photo URL in DB: ${product.photo || 'N/A'}`);
 
             const imageRef = storage.ref(imagePath);
-            const blob = await imageRef.getBlob();
-            console.log(`Successfully fetched blob for ${product.name}. Type: ${blob.type}, Size: ${blob.size}`);
+            const downloadURL = await imageRef.getDownloadURL();
+            console.log(`Successfully got download URL for ${product.name}: ${downloadURL}`);
+
+            const response = await fetch(downloadURL);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch image from download URL ${downloadURL}: ${response.status} ${response.statusText}`);
+            }
+            const blob = await response.blob();
+            console.log(`Successfully fetched blob for ${product.name} via download URL. Type: ${blob.type}, Size: ${blob.size}`);
 
             const dataUrl = await new Promise((resolve, reject) => {
               const reader = new FileReader();
@@ -1747,10 +1751,12 @@ async function generateQRCodePDF() {
             doc.addImage(dataUrl, undefined, imageX, yForImage, IMAGE_WIDTH, IMAGE_HEIGHT);
 
           } catch (err) {
-            // Using a more generic error message here as err could be from getBlob, FileReader, or addImage
-            console.error(`Error processing or adding image for ${product.name} (ID: ${product.id}, Path: ${imagePath}, Original URL: ${product.photo || 'N/A'}): ${err.message}`, err);
+            console.error(`Error processing or adding image for ${product.name} (ID: ${product.id}, Path: ${imagePath}, Original URL in DB: ${product.photo || 'N/A'}): ${err.message}`, err);
+            // Ensure imageX and yForImage are defined in this scope if an error happens early
+            const currentXForErrorText = imageX || (x + (QR_SIZE - (IMAGE_WIDTH || QR_SIZE)) / 2);
+            const currentYForErrorText = yForImage || (y + QR_SIZE + TEXT_AREA_HEIGHT + 5 + (IMAGE_HEIGHT || 40) / 2);
             doc.setFontSize(6);
-            doc.text('Image Error', imageX + IMAGE_WIDTH / 2, yForImage + IMAGE_HEIGHT / 2, { align: 'center' });
+            doc.text('Image Error', currentXForErrorText + (IMAGE_WIDTH || QR_SIZE) / 2, currentYForErrorText, { align: 'center' });
           }
         }
 
