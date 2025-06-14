@@ -1,0 +1,11 @@
+[
+  {
+    "origin": [
+      "http://localhost:3000",
+      "https://watagantental-inventory-e6e7b.web.app",
+      "https://watagantental-inventory-e6e7b.firebaseapp.com"
+    ],
+    "method": ["GET"],
+    "maxAgeSeconds": 3600
+  }
+]
