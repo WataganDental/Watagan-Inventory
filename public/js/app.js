@@ -1586,7 +1586,7 @@ async function generateQRCodePDF() {
     const pageHeight = doc.internal.pageSize.getHeight();
 
     const COLS = 4;
-    const ROWS = 2;
+    const ROWS = 3;
     const PRODUCTS_PER_PAGE = COLS * ROWS;
     const MARGIN = 40;
     const QR_SIZE = 60;
