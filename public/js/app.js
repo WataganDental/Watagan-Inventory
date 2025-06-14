@@ -1724,27 +1724,31 @@ async function generateQRCodePDF() {
         if (product.photo) {
           const yForImage = y + QR_SIZE + TEXT_AREA_HEIGHT + 5; // Position for image
           const imageX = x + (QR_SIZE - IMAGE_WIDTH) / 2;   // Centered X for image
+          let imagePath = ''; // Define here to be accessible in catch if needed
 
           try {
-            console.log(`Fetching image for ${product.name} from URL: ${product.photo}`);
-            const response = await fetch(product.photo);
-            if (!response.ok) {
-              throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
-            }
-            const blob = await response.blob();
+            // It's safer to assume product.id is the core identifier.
+            // The uploadPhoto function uses `products/${id}.jpg`. So product.id should be the id.
+            imagePath = `products/${product.id}.jpg`;
+
+            console.log(`Product ${product.name} - Attempting to fetch from Firebase Storage path: ${imagePath}`);
+
+            const imageRef = storage.ref(imagePath);
+            const blob = await imageRef.getBlob();
+            console.log(`Successfully fetched blob for ${product.name}. Type: ${blob.type}, Size: ${blob.size}`);
 
             const dataUrl = await new Promise((resolve, reject) => {
               const reader = new FileReader();
               reader.onloadend = () => resolve(reader.result);
-              reader.onerror = (error) => reject(new Error(`FileReader error for ${product.name} (URL: ${product.photo}): ${error.message}`));
+              reader.onerror = (error) => reject(new Error(`FileReader error for ${product.name} (Path: ${imagePath}): ${error.message}`));
               reader.readAsDataURL(blob);
             });
 
-            // console.log(`Successfully converted image to DataURL for ${product.name}. Length: ${dataUrl.length}`); // Optional: for debugging DataURL
             doc.addImage(dataUrl, undefined, imageX, yForImage, IMAGE_WIDTH, IMAGE_HEIGHT);
 
-          } catch (err) { // Catch errors from fetch, blob, FileReader, or addImage
-            console.error(`Error processing or adding image for ${product.name} (ID: ${product.id}) from URL ${product.photo}: ${err.message}`, err);
+          } catch (err) {
+            // Using a more generic error message here as err could be from getBlob, FileReader, or addImage
+            console.error(`Error processing or adding image for ${product.name} (ID: ${product.id}, Path: ${imagePath}, Original URL: ${product.photo || 'N/A'}): ${err.message}`, err);
             doc.setFontSize(6);
             doc.text('Image Error', imageX + IMAGE_WIDTH / 2, yForImage + IMAGE_HEIGHT / 2, { align: 'center' });
           }
