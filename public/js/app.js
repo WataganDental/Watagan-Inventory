@@ -607,8 +607,52 @@ try {
   }
   db = firebase.firestore();
   storage = firebase.storage();
+  const auth = firebase.auth(); // Added Firebase Auth
   console.log('Firestore instance created:', !!db);
   console.log('Storage instance created:', !!storage);
+  console.log('Auth instance created:', !!auth);
+
+    // Listen for auth state changes
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        // User is signed in anonymously.
+        console.log("User signed in anonymously:", user.uid);
+        // You can access user.uid here.
+        // Potentially, re-load data or enable UI elements that depend on auth.
+        if (typeof loadInventory === 'function') {
+          console.log("Auth state changed: User signed in. Reloading inventory.");
+          // loadInventory(); // Temporarily commenting out to avoid potential loadInventory issues before it's fully defined or if it has side effects not desired on initial auth.
+        } else {
+          console.log("Auth state changed: User signed in. loadInventory function not found globally, or not yet defined.");
+        }
+      } else {
+        // User is signed out.
+        console.log("User is signed out. Attempting anonymous sign-in.");
+        auth.signInAnonymously()
+          .then(() => {
+            console.log("Anonymous sign-in successful after detecting user was out.");
+            // User is now signed in. onAuthStateChanged will be called again.
+          })
+          .catch((error) => {
+            console.error("Anonymous sign-in error:", error.code, error.message);
+            // Handle sign-in errors here (e.g., display a message to the user)
+            alert("Authentication failed: " + error.message + "\nPlease ensure Anonymous sign-in is enabled in your Firebase project's Authentication settings and that your Firebase configuration is correct, and that the domains are correctly whitelisted if running locally for testing.");
+          });
+      }
+    });
+
+    // Attempt initial anonymous sign-in if no user is initially detected by onAuthStateChanged
+    if (!auth.currentUser) {
+        console.log("No current user on app load, attempting initial anonymous sign-in.");
+        auth.signInAnonymously()
+            .then(() => {
+                console.log("Initial anonymous sign-in successful.");
+            })
+            .catch((error) => {
+                console.error("Initial anonymous sign-in error:", error.code, error.message);
+                 alert("Initial Authentication failed: " + error.message + "\nPlease ensure Anonymous sign-in is enabled in your Firebase project's Authentication settings and that your Firebase configuration is correct, and that the domains are correctly whitelisted if running locally for testing.");
+            });
+    }
 } catch (error) {
   console.error('Firebase initialization failed:', error);
 }
