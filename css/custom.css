@@ -1,0 +1,23 @@
+/* Custom styles for mobile responsiveness */
+@media (max-width: 767px) { /* Tailwind's 'md' breakpoint is 768px, so this targets screens smaller than md */
+  #sidebar {
+    display: none; /* Hide sidebar by default on small screens */
+  }
+  #mainContent {
+    margin-left: 0 !important; /* Remove the margin intended for the sidebar */
+  }
+  /* Placeholder for a mobile menu button if you add one */
+  #mobileMenuBtn {
+    display: block; /* Or 'inline-block', 'flex', etc., depending on its design */
+  }
+}
+
+@media (min-width: 768px) { /* Styles for 'md' screens and up */
+  #sidebar {
+    display: block; /* Ensure sidebar is visible on larger screens */
+  }
+  /* mobileMenuBtn would typically be hidden on larger screens if sidebar is always visible */
+  #mobileMenuBtn {
+    display: none;
+  }
+}
