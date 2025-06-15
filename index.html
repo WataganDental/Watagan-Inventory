@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no, maximum-scale=1.0, user-scalable=yes">
     <title>Watagan Dental Inventory</title>
     <link rel="manifest" href="/manifest.json">
     <link href="https://unpkg.com/tailwindcss@^2.0/dist/tailwind.min.css" rel="stylesheet">
@@ -21,6 +21,7 @@
     <nav class="bg-blue-600 dark:bg-slate-800 p-4 shadow-md">
         <div class="container mx-auto flex justify-between items-center">
             <h1 class="text-xl font-semibold text-white">Watagan Dental Inventory</h1>
+            <button id="mobileMenuBtn" class="text-white p-2 rounded hover:bg-blue-700 dark:hover:bg-slate-700 md:hidden">Menu</button>
             <button id="darkModeToggle" class="text-white p-2 rounded hover:bg-blue-700 dark:hover:bg-slate-700">
                 Toggle Dark Mode
             </button>
@@ -68,7 +69,7 @@
         </aside>
 
         <!-- Main Content -->
-        <main id="mainContent" class="flex-1 p-4 mt-16 ml-64 container mx-auto"> 
+        <main id="mainContent" class="flex-1 p-4 mt-16 ml-0 md:ml-64 container mx-auto">
             
             <!-- Inventory View Container -->
             <div id="inventoryViewContainer">
