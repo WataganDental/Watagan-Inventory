@@ -1,23 +1,63 @@
 /* Custom styles for mobile responsiveness */
-@media (max-width: 767px) { /* Tailwind's 'md' breakpoint is 768px, so this targets screens smaller than md */
+@media (max-width: 767px) {
   #sidebar {
-    display: none; /* Hide sidebar by default on small screens */
+    display: none !important; /* Ensure sidebar is hidden */
   }
   #mainContent {
-    margin-left: 0 !important; /* Remove the margin intended for the sidebar */
+    margin-left: 0 !important; /* Ensure no left margin */
+    padding-left: 1rem !important; /* Ensure padding is consistent if container class is overridden */
+    padding-right: 1rem !important;
+    max-width: 100% !important; /* Allow main content to use full width */
+    width: 100% !important; /* Explicitly set width */
+    box-sizing: border-box !important; /* Ensure padding doesn't add to width */
   }
-  /* Placeholder for a mobile menu button if you add one */
+  /* If #mainContent has Tailwind's 'container' class, it sets max-width at breakpoints.
+     The 'max-width: 100% !important;' above aims to override this for very small screens.
+     We also need to ensure sections within mainContent behave. */
+  #mainContent > section { /* Target direct children sections */
+    width: 100% !important;
+    max-width: 100% !important; /* Or a more specific max-width like 'none' or 'calc(100% - 2rem)' if issues persist */
+    box-sizing: border-box !important;
+  }
+
   #mobileMenuBtn {
-    display: block; /* Or 'inline-block', 'flex', etc., depending on its design */
+    display: block !important; /* Or 'inline-block', 'flex', etc. */
+  }
+}
+
+/* Reinforce for portrait orientation specifically if needed, though max-width should cover it */
+@media (max-width: 767px) and (orientation: portrait) {
+  #sidebar {
+    display: none !important;
+  }
+  #mainContent {
+    margin-left: 0 !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  #mainContent > section {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  #mobileMenuBtn {
+    display: block !important;
   }
 }
 
 @media (min-width: 768px) { /* Styles for 'md' screens and up */
   #sidebar {
-    display: block; /* Ensure sidebar is visible on larger screens */
+    display: block !important; /* Ensure sidebar is visible on larger screens */
   }
-  /* mobileMenuBtn would typically be hidden on larger screens if sidebar is always visible */
+  #mainContent {
+    /* Revert max-width if it was changed for smaller screens, allow Tailwind 'container' to work */
+    /* The md:ml-64 class on mainContent in HTML handles margin. */
+    /* max-width: needs to be what Tailwind's container expects or remove this if not needed */
+  }
   #mobileMenuBtn {
-    display: none;
+    display: none !important;
   }
 }
