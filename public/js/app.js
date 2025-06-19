@@ -15,13 +15,7 @@ let storage; // Declare storage globally
 let originalPhotoUrlForEdit = ''; // Stores the original photo URL when editing a product
 
 // Global variables for Quick Stock Update
-// let currentScannedProductId = null; // REMOVED - Was for Quick Scan Mode
-// let quickScanState = 'IDLE'; // REMOVED - Was for Quick Scan Mode
-// let quickStockUpdateStream = null; // REMOVED - Was for Quick Scan Mode camera
-// let quickStockUpdateCanvas = null; // REMOVED - Was for Quick Scan Mode jsQR
-// let quickStockUpdateAnimationFrameId = null; // REMOVED - Was for Quick Scan Mode camera
 let quickStockBarcodeBuffer = ""; // Used by Manual Batch (indirectly via keypress), and Barcode Scanner modes
-// let isQuickStockBarcodeActive = false; // REMOVED - Was for Quick Scan Mode's non-camera barcode input
 
 // Global State Variables for Barcode Scanner Mode
 let currentBarcodeModeProductId = null;
@@ -2512,11 +2506,11 @@ function switchQuickUpdateTab(selectedTabId) {
             // For now, setting the flag is the primary action.
             // e.g., if a stopBarcodeScannerMode() function existed that handled UI/state for that mode specifically.
         }
-        // Stop Quick Stock Update related scanners/states if any were active
-        if (quickStockUpdateStream && typeof stopQuickStockUpdateScanner === 'function') {
-            console.log("Switching to Manual Batch: Attempting to stop quick stock update scanner.");
-            stopQuickStockUpdateScanner();
-        }
+        // Stop Quick Stock Update related scanners/states if any were active (OBSOLETE - quickStockUpdateStream and stopQuickStockUpdateScanner are removed)
+        // if (quickStockUpdateStream && typeof stopQuickStockUpdateScanner === 'function') { // REMOVE
+        //     console.log("Switching to Manual Batch: Attempting to stop quick stock update scanner."); // REMOVE
+        //     stopQuickStockUpdateScanner(); // REMOVE
+        // } // REMOVE
         // Stop general purpose camera stream if it's active (used by batch update, move, edit)
         if (stream) {
             if (typeof stopUpdateScanner === 'function' && document.getElementById('updateVideo') && !document.getElementById('updateVideo').classList.contains('hidden')) stopUpdateScanner();
@@ -2545,11 +2539,11 @@ function switchQuickUpdateTab(selectedTabId) {
         barcodeScannerModeContentPane.classList.remove('hidden');
         manualBatchModeContentPane.classList.add('hidden');
 
-        // Stop Quick Stock Update related scanners/states if any were active
-        if (quickStockUpdateStream && typeof stopQuickStockUpdateScanner === 'function') {
-            console.log("Switching to Barcode Scanner: Attempting to stop quick stock update scanner.");
-            stopQuickStockUpdateScanner();
-        }
+        // Stop Quick Stock Update related scanners/states if any were active (OBSOLETE - quickStockUpdateStream and stopQuickStockUpdateScanner are removed)
+        // if (quickStockUpdateStream && typeof stopQuickStockUpdateScanner === 'function') { // REMOVE
+        //     console.log("Switching to Barcode Scanner: Attempting to stop quick stock update scanner."); // REMOVE
+        //     stopQuickStockUpdateScanner(); // REMOVE
+        // } // REMOVE
         // Stop general purpose camera stream if it's active (used by batch update, move, edit)
          if (stream) {
              if (typeof stopUpdateScanner === 'function' && document.getElementById('updateVideo') && !document.getElementById('updateVideo').classList.contains('hidden')) stopUpdateScanner();
@@ -2886,15 +2880,16 @@ document.addEventListener('DOMContentLoaded', async () => {
               }
           } else {
               if (container.id === 'quickStockUpdateContainer') {
-                  // Ensure all related flags are reset if this container is hidden
-                  isQuickStockBarcodeActive = false;
-                  isBarcodeScannerModeActive = false;
-                  quickStockBarcodeBuffer = "";
-                  if (quickStockUpdateStream && typeof stopQuickStockUpdateScanner === 'function') { // Check stream before stopping
-                    stopQuickStockUpdateScanner();
-                  }
-                  if (quickScanState !== 'IDLE' && typeof resetQuickScanUI === 'function') { // Also reset UI if needed
-                    resetQuickScanUI();
+                  quickStockBarcodeBuffer = ""; // Clear buffer
+                  isBarcodeScannerModeActive = false; // Ensure barcode scanner mode is deactivated
+                  // isQuickStockBarcodeActive = false; // This line is already removed/obsolete
+                  // The (quickScanState !== 'IDLE') block and its calls to stopQuickStockUpdateScanner/resetQuickScanUI are obsolete and removed.
+
+                  // Stop general camera streams if active when hiding the entire Quick Stock Update container
+                  if (stream) {
+                      if (typeof stopUpdateScanner === 'function' && document.getElementById('updateVideo') && !document.getElementById('updateVideo').classList.contains('hidden')) stopUpdateScanner();
+                      if (typeof stopMoveScanner === 'function' && document.getElementById('moveVideo') && !document.getElementById('moveVideo').classList.contains('hidden')) stopMoveScanner();
+                      if (typeof stopEditScanner === 'function' && document.getElementById('editVideo') && !document.getElementById('editVideo').classList.contains('hidden')) stopEditScanner();
                   }
               }
               container.classList.add('hidden');
