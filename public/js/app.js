@@ -2537,6 +2537,7 @@ function switchQuickUpdateTab(selectedTabId) {
 
         barcodeScannerModeContentPane.classList.remove('hidden');
         manualBatchModeContentPane.classList.add('hidden');
+        barcodeScannerModeContentPane.focus({ preventScroll: true });
 
         // Stop Quick Stock Update related scanners/states if any were active (OBSOLETE - quickStockUpdateStream and stopQuickStockUpdateScanner are removed)
         // if (quickStockUpdateStream && typeof stopQuickStockUpdateScanner === 'function') { // REMOVE
