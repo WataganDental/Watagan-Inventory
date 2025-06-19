@@ -2518,7 +2518,6 @@ function switchQuickUpdateTab(selectedTabId) {
             if (typeof stopEditScanner === 'function' && document.getElementById('editVideo') && !document.getElementById('editVideo').classList.contains('hidden')) stopEditScanner();
         }
 
-        isQuickStockBarcodeActive = false;
         isBarcodeScannerModeActive = false;
         isEditScanModeActive = false; // Ensure edit scan mode is also off
         quickStockBarcodeBuffer = ""; // Clear any potentially active buffer
@@ -2552,7 +2551,6 @@ function switchQuickUpdateTab(selectedTabId) {
         }
 
         isBarcodeScannerModeActive = true;
-        isQuickStockBarcodeActive = false;
         isEditScanModeActive = false;
 
         currentBarcodeModeProductId = null;
