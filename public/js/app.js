@@ -2261,6 +2261,12 @@ async function generateFastOrderReportPDF() {
     const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
     const margin = 50;
+    const idColX = margin;
+    const nameColX = margin + 70; // X start for Name (gives ID 70 points width from margin)
+    const qtyColX = margin + 330; // X start for Qty (gives Name 330-70 = 260 points width)
+    const minQtyColX = margin + 380; // X start for Min Qty (gives Qty 50 points width)
+    const effectiveMaxNameWidth = qtyColX - nameColX - 10; // Max width for name text before it hits Qty col, with 10 points padding
+
     let yPosition = height - margin;
     const lineHeight = 14;
     const titleFontSize = 18;
@@ -2306,10 +2312,10 @@ async function generateFastOrderReportPDF() {
       });
       yPosition -= (headerFontSize + 5);
 
-      page.drawText("ID", { x: margin, y: yPosition, font: boldFont, size: regularFontSize });
-      page.drawText("Name", { x: margin + 80, y: yPosition, font: boldFont, size: regularFontSize });
-      page.drawText("Qty", { x: margin + 350, y: yPosition, font: boldFont, size: regularFontSize });
-      page.drawText("Min Qty", { x: margin + 400, y: yPosition, font: boldFont, size: regularFontSize });
+      page.drawText("ID", { x: idColX, y: yPosition, font: boldFont, size: regularFontSize });
+      page.drawText("Name", { x: nameColX, y: yPosition, font: boldFont, size: regularFontSize });
+      page.drawText("Qty", { x: qtyColX, y: yPosition, font: boldFont, size: regularFontSize });
+      page.drawText("Min Qty", { x: minQtyColX, y: yPosition, font: boldFont, size: regularFontSize });
       yPosition -= (lineHeight + 2);
       page.drawLine({
           start: { x: margin, y: yPosition },
@@ -2323,7 +2329,7 @@ async function generateFastOrderReportPDF() {
       for (const item of items) {
         const itemName = item.name || 'Unnamed Product';
         const nameLines = [];
-        const maxNameWidth = 250; 
+        const maxNameWidth = effectiveMaxNameWidth;
         if (font.widthOfTextAtSize(itemName, regularFontSize) > maxNameWidth) {
             let currentLine = '';
             const words = itemName.split(' ');
@@ -2356,10 +2362,10 @@ async function generateFastOrderReportPDF() {
           });
           yPosition -= (headerFontSize + 5);
           
-          page.drawText("ID", { x: margin, y: yPosition, font: boldFont, size: regularFontSize });
-          page.drawText("Name", { x: margin + 80, y: yPosition, font: boldFont, size: regularFontSize });
-          page.drawText("Qty", { x: margin + 350, y: yPosition, font: boldFont, size: regularFontSize });
-          page.drawText("Min Qty", { x: margin + 400, y: yPosition, font: boldFont, size: regularFontSize });
+          page.drawText("ID", { x: idColX, y: yPosition, font: boldFont, size: regularFontSize });
+          page.drawText("Name", { x: nameColX, y: yPosition, font: boldFont, size: regularFontSize });
+          page.drawText("Qty", { x: qtyColX, y: yPosition, font: boldFont, size: regularFontSize });
+          page.drawText("Min Qty", { x: minQtyColX, y: yPosition, font: boldFont, size: regularFontSize });
           yPosition -= (lineHeight + 2);
            page.drawLine({
               start: { x: margin, y: yPosition },
@@ -2371,13 +2377,14 @@ async function generateFastOrderReportPDF() {
         }
         
         let currentLineY = yPosition;
-        page.drawText(item.id, { x: margin, y: currentLineY, font: font, size: regularFontSize });
+        page.drawText(item.id, { x: idColX, y: currentLineY, font: font, size: regularFontSize, maxWidth: nameColX - idColX - 5 }); // Added maxWidth for ID
         nameLines.forEach((line, index) => {
-            page.drawText(line, { x: margin + 80, y: currentLineY, font: font, size: regularFontSize });
+            page.drawText(line, { x: nameColX, y: currentLineY, font: font, size: regularFontSize, maxWidth: maxNameWidth }); // Use new x and maxWidth
             if (index < nameLines.length -1) currentLineY -= lineHeight;
         });
-        page.drawText(item.quantity.toString(), { x: margin + 350, y: yPosition, font: font, size: regularFontSize }); 
-        page.drawText(item.minQuantity.toString(), { x: margin + 400, y: yPosition, font: font, size: regularFontSize }); 
+        // yPosition for Qty and MinQty is correct as it's the top of the current item's row.
+        page.drawText(item.quantity.toString(), { x: qtyColX, y: yPosition, font: font, size: regularFontSize });
+        page.drawText(item.minQuantity.toString(), { x: minQtyColX, y: yPosition, font: font, size: regularFontSize });
         
         yPosition -= (lineHeight * nameLines.length); 
         
