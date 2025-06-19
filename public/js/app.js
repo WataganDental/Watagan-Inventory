@@ -870,6 +870,24 @@ function ensureQRCodeIsAvailable(timeout = 5000) {
   });
 }
 
+function ensurePDFLibIsAvailable(timeout = 5000) {
+  return new Promise((resolve, reject) => {
+    const startTime = Date.now();
+    const checkPDFLib = () => {
+      if (window.PDFLib) {
+        console.log('PDFLib library is available.');
+        resolve();
+      } else if (Date.now() - startTime > timeout) {
+        console.error('PDFLib library did not load within timeout.');
+        reject(new Error('PDFLib library failed to load in time.'));
+      } else {
+        setTimeout(checkPDFLib, 100);
+      }
+    };
+    checkPDFLib();
+  });
+}
+
 // Supplier Management
 async function addSupplier() {
   const name = document.getElementById('supplierName').value.trim();
@@ -2098,15 +2116,17 @@ async function generateDetailedOrderReportPDFWithQRCodes() {
 
 // Order Reports - Alternative PDF generation with pdf-lib.js
 async function generateFastOrderReportPDF() {
-  if (!window.PDFLib) {
-    alert('Error: PDFLib library is not loaded. Cannot generate PDF.');
-    console.error('PDFLib library not found on window object.');
-    return;
-  }
-
-  const { PDFDocument, StandardFonts, rgb, PageSizes } = window.PDFLib;
-
   try {
+    await ensurePDFLibIsAvailable();
+    // The old check can be removed or commented out:
+    // if (!window.PDFLib) {
+    //   alert('Error: PDFLib library is not loaded. Cannot generate PDF.');
+    //   console.error('PDFLib library not found on window object.');
+    //   return;
+    // }
+
+    const { PDFDocument, StandardFonts, rgb, PageSizes } = window.PDFLib;
+
     // Fetch data early for warning and reuse
     const snapshot = await db.collection('inventory').get();
     let toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity);
@@ -3827,17 +3847,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Test PDFLib functionality
     console.log("Attempting to test PDFLib integration...");
-    if (window.PDFLib) {
-      console.log("window.PDFLib is defined. Attempting to call generateFastOrderReportPDF().");
+    (async () => {
       try {
-        generateFastOrderReportPDF();
-        console.log("generateFastOrderReportPDF() was called successfully (no immediate error).");
-      } catch (e) {
-        console.error("Error calling generateFastOrderReportPDF():", e);
+        await ensurePDFLibIsAvailable();
+        console.log("window.PDFLib is defined after ensuring availability.");
+        // You could potentially call a lightweight PDFLib function here for a quick test
+        // For example, trying to create a dummy document (optional)
+        // const { PDFDocument } = window.PDFLib;
+        // await PDFDocument.create();
+        // console.log("PDFLib basic functionality (e.g., PDFDocument.create) seems to work.");
+        // The original generateFastOrderReportPDF() call is likely too heavy for this initial test.
+        // If you still want to call it, ensure it's properly handled:
+        // generateFastOrderReportPDF();
+        console.log("PDFLib seems available. Further calls to functions using PDFLib should now work.");
+      } catch (error) {
+        console.error("PDFLib availability check failed or basic test failed:", error);
       }
-    } else {
-      console.error("window.PDFLib is NOT defined. PDF generation test cannot run.");
-    }
+    })();
 
   } catch (error) {
     console.error('Initialization failed:', error);
