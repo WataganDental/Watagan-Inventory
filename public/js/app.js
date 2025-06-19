@@ -1973,21 +1973,32 @@ async function generateQRCodePDF() {
 
 // Order Reports
 async function generateDetailedOrderReportPDFWithQRCodes() {
+  console.log('[QR Order Report] Function started.'); // LOG START
   try {
     // Fetch data early for warning and reuse
+    console.log('[QR Order Report] Fetching inventory for report...'); // LOG
     const snapshot = await db.collection('inventory').get();
     let toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity);
+    console.log(`[QR Order Report] Initial toOrderItems count: ${toOrderItems.length}`); // LOG COUNT
 
     const filterToOrderSupplierDropdownEarly = document.getElementById('filterToOrderSupplier');
     const selectedSupplierFilterEarly = filterToOrderSupplierDropdownEarly ? filterToOrderSupplierDropdownEarly.value : "";
     if (selectedSupplierFilterEarly) {
       toOrderItems = toOrderItems.filter(item => item.supplier === selectedSupplierFilterEarly);
+      console.log(`[QR Order Report] Filtered toOrderItems by supplier '${selectedSupplierFilterEarly}', count: ${toOrderItems.length}`); // LOG COUNT AFTER FILTER
     }
 
+    // Log a sample of items
+    if (toOrderItems.length > 0) {
+      console.log('[QR Order Report] Sample of toOrderItems (first 2):', JSON.stringify(toOrderItems.slice(0, 2)));
+    }
+
+
     const totalNumberOfItemsInReport = toOrderItems.length;
-    const LARGE_REPORT_THRESHOLD = 100; // Adjustable
+    const LARGE_REPORT_THRESHOLD = 100;
 
     if (totalNumberOfItemsInReport > LARGE_REPORT_THRESHOLD) {
+      console.log(`[QR Order Report] Report has ${totalNumberOfItemsInReport} items, showing confirmation.`); // LOG
       const userConfirmed = confirm(
         `You are about to generate a detailed order report with ${totalNumberOfItemsInReport} items (including QR codes). ` +
         `This might take a very long time and result in a large file. ` +
@@ -1995,40 +2006,48 @@ async function generateDetailedOrderReportPDFWithQRCodes() {
       );
       if (!userConfirmed) {
         alert("Detailed order report generation cancelled by user.");
+        console.log('[QR Order Report] User cancelled generation due to large report size.'); // LOG
         return;
       }
     }
 
     if (toOrderItems.length === 0) {
       alert('No products need reordering.');
+      console.log('[QR Order Report] No products to reorder, exiting.'); // LOG
       return;
     }
 
-    await ensureQRCodeIsAvailable(); // Still needed for QR codes
-    const JsPDF = await waitForJsPDF(); // Still needed for jsPDF
+    console.log('[QR Order Report] Ensuring QRCode.js is available...'); // LOG
+    await ensureQRCodeIsAvailable();
+    console.log('[QR Order Report] Ensuring jsPDF is available...'); // LOG
+    const JsPDF = await waitForJsPDF();
     const doc = new JsPDF();
+    console.log('[QR Order Report] jsPDF instance created.'); // LOG
 
     const margin = 20;
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const bottomMargin = 20;
     const QR_CODE_SIZE_IN_PDF = 30;
-    const ROW_HEIGHT = QR_CODE_SIZE_IN_PDF + 5;
+    const ROW_HEIGHT = QR_CODE_SIZE_IN_PDF + 5; // Ensure this is enough
     const TEXT_FONT_SIZE = 10;
     const HEADER_FONT_SIZE = 12;
     const SUPPLIER_HEADER_FONT_SIZE = 14;
 
     let xQr = margin;
     let xName = xQr + QR_CODE_SIZE_IN_PDF + 5;
-    let xQty = xName + 80 + 5;
-    let xQtyOrdered = xQty + 30 + 5;
-    let xQtyBackordered = xQtyOrdered + 40 + 5;
-    let xReorderQty = xQtyBackordered + 40 + 5;
-    let xSupplier = xReorderQty + 40 + 5;
+    // Adjust other x positions based on expected content width
+    let xQty = xName + 80 + 5; // Name width: 80
+    let xQtyOrdered = xQty + 30 + 5; // Qty width: 30
+    let xQtyBackordered = xQtyOrdered + 40 + 5; // Qty Ord width: 40
+    let xReorderQty = xQtyBackordered + 40 + 5; // Backorder width: 40
+    let xSupplier = xReorderQty + 40 + 5; // ReorderQty width: 40
+
 
     let y = margin + 20;
 
     function drawPageHeaders(docInstance, currentY) {
+        console.log(`[QR Order Report] Drawing page headers at Y: ${currentY}`); // LOG
         docInstance.setFontSize(16);
         docInstance.text('Watagan Dental Order Report', margin, margin);
         docInstance.setFontSize(TEXT_FONT_SIZE);
@@ -2041,22 +2060,21 @@ async function generateDetailedOrderReportPDFWithQRCodes() {
         docInstance.text('Name', xName, currentY);
         docInstance.text('Qty', xQty, currentY, { align: 'right' });
         docInstance.text('Qty Ord', xQtyOrdered, currentY, { align: 'right' });
-        docInstance.text('BACKORDER_PDF', xQtyBackordered, currentY, { align: 'right' });
+        // Corrected header text for backordered quantity
+        docInstance.text('Backorder', xQtyBackordered, currentY, { align: 'right' });
         docInstance.text('ReorderQ', xReorderQty, currentY, { align: 'right' });
         docInstance.text('Supplier', xSupplier, currentY);
         docInstance.setFont("helvetica", "normal");
         
-        currentY += 7;
+        currentY += 7; // Space after headers
         docInstance.setLineWidth(0.5);
-        docInstance.line(margin, currentY, pageWidth - margin, currentY);
-        currentY += 10;
+        docInstance.line(margin, currentY, pageWidth - margin, currentY); // Line under headers
+        currentY += 10; // Space after line
         return currentY;
     }
 
     y = drawPageHeaders(doc, y);
 
-    // Data (`toOrderItems`) is already fetched and filtered.
-    // We just need to group it now.
     const itemsBySupplierGroup = toOrderItems.reduce((acc, item) => {
       const supplierName = item.supplier || 'Supplier Not Assigned';
       if (!acc[supplierName]) {
@@ -2065,16 +2083,19 @@ async function generateDetailedOrderReportPDFWithQRCodes() {
       acc[supplierName].push(item);
       return acc;
     }, {});
+    console.log('[QR Order Report] Items grouped by supplier.'); // LOG
 
     const sortedSupplierNames = Object.keys(itemsBySupplierGroup).sort();
 
     for (const supplierName of sortedSupplierNames) {
         const items = itemsBySupplierGroup[supplierName];
         if (items.length === 0) continue;
+        console.log(`[QR Order Report] Processing supplier: ${supplierName}, items: ${items.length}`); // LOG
 
-        if (y + 20 > pageHeight - bottomMargin) {
+        if (y + 20 + (items.length * ROW_HEIGHT) > pageHeight - bottomMargin) { // Rough check, might need refinement
+            console.log(`[QR Order Report] Adding new page for supplier ${supplierName}. Current Y: ${y}`); // LOG
             doc.addPage();
-            y = drawPageHeaders(doc, margin + 30);
+            y = drawPageHeaders(doc, margin + 30); // Reset Y to top after headers
         }
         
         doc.setFont("helvetica", "bold");
@@ -2085,9 +2106,12 @@ async function generateDetailedOrderReportPDFWithQRCodes() {
         doc.setFontSize(TEXT_FONT_SIZE);
 
         for (const item of items) {
+            console.log(`[QR Order Report] Processing item: ${item.name} (ID: ${item.id}) at Y: ${y}`); // LOG ITEM
             if (y + ROW_HEIGHT > pageHeight - bottomMargin) {
+                console.log(`[QR Order Report] Adding new page for item ${item.name}. Current Y: ${y}`); // LOG
                 doc.addPage();
-                y = drawPageHeaders(doc, margin + 30);
+                y = drawPageHeaders(doc, margin + 30); // Reset Y to top after headers
+                // Redraw supplier header if it's a continued section
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(SUPPLIER_HEADER_FONT_SIZE);
                 doc.text(`${supplierName} (continued)`, margin, y);
@@ -2099,59 +2123,79 @@ async function generateDetailedOrderReportPDFWithQRCodes() {
             const tempDivId = `temp-qr-order-${item.id}`;
             const tempDiv = document.createElement('div');
             tempDiv.id = tempDivId;
+            // Make it invisible but attach to DOM for QRCode.js to work reliably
             tempDiv.style.position = 'absolute';
             tempDiv.style.left = '-9999px';
-            tempDiv.style.width = `${QR_CODE_SIZE_IN_PDF}px`;
+            tempDiv.style.top = '-9999px';
+            tempDiv.style.width = `${QR_CODE_SIZE_IN_PDF}px`; // Ensure size for QR generation
             tempDiv.style.height = `${QR_CODE_SIZE_IN_PDF}px`;
             document.body.appendChild(tempDiv);
+            console.log(`[QR Order Report] Temporary div for QR code created for item ${item.id}`);
+
 
             let qrImageFromCanvas = '';
             try {
+                console.log(`[QR Order Report] Generating QR for item: ${item.id}`); // LOG QR
                 new window.QRCode(tempDiv, {
                     text: item.id,
-                    width: QR_CODE_SIZE_IN_PDF,
+                    width: QR_CODE_SIZE_IN_PDF, // Use defined size
                     height: QR_CODE_SIZE_IN_PDF,
                     colorDark: '#000000',
                     colorLight: '#ffffff',
-                    correctLevel: window.QRCode.CorrectLevel.L
+                    correctLevel: window.QRCode.CorrectLevel.L // L is fine for IDs
                 });
                 const qrCanvas = tempDiv.querySelector('canvas');
                 if (qrCanvas) {
                     qrImageFromCanvas = qrCanvas.toDataURL('image/png');
+                    console.log(`[QR Order Report] QR canvas toDataURL successful for ${item.id}`); // LOG
                 } else {
-                     console.error('QR Canvas not found for item:', item.id);
+                     console.error(`[QR Order Report] QR Canvas not found for item: ${item.id}`);
                      doc.text('QR Error', xQr + QR_CODE_SIZE_IN_PDF / 2, y + QR_CODE_SIZE_IN_PDF / 2, { align: 'center' });
                 }
             } catch (qrError) {
-                console.error('Error generating QR code for order report, item ID', item.id, ':', qrError);
+                console.error(`[QR Order Report] Error generating QR code for order report, item ID ${item.id}:`, qrError);
                 doc.text('QR Error', xQr + QR_CODE_SIZE_IN_PDF / 2, y + QR_CODE_SIZE_IN_PDF / 2, { align: 'center' });
             } finally {
+                // Clean up the temporary div
                 if (document.getElementById(tempDivId)) {
                     document.body.removeChild(tempDiv);
+                    console.log(`[QR Order Report] Temporary div for QR code removed for item ${item.id}`);
                 }
             }
             
             if (qrImageFromCanvas) {
-                doc.addImage(qrImageFromCanvas, 'PNG', xQr, y, QR_CODE_SIZE_IN_PDF, QR_CODE_SIZE_IN_PDF);
+                try {
+                    console.log(`[QR Order Report] Adding QR image to PDF for ${item.id} at X:${xQr}, Y:${y}`); // LOG
+                    doc.addImage(qrImageFromCanvas, 'PNG', xQr, y, QR_CODE_SIZE_IN_PDF, QR_CODE_SIZE_IN_PDF);
+                } catch (pdfAddImageError) {
+                    console.error(`[QR Order Report] Error adding QR image to PDF for ${item.id}:`, pdfAddImageError);
+                    doc.text('QR Img Err', xQr + QR_CODE_SIZE_IN_PDF / 2, y + QR_CODE_SIZE_IN_PDF / 2, { align: 'center' });
+                }
             }
 
-            const textY = y + QR_CODE_SIZE_IN_PDF - (TEXT_FONT_SIZE / 2) + 2;
+            // Adjust textY to be vertically centered relative to the QR code image if desired,
+            // or simply placed below it. For simplicity, let's place it aligned with top of QR + some offset.
+            const textY = y + (TEXT_FONT_SIZE / 2) + 2; // Adjust this as needed for vertical alignment
+            console.log(`[QR Order Report] Adding text for ${item.name} at X:${xName}, Y:${textY}`); // LOG
 
-            doc.text(item.name, xName, textY, {maxWidth: xQty - xName - 5}); 
-            doc.text((item.quantity || 0).toString(), xQty, textY, { align: 'right' });
-            doc.text((item.quantityOrdered || 0).toString(), xQtyOrdered, textY, { align: 'right' });
-            doc.text('BO:' + (item.quantityBackordered || 0).toString(), xQtyBackordered, textY, { align: 'right' });
-            doc.text((item.reorderQuantity || 0).toString(), xReorderQty, textY, { align: 'right' });
-            doc.text(item.supplier || 'N/A', xSupplier, textY, {maxWidth: pageWidth - xSupplier - margin});
+            doc.text(item.name || 'N/A', xName, textY, {maxWidth: xQty - xName - 10}); // Added maxWidth
+            doc.text((item.quantity === undefined ? 'N/A' : item.quantity).toString(), xQty, textY, { align: 'right' });
+            doc.text((item.quantityOrdered === undefined ? 'N/A' : item.quantityOrdered).toString(), xQtyOrdered, textY, { align: 'right' });
+            // Corrected field for backordered quantity
+            doc.text((item.quantityBackordered === undefined ? 'N/A' : item.quantityBackordered).toString(), xQtyBackordered, textY, { align: 'right' });
+            doc.text((item.reorderQuantity === undefined ? 'N/A' : item.reorderQuantity).toString(), xReorderQty, textY, { align: 'right' });
+            doc.text(item.supplier || 'N/A', xSupplier, textY, {maxWidth: pageWidth - xSupplier - margin - 5}); // Added maxWidth
             
             y += ROW_HEIGHT;
         }
-        y += 10;
+        y += 10; // Extra space between supplier groups
     }
 
+    console.log('[QR Order Report] Attempting to save PDF...'); // LOG
     doc.save('Watagan_Dental_Order_Report_With_QR.pdf');
+    console.log('[QR Order Report] PDF save initiated.'); // LOG
   } catch (error) {
-    console.error('Failed to generate Order Report PDF (jsPDF):', error.message, error.stack);
+    console.error('[QR Order Report] Failed to generate Order Report PDF (jsPDF):', error.message, error.stack);
     alert('Failed to generate Order Report PDF (jsPDF): ' + error.message);
   }
 }
@@ -3280,6 +3324,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   document.getElementById('generateOrderReportBtn').addEventListener('click', generateFastOrderReportPDF);
   document.getElementById('emailOrderReportBtn').addEventListener('click', emailOrderReport);
+
+  // START MOVED AND MODIFIED BLOCK
+  const generateOrderReportPdfLibBtnEl = document.getElementById('generateOrderReportPdfLibBtn');
+  console.log('[EventSetup] generateOrderReportPdfLibBtnEl:', generateOrderReportPdfLibBtnEl); // ADDED LOG
+  if (generateOrderReportPdfLibBtnEl) {
+    console.log('[EventSetup] Attaching event listener to generateOrderReportPdfLibBtnEl for generateDetailedOrderReportPDFWithQRCodes'); // ADDED LOG
+    generateOrderReportPdfLibBtnEl.addEventListener('click', generateDetailedOrderReportPDFWithQRCodes);
+  } else {
+    console.error('[EventSetup] generateOrderReportPdfLibBtnEl NOT FOUND.'); // ADDED LOG
+  }
+  // END MOVED AND MODIFIED BLOCK
 
   const qrCodePDFBtn = document.getElementById('generateQRCodePDFBtn');
   if (qrCodePDFBtn) {
