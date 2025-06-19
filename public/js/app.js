@@ -870,7 +870,7 @@ function ensureQRCodeIsAvailable(timeout = 5000) {
   });
 }
 
-function ensurePDFLibIsAvailable(timeout = 5000) {
+function ensurePDFLibIsAvailable(timeout = 10000) {
   return new Promise((resolve, reject) => {
     const startTime = Date.now();
     const checkPDFLib = () => {
