@@ -150,6 +150,89 @@ async function displayActionQRCodes() {
   console.log('Action QR codes displayed with new actions and colors.');
 }
 
+async function displayBarcodeModeActionQRCodes() {
+  const container = document.getElementById('barcodeModeActionQRCodesContainer');
+  if (!container) {
+    console.error('Barcode Mode Action QR Codes container not found.');
+    return;
+  }
+  container.innerHTML = ''; // Clear previous QRs
+
+  const actions = [
+    // Additions
+    { label: '+1 Unit', data: 'ACTION_ADD_1', type: 'add' },
+    { label: '-1 Unit', data: 'ACTION_SUB_1', type: 'subtract' },
+    { label: '+2 Units', data: 'ACTION_ADD_2', type: 'add' },
+    { label: '-2 Units', data: 'ACTION_SUB_2', type: 'subtract' },
+    { label: '+3 Units', data: 'ACTION_ADD_3', type: 'add' },
+    { label: '-3 Units', data: 'ACTION_SUB_3', type: 'subtract' },
+    { label: '+4 Units', data: 'ACTION_ADD_4', type: 'add' },
+    { label: '-4 Units', data: 'ACTION_SUB_4', type: 'subtract' },
+    { label: '+5 Units', data: 'ACTION_ADD_5', type: 'add' },
+    { label: '-5 Units', data: 'ACTION_SUB_5', type: 'subtract' },
+    { label: '+10 Units', data: 'ACTION_ADD_10', type: 'add' },
+    { label: '-10 Units', data: 'ACTION_SUB_10', type: 'subtract' },
+    // Set actions
+    { label: 'Set to 0', data: 'ACTION_SET_0', type: 'set' },
+    { label: 'Set to 1', data: 'ACTION_SET_1', type: 'set' },
+    { label: 'Set to 5', data: 'ACTION_SET_5', type: 'set' },
+    { label: 'Set to 10', data: 'ACTION_SET_10', type: 'set' },
+    { label: 'Set to 20', data: 'ACTION_SET_20', type: 'set' },
+    { label: 'Set to 30', data: 'ACTION_SET_30', type: 'set' },
+    { label: 'Set to 40', data: 'ACTION_SET_40', type: 'set' },
+    // Cancel
+    { label: 'Cancel Action', data: 'ACTION_CANCEL', type: 'cancel' },
+    { label: 'Complete Update', data: 'ACTION_COMPLETE', type: 'complete' }
+  ];
+
+  if (typeof QRCode === 'undefined') {
+    console.error('QRCode library is not loaded. Cannot display action QR codes for Barcode Mode.');
+    container.innerHTML = '<p class="text-red-500 dark:text-red-400 col-span-full">Error: QRCode library not loaded.</p>';
+    return;
+  }
+
+  actions.forEach(action => {
+    const actionDiv = document.createElement('div');
+    let bgColorClass = 'bg-gray-100 dark:bg-gray-700'; // Default/cancel
+    if (action.type === 'add') {
+      bgColorClass = 'bg-green-100 hover:bg-green-200 dark:bg-green-700 dark:hover:bg-green-600';
+    } else if (action.type === 'subtract') {
+      bgColorClass = 'bg-red-100 hover:bg-red-200 dark:bg-red-700 dark:hover:bg-red-600';
+    } else if (action.type === 'set') {
+      bgColorClass = 'bg-blue-100 hover:bg-blue-200 dark:bg-blue-700 dark:hover:bg-blue-600';
+    } else if (action.type === 'complete') {
+      bgColorClass = 'bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-700 dark:hover:bg-yellow-600';
+    }
+    actionDiv.className = `flex flex-col items-center p-2 border dark:border-slate-600 rounded-md shadow ${bgColorClass} transition-colors duration-150`;
+
+    const qrCodeElem = document.createElement('div');
+    qrCodeElem.id = `barcode-mode-action-qr-${action.data}`; // Ensure unique IDs if necessary
+    actionDiv.appendChild(qrCodeElem);
+
+    const labelElem = document.createElement('p');
+    labelElem.textContent = action.label;
+    labelElem.className = 'text-sm mt-1 dark:text-gray-200';
+    actionDiv.appendChild(labelElem);
+
+    container.appendChild(actionDiv);
+
+    try {
+      new QRCode(qrCodeElem, {
+        text: action.data,
+        width: 80,
+        height: 80,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } catch (e) {
+      console.error(`Error generating QR code for action ${action.label} in Barcode Mode:`, e);
+      qrCodeElem.textContent = 'Error';
+    }
+  });
+  console.log('Barcode Mode Action QR codes displayed.');
+}
+
 function stopQuickStockUpdateScanner() {
   console.log('Stopping Quick Stock Update Scanner...');
   if (quickStockUpdateStream) {
@@ -3108,10 +3191,20 @@ function switchQuickUpdateTab(selectedTabId) {
       }
 
       currentBarcodeModeProductId = null;
-      document.getElementById('barcodeActiveProductName').textContent = 'Active Product: None';
+      const activeProductNameEl = document.getElementById('barcodeActiveProductName');
+      if (activeProductNameEl) activeProductNameEl.textContent = 'None'; // Updated to target the span
       setLastActionFeedback('---'); // Use helper
       setBarcodeStatus('Scan a Product QR Code to begin.'); // Use helper
       quickStockBarcodeBuffer = "";
+
+      const productDetailsDisplay = document.getElementById('barcodeProductDetailsDisplay');
+      if (productDetailsDisplay) {
+          document.getElementById('barcodeProductSpecificQR').innerHTML = '';
+          const imgElement = document.getElementById('barcodeProductSpecificImage');
+          imgElement.src = '#';
+          imgElement.classList.add('hidden');
+      }
+      displayBarcodeModeActionQRCodes();
       console.log("Switched to Barcode Scanner Mode Tab.");
   }
 }
@@ -3698,8 +3791,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                   if (!docSnapshot.exists) {
                       setBarcodeStatus('Error: Active product not found in database. Please rescan product.', true);
                       currentBarcodeModeProductId = null;
-                      activeProductEl.textContent = 'Active Product: None';
+                      if(activeProductEl) activeProductEl.textContent = 'None';
                       setLastActionFeedback('---', false);
+                      // Clear product specific display
+                      document.getElementById('barcodeProductSpecificQR').innerHTML = '';
+                      const imgElement = document.getElementById('barcodeProductSpecificImage');
+                      imgElement.src = '#';
+                      imgElement.classList.add('hidden');
                       return;
                   }
                   const product = { id: docSnapshot.id, ...docSnapshot.data() };
@@ -3756,23 +3854,59 @@ document.addEventListener('DOMContentLoaded', async () => {
 
           } else { // It's a Product ID
               db.collection('inventory').doc(scannedValue).get().then(docSnapshot => {
+                  const productSpecificQRDiv = document.getElementById('barcodeProductSpecificQR');
+                  const productSpecificImg = document.getElementById('barcodeProductSpecificImage');
+
                   if (docSnapshot.exists) {
                       const product = { id: docSnapshot.id, ...docSnapshot.data() };
                       currentBarcodeModeProductId = product.id;
-                      activeProductEl.textContent = `Active Product: ${product.name} (Qty: ${product.quantity})`;
+                      if(activeProductEl) activeProductEl.textContent = `${product.name} (Qty: ${product.quantity})`;
                       setBarcodeStatus(`Scan Action QR for ${product.name}.`);
                       setLastActionFeedback('---', false);
+
+                      // Display product's own QR
+                      productSpecificQRDiv.innerHTML = '';
+                      try {
+                          new QRCode(productSpecificQRDiv, {
+                              text: product.id,
+                              width: 96,
+                              height: 96,
+                              colorDark: '#000000',
+                              colorLight: '#ffffff',
+                              correctLevel: QRCode.CorrectLevel.M
+                          });
+                      } catch (e) {
+                          console.error('Error generating product specific QR for Barcode Mode:', e);
+                          productSpecificQRDiv.textContent = 'QR Error';
+                      }
+
+                      // Display product image
+                      if (product.photo) {
+                          productSpecificImg.src = product.photo;
+                          productSpecificImg.classList.remove('hidden');
+                      } else {
+                          productSpecificImg.src = '#';
+                          productSpecificImg.classList.add('hidden');
+                      }
+
                   } else {
                       currentBarcodeModeProductId = null;
-                      activeProductEl.textContent = 'Active Product: None';
+                      if(activeProductEl) activeProductEl.textContent = 'None';
                       setBarcodeStatus(`Error: Product ID '${scannedValue}' Not Found. Scan valid Product QR.`, true);
                       setLastActionFeedback('---', false);
+                      productSpecificQRDiv.innerHTML = '';
+                      productSpecificImg.src = '#';
+                      productSpecificImg.classList.add('hidden');
                   }
               }).catch(err => {
                   currentBarcodeModeProductId = null;
-                  activeProductEl.textContent = 'Active Product: None';
+                  if(activeProductEl) activeProductEl.textContent = 'None';
                   setBarcodeStatus(`Error fetching product ID '${scannedValue}': ${err.message}`, true);
                   setLastActionFeedback('---', false);
+                  document.getElementById('barcodeProductSpecificQR').innerHTML = '';
+                  const imgElement = document.getElementById('barcodeProductSpecificImage');
+                  imgElement.src = '#';
+                  imgElement.classList.add('hidden');
               });
           }
         } catch (error) {
