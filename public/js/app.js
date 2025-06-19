@@ -21,8 +21,12 @@ let quickScanState = 'IDLE'; // States: IDLE (waiting for product), PRODUCT_SELE
 let quickStockUpdateStream = null;
 let quickStockUpdateCanvas = null; // For jsQR
 let quickStockUpdateAnimationFrameId = null;
-let quickStockBarcodeBuffer = "";
+let quickStockBarcodeBuffer = ""; // Used by Quick Scan, Manual Batch (indirectly via keypress), and Barcode Scanner modes
 let isQuickStockBarcodeActive = false;
+
+// Global State Variables for Barcode Scanner Mode
+let currentBarcodeModeProductId = null;
+let isBarcodeScannerModeActive = false;
 
 // Pagination Global Variables
 let currentPage = 1;
@@ -31,6 +35,35 @@ let totalFilteredItems = 0;
 
 // Lazy Loading Global Variable
 let imageObserver = null;
+
+// Helper functions for Barcode Scanner Mode UI
+function setBarcodeStatus(message, isError = false) {
+    const statusEl = document.getElementById('barcodeScannerStatus');
+    if (statusEl) {
+        statusEl.textContent = message;
+        if (isError) {
+            statusEl.classList.remove('bg-blue-100', 'dark:bg-blue-800', 'text-blue-700', 'dark:text-blue-200');
+            statusEl.classList.add('bg-red-100', 'dark:bg-red-700', 'text-red-700', 'dark:text-red-200');
+        } else {
+            statusEl.classList.remove('bg-red-100', 'dark:bg-red-700', 'text-red-700', 'dark:text-red-200');
+            statusEl.classList.add('bg-blue-100', 'dark:bg-blue-800', 'text-blue-700', 'dark:text-blue-200');
+        }
+    }
+}
+
+function setLastActionFeedback(message, isError = false) {
+    const lastActionEl = document.getElementById('barcodeLastActionFeedback');
+    if (lastActionEl) {
+        lastActionEl.textContent = message;
+        if (isError) {
+            lastActionEl.classList.remove('text-green-600', 'dark:text-green-400');
+            lastActionEl.classList.add('text-red-600', 'dark:text-red-400');
+        } else {
+            lastActionEl.classList.remove('text-red-600', 'dark:text-red-400');
+            lastActionEl.classList.add('text-green-600', 'dark:text-green-400');
+        }
+    }
+}
 
 // START OF FUNCTIONS TO ADD
 
@@ -2847,12 +2880,16 @@ function resetQuickScanUI(feedbackMessage) {
 function switchQuickUpdateTab(selectedTabId) {
   const quickScanModeTabBtn = document.getElementById('quickScanModeTab');
   const manualBatchModeTabBtn = document.getElementById('manualBatchModeTab');
+  const quickScanModeTabBtn = document.getElementById('quickScanModeTab');
+  const manualBatchModeTabBtn = document.getElementById('manualBatchModeTab');
+  const barcodeScannerModeTabBtn = document.getElementById('barcodeScannerModeTab'); // New
   const quickScanModeContentPane = document.getElementById('quickScanModeContent');
   const manualBatchModeContentPane = document.getElementById('manualBatchModeContent');
+  const barcodeScannerModeContentPane = document.getElementById('barcodeScannerModeContent'); // New
   const quickStockUpdateFeedbackElem = document.getElementById('quickStockUpdateFeedback');
 
 
-  if (!quickScanModeTabBtn || !manualBatchModeTabBtn || !quickScanModeContentPane || !manualBatchModeContentPane) {
+  if (!quickScanModeTabBtn || !manualBatchModeTabBtn || !barcodeScannerModeTabBtn || !quickScanModeContentPane || !manualBatchModeContentPane || !barcodeScannerModeContentPane) {
     console.error("Tab switching UI elements not all found. Tab switching aborted.");
     return;
   }
@@ -2917,13 +2954,53 @@ function switchQuickUpdateTab(selectedTabId) {
           console.log("Switching to Manual Batch: Attempting to stop quick stock update scanner.");
           stopQuickStockUpdateScanner();
       }
-      isQuickStockBarcodeActive = false;
-      quickStockBarcodeBuffer = "";
+      isQuickStockBarcodeActive = false; // Deactivate QuickScan's specific barcode listener
+      isBarcodeScannerModeActive = false; // Deactivate Barcode Scanner Mode
+      quickStockBarcodeBuffer = ""; // Clear buffer
       const batchScanResult = document.getElementById('updateScanResult');
       const batchVideo = document.getElementById('updateVideo');
       if(batchScanResult && batchVideo && batchVideo.classList.contains('hidden')) {
       }
       console.log("Switched to Manual Batch Mode Tab.");
+  } else if (selectedTabId === 'barcodeScannerModeTab' || selectedTabId === 'barcodeScannerModeContent') {
+      barcodeScannerModeTabBtn.setAttribute('aria-selected', 'true');
+      quickScanModeTabBtn.setAttribute('aria-selected', 'false');
+      manualBatchModeTabBtn.setAttribute('aria-selected', 'false');
+
+      barcodeScannerModeTabBtn.classList.remove(...inactiveSpecificClasses);
+      barcodeScannerModeTabBtn.classList.add(...activeSpecificClasses);
+      hoverClasses.forEach(hc => barcodeScannerModeTabBtn.classList.add(hc));
+
+      quickScanModeTabBtn.classList.remove(...activeSpecificClasses);
+      quickScanModeTabBtn.classList.add(...inactiveSpecificClasses);
+      hoverClasses.forEach(hc => quickScanModeTabBtn.classList.add(hc));
+
+      manualBatchModeTabBtn.classList.remove(...activeSpecificClasses);
+      manualBatchModeTabBtn.classList.add(...inactiveSpecificClasses);
+      hoverClasses.forEach(hc => manualBatchModeTabBtn.classList.add(hc));
+
+      barcodeScannerModeContentPane.classList.remove('hidden');
+      quickScanModeContentPane.classList.add('hidden');
+      manualBatchModeContentPane.classList.add('hidden');
+
+      isBarcodeScannerModeActive = true;
+      isQuickStockBarcodeActive = false;
+      isEditScanModeActive = false;
+
+      // Stop other scanners
+      if (quickStockUpdateStream) stopQuickStockUpdateScanner();
+      if (stream) { // General stream for other modes
+           if (typeof stopUpdateScanner === 'function' && document.getElementById('updateVideo') && !document.getElementById('updateVideo').classList.contains('hidden')) stopUpdateScanner();
+           if (typeof stopMoveScanner === 'function' && document.getElementById('moveVideo') && !document.getElementById('moveVideo').classList.contains('hidden')) stopMoveScanner();
+           if (typeof stopEditScanner === 'function' && document.getElementById('editVideo') && !document.getElementById('editVideo').classList.contains('hidden')) stopEditScanner();
+      }
+
+      currentBarcodeModeProductId = null;
+      document.getElementById('barcodeActiveProductName').textContent = 'Active Product: None';
+      setLastActionFeedback('---'); // Use helper
+      setBarcodeStatus('Scan a Product QR Code to begin.'); // Use helper
+      quickStockBarcodeBuffer = "";
+      console.log("Switched to Barcode Scanner Mode Tab.");
   }
 }
 
@@ -3473,8 +3550,105 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         return;
       }
+      // START: Barcode Scanner Mode - Enter Key Pressed
+      else if (isBarcodeScannerModeActive && quickStockBarcodeBuffer.trim() !== '') {
+        event.preventDefault();
+        const scannedValue = quickStockBarcodeBuffer.trim();
+        quickStockBarcodeBuffer = ""; // Clear buffer immediately
 
-      if (isEditScanModeActive && editScanInputBuffer.trim() !== '') {
+        const activeProductEl = document.getElementById('barcodeActiveProductName');
+        // const lastActionEl = document.getElementById('barcodeLastActionFeedback'); // Already available via setLastActionFeedback
+
+        if (scannedValue.startsWith('ACTION_')) { // It's an Action QR
+            if (!currentBarcodeModeProductId) {
+                setBarcodeStatus('Error: Scan a Product QR first before scanning an action.', true);
+                setLastActionFeedback('---');
+                return;
+            }
+            db.collection('inventory').doc(currentBarcodeModeProductId).get().then(docSnapshot => {
+                if (!docSnapshot.exists) {
+                    setBarcodeStatus('Error: Active product not found in database. Please rescan product.', true);
+                    currentBarcodeModeProductId = null;
+                    activeProductEl.textContent = 'Active Product: None';
+                    setLastActionFeedback('---');
+                    return;
+                }
+                const product = { id: docSnapshot.id, ...docSnapshot.data() };
+                let currentQuantity = product.quantity;
+                let newQuantity = currentQuantity;
+
+                if (scannedValue === 'ACTION_ADD_1') newQuantity = currentQuantity + 1;
+                else if (scannedValue === 'ACTION_SUB_1') newQuantity = currentQuantity - 1;
+                else if (scannedValue === 'ACTION_ADD_2') newQuantity = currentQuantity + 2;
+                else if (scannedValue === 'ACTION_SUB_2') newQuantity = currentQuantity - 2;
+                else if (scannedValue === 'ACTION_ADD_3') newQuantity = currentQuantity + 3;
+                else if (scannedValue === 'ACTION_SUB_3') newQuantity = currentQuantity - 3;
+                else if (scannedValue === 'ACTION_ADD_4') newQuantity = currentQuantity + 4;
+                else if (scannedValue === 'ACTION_SUB_4') newQuantity = currentQuantity - 4;
+                else if (scannedValue === 'ACTION_ADD_5') newQuantity = currentQuantity + 5;
+                else if (scannedValue === 'ACTION_SUB_5') newQuantity = currentQuantity - 5;
+                else if (scannedValue === 'ACTION_ADD_10') newQuantity = currentQuantity + 10;
+                else if (scannedValue === 'ACTION_SUB_10') newQuantity = currentQuantity - 10;
+                else if (scannedValue === 'ACTION_SET_0') newQuantity = 0;
+                else if (scannedValue === 'ACTION_SET_1') newQuantity = 1;
+                else if (scannedValue === 'ACTION_SET_5') newQuantity = 5;
+                else if (scannedValue === 'ACTION_SET_10') newQuantity = 10;
+                else if (scannedValue === 'ACTION_SET_20') newQuantity = 20;
+                else if (scannedValue === 'ACTION_SET_30') newQuantity = 30;
+                else if (scannedValue === 'ACTION_SET_40') newQuantity = 40;
+                else if (scannedValue === 'ACTION_CANCEL') {
+                    setBarcodeStatus(`Action cancelled for ${product.name}. Scan action or new product.`);
+                    setLastActionFeedback(`Cancelled. ${product.name} Qty: ${currentQuantity}`);
+                    return;
+                } else {
+                    setBarcodeStatus(`Error: Unknown action QR: ${scannedValue}`, true);
+                    setLastActionFeedback('---');
+                    return;
+                }
+
+                if (newQuantity < 0) newQuantity = 0;
+
+                db.collection('inventory').doc(currentBarcodeModeProductId).update({ quantity: newQuantity })
+                    .then(() => {
+                        setLastActionFeedback(`${product.name}: ${scannedValue}. New Qty: ${newQuantity}`);
+                        setBarcodeStatus(`Scan next Action for ${product.name} or new Product QR.`);
+                        const invItem = inventory.find(p => p.id === currentBarcodeModeProductId);
+                        if (invItem) invItem.quantity = newQuantity;
+                        updateToOrderTable();
+                    })
+                    .catch(err => {
+                        setBarcodeStatus(`Error updating ${product.name}: ${err.message}`, true);
+                        setLastActionFeedback('Update Failed!', true);
+                    });
+            }).catch(err => {
+                 setBarcodeStatus(`Error fetching product ${currentBarcodeModeProductId}: ${err.message}`, true);
+                 setLastActionFeedback('Error!', true);
+            });
+
+        } else { // It's a Product ID
+            db.collection('inventory').doc(scannedValue).get().then(docSnapshot => {
+                if (docSnapshot.exists) {
+                    const product = { id: docSnapshot.id, ...docSnapshot.data() };
+                    currentBarcodeModeProductId = product.id;
+                    activeProductEl.textContent = `Active Product: ${product.name} (Qty: ${product.quantity})`;
+                    setBarcodeStatus(`Scan Action QR for ${product.name}.`);
+                    setLastActionFeedback('---');
+                } else {
+                    currentBarcodeModeProductId = null;
+                    activeProductEl.textContent = 'Active Product: None';
+                    setBarcodeStatus(`Error: Product ID '${scannedValue}' Not Found. Scan valid Product QR.`, true);
+                    setLastActionFeedback('---');
+                }
+            }).catch(err => {
+                currentBarcodeModeProductId = null;
+                activeProductEl.textContent = 'Active Product: None';
+                setBarcodeStatus(`Error fetching product ID '${scannedValue}': ${err.message}`, true);
+                setLastActionFeedback('---');
+            });
+        }
+      }
+      // END: Barcode Scanner Mode - Enter Key Pressed
+      else if (isEditScanModeActive && editScanInputBuffer.trim() !== '') {
         event.preventDefault();
         const scannedId = editScanInputBuffer.trim();
         console.log('Enter key processed by global listener for editScan. Buffer:', scannedId);
@@ -3483,7 +3657,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       editScanInputBuffer = "";
     } else {
-      if (isQuickStockBarcodeActive && quickStockUpdateContainerVisible && quickScanModeTabActive && quickScanState === 'IDLE') {
+      if (isBarcodeScannerModeActive) { // Buffer input for Barcode Scanner Mode
+        const activeElement = document.activeElement;
+        if (!activeElement || (activeElement.tagName !== 'INPUT' && activeElement.tagName !== 'TEXTAREA' && activeElement.tagName !== 'SELECT')) {
+           quickStockBarcodeBuffer += event.key;
+        }
+      } else if (isQuickStockBarcodeActive && quickStockUpdateContainerVisible && quickScanModeTabActive && quickScanState === 'IDLE') {
         const activeElement = document.activeElement;
         if (!activeElement || (activeElement.tagName !== 'INPUT' && activeElement.tagName !== 'TEXTAREA' && activeElement.tagName !== 'SELECT')) {
             quickStockBarcodeBuffer += event.key;
