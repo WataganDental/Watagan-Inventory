@@ -76,26 +76,28 @@ async function displayActionQRCodes() {
   container.innerHTML = ''; // Clear previous QRs
 
   const actions = [
-    // Additions (for left side)
-    { label: '+1 Unit', data: 'ACTION_ADD_1', type: 'add' },
     { label: '+10 Units', data: 'ACTION_ADD_10', type: 'add' },
+    { label: '+1 Unit', data: 'ACTION_ADD_1', type: 'add' },
+    { label: '-10 Units', data: 'ACTION_SUB_10', type: 'subtract' },
+    { label: '-1 Unit', data: 'ACTION_SUB_1', type: 'subtract' },
+
     { label: '+2 Units', data: 'ACTION_ADD_2', type: 'add' },
     { label: '+3 Units', data: 'ACTION_ADD_3', type: 'add' },
-    { label: '+4 Units', data: 'ACTION_ADD_4', type: 'add' },
-    { label: '+5 Units', data: 'ACTION_ADD_5', type: 'add' },
-    { label: '+6 Units', data: 'ACTION_ADD_6', type: 'add' },
-    { label: '+7 Units', data: 'ACTION_ADD_7', type: 'add' },
-    { label: '+8 Units', data: 'ACTION_ADD_8', type: 'add' },
-    { label: '+9 Units', data: 'ACTION_ADD_9', type: 'add' },
-    // Subtractions (for right side)
-    { label: '-1 Unit', data: 'ACTION_SUB_1', type: 'subtract' },
-    { label: '-10 Units', data: 'ACTION_SUB_10', type: 'subtract' },
     { label: '-2 Units', data: 'ACTION_SUB_2', type: 'subtract' },
     { label: '-3 Units', data: 'ACTION_SUB_3', type: 'subtract' },
+
+    { label: '+4 Units', data: 'ACTION_ADD_4', type: 'add' },
+    { label: '+5 Units', data: 'ACTION_ADD_5', type: 'add' },
     { label: '-4 Units', data: 'ACTION_SUB_4', type: 'subtract' },
     { label: '-5 Units', data: 'ACTION_SUB_5', type: 'subtract' },
+
+    { label: '+6 Units', data: 'ACTION_ADD_6', type: 'add' },
+    { label: '+7 Units', data: 'ACTION_ADD_7', type: 'add' },
     { label: '-6 Units', data: 'ACTION_SUB_6', type: 'subtract' },
     { label: '-7 Units', data: 'ACTION_SUB_7', type: 'subtract' },
+
+    { label: '+8 Units', data: 'ACTION_ADD_8', type: 'add' },
+    { label: '+9 Units', data: 'ACTION_ADD_9', type: 'add' },
     { label: '-8 Units', data: 'ACTION_SUB_8', type: 'subtract' },
     { label: '-9 Units', data: 'ACTION_SUB_9', type: 'subtract' }
   ];
@@ -157,26 +159,28 @@ async function displayBarcodeModeActionQRCodes() {
   container.innerHTML = ''; // Clear previous QRs
 
   const actions = [
-    // Additions (for left side)
-    { label: '+1 Unit', data: 'ACTION_ADD_1', type: 'add' },
     { label: '+10 Units', data: 'ACTION_ADD_10', type: 'add' },
+    { label: '+1 Unit', data: 'ACTION_ADD_1', type: 'add' },
+    { label: '-10 Units', data: 'ACTION_SUB_10', type: 'subtract' },
+    { label: '-1 Unit', data: 'ACTION_SUB_1', type: 'subtract' },
+
     { label: '+2 Units', data: 'ACTION_ADD_2', type: 'add' },
     { label: '+3 Units', data: 'ACTION_ADD_3', type: 'add' },
-    { label: '+4 Units', data: 'ACTION_ADD_4', type: 'add' },
-    { label: '+5 Units', data: 'ACTION_ADD_5', type: 'add' },
-    { label: '+6 Units', data: 'ACTION_ADD_6', type: 'add' },
-    { label: '+7 Units', data: 'ACTION_ADD_7', type: 'add' },
-    { label: '+8 Units', data: 'ACTION_ADD_8', type: 'add' },
-    { label: '+9 Units', data: 'ACTION_ADD_9', type: 'add' },
-    // Subtractions (for right side)
-    { label: '-1 Unit', data: 'ACTION_SUB_1', type: 'subtract' },
-    { label: '-10 Units', data: 'ACTION_SUB_10', type: 'subtract' },
     { label: '-2 Units', data: 'ACTION_SUB_2', type: 'subtract' },
     { label: '-3 Units', data: 'ACTION_SUB_3', type: 'subtract' },
+
+    { label: '+4 Units', data: 'ACTION_ADD_4', type: 'add' },
+    { label: '+5 Units', data: 'ACTION_ADD_5', type: 'add' },
     { label: '-4 Units', data: 'ACTION_SUB_4', type: 'subtract' },
     { label: '-5 Units', data: 'ACTION_SUB_5', type: 'subtract' },
+
+    { label: '+6 Units', data: 'ACTION_ADD_6', type: 'add' },
+    { label: '+7 Units', data: 'ACTION_ADD_7', type: 'add' },
     { label: '-6 Units', data: 'ACTION_SUB_6', type: 'subtract' },
     { label: '-7 Units', data: 'ACTION_SUB_7', type: 'subtract' },
+
+    { label: '+8 Units', data: 'ACTION_ADD_8', type: 'add' },
+    { label: '+9 Units', data: 'ACTION_ADD_9', type: 'add' },
     { label: '-8 Units', data: 'ACTION_SUB_8', type: 'subtract' },
     { label: '-9 Units', data: 'ACTION_SUB_9', type: 'subtract' }
   ];
