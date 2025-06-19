@@ -266,9 +266,8 @@
 
                     <!-- Existing Action QR Codes Container -->
                     <h4 class="text-lg font-semibold mb-2 text-center">Scan Action QR Code</h4>
-                    <div id="actionQRCodesContainer" class="flex flex-wrap md:flex-nowrap gap-4 mb-4 p-2 border-t dark:border-slate-700">
-                        <div id="addActionsContainer" class="flex-1 grid grid-cols-2 gap-2"></div>
-                        <div id="subtractActionsContainer" class="flex-1 grid grid-cols-2 gap-2"></div>
+                    <div id="actionQRCodesContainer" class="grid grid-cols-4 gap-2 p-2 border-t dark:border-slate-700 mb-4" style="display: grid;">
+                        <!-- Action QR Codes will be dynamically added here by JS -->
                     </div>
 
                     <!-- Feedback and Camera Controls -->
@@ -319,9 +318,8 @@
                             </div>
                         </div>
 
-                        <div id="barcodeModeActionQRCodesContainer" class="flex flex-wrap md:flex-nowrap gap-4 mt-4">
-                            <div id="barcodeModeAddActionsContainer" class="flex-1 grid grid-cols-2 gap-2"></div>
-                            <div id="barcodeModeSubtractActionsContainer" class="flex-1 grid grid-cols-2 gap-2"></div>
+                        <div id="barcodeModeActionQRCodesContainer" class="mt-4 grid grid-cols-4 gap-2" style="display: grid;">
+                            <!-- Action QRs will be populated here by JavaScript -->
                         </div>
                     </div>
                 </div>
