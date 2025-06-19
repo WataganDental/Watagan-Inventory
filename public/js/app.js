@@ -70,7 +70,7 @@ function setLastActionFeedback(message, isError = false) {
 async function displayActionQRCodes() {
   const container = document.getElementById('actionQRCodesContainer');
   if (!container) {
-    console.error('Action QR Codes container not found.');
+    console.error('Action QR Codes container (actionQRCodesContainer) not found.');
     return;
   }
   container.innerHTML = ''; // Clear previous QRs
@@ -145,13 +145,13 @@ async function displayActionQRCodes() {
       qrCodeElem.textContent = 'Error';
     }
   });
-  console.log('Action QR codes displayed with new actions and colors.');
+  console.log('Action QR codes displayed in single container for Quick Scan Mode.');
 }
 
 async function displayBarcodeModeActionQRCodes() {
   const container = document.getElementById('barcodeModeActionQRCodesContainer');
   if (!container) {
-    console.error('Barcode Mode Action QR Codes container not found.');
+    console.error('Barcode Mode Action QR Codes container (barcodeModeActionQRCodesContainer) not found.');
     return;
   }
   container.innerHTML = ''; // Clear previous QRs
@@ -226,7 +226,7 @@ async function displayBarcodeModeActionQRCodes() {
       qrCodeElem.textContent = 'Error';
     }
   });
-  console.log('Barcode Mode Action QR codes displayed.');
+  console.log('Barcode Mode Action QR codes displayed in single container.');
 }
 
 function stopQuickStockUpdateScanner() {
