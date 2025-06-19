@@ -235,6 +235,9 @@
                     <li class="mr-2" role="presentation">
                         <button class="inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" id="manualBatchModeTab" data-tabs-target="#manualBatchModeContent" type="button" role="tab" aria-controls="manualBatchModeContent" aria-selected="false">Manual Batch Entry</button>
                     </li>
+                    <li class="mr-2" role="presentation">
+                        <button class="inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" id="barcodeScannerModeTab" data-tabs-target="#barcodeScannerModeContent" type="button" role="tab" aria-controls="barcodeScannerModeContent" aria-selected="false">Barcode Scanner Mode</button>
+                    </li>
                 </ul>
             </div>
 
@@ -289,7 +292,26 @@
                         <canvas id="updateCanvas" class="hidden"></canvas>
                         <p id="updateScanResult" class="mt-4 text-center"></p>
                         <button id="startUpdateScannerBtn" class="bg-purple-500 hover:bg-purple-600 text-white p-2 rounded dark:bg-purple-700 dark:hover:bg-purple-600">Scan Product ID for Batch</button>
-                        <button id="stopUpdateScannerBtn" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded dark:bg-red-700 dark:hover:bg-red-600 hidden">Stop Batch Scanner</button> {/* Initially hidden */}
+                        <button id="stopUpdateScannerBtn" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded dark:bg-red-700 dark:hover:bg-red-600 hidden">Stop Batch Scanner</button>
+                    </div>
+                </div>
+                <div id="barcodeScannerModeContent" class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800" role="tabpanel" aria-labelledby="barcodeScannerModeTab">
+                    <div class="space-y-4">
+                        <div id="barcodeScannerStatus" class="p-3 text-center text-lg font-medium bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200 rounded-md">
+                            Scan a Product QR Code to begin.
+                        </div>
+                        <div class="p-3 bg-gray-100 dark:bg-slate-700 rounded-md">
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Active Product:</p>
+                            <div id="barcodeActiveProductName" class="text-xl font-semibold text-gray-900 dark:text-white">
+                                None
+                            </div>
+                        </div>
+                        <div class="p-3 bg-gray-100 dark:bg-slate-700 rounded-md">
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Last Update:</p>
+                            <div id="barcodeLastActionFeedback" class="text-lg text-green-600 dark:text-green-400">
+                                ---
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
