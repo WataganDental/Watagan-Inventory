@@ -94,3 +94,9 @@ body {
 #mainContent {
     transition: margin-left 0.3s ease-in-out;
 }
+
+#barcodeProductSpecificQR canvas {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain; /* Ensures the canvas scales down to fit, preserving aspect ratio */
+}

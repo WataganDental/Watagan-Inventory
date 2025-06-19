@@ -300,17 +300,26 @@
                         <div id="barcodeScannerStatus" class="p-3 text-center text-lg font-medium bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200 rounded-md">
                             Scan a Product QR Code to begin.
                         </div>
-                        <div class="p-3 bg-gray-100 dark:bg-slate-700 rounded-md">
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Active Product:</p>
-                            <div id="barcodeActiveProductName" class="text-xl font-semibold text-gray-900 dark:text-white">
-                                None
+
+                        <div class="flex items-center mt-4">
+                            <div id="barcodeActiveProductInfo" class="flex-grow">
+                                 <h3 class="text-lg font-semibold dark:text-white">Active Product: <span id="barcodeActiveProductName" class="font-normal">None</span></h3>
+                            </div>
+                            <div id="barcodeProductDetailsDisplay" class="ml-4 flex items-center gap-2">
+                                <div id="barcodeProductSpecificQR" class="w-24 h-24 border border-gray-300 dark:border-gray-700 bg-white dark:bg-slate-800 rounded-md p-1 flex items-center justify-center"></div>
+                                <img id="barcodeProductSpecificImage" src="#" alt="Product Image" class="w-24 h-24 object-cover hidden rounded-md border border-gray-300 dark:border-gray-700"/>
                             </div>
                         </div>
-                        <div class="p-3 bg-gray-100 dark:bg-slate-700 rounded-md">
+
+                        <div class="p-3 bg-gray-100 dark:bg-slate-700 rounded-md mt-4">
                             <p class="text-sm text-gray-600 dark:text-gray-400">Last Update:</p>
                             <div id="barcodeLastActionFeedback" class="text-lg text-green-600 dark:text-green-400">
                                 ---
                             </div>
+                        </div>
+
+                        <div id="barcodeModeActionQRCodesContainer" class="mt-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+                            <!-- Action QRs will be populated here by JavaScript -->
                         </div>
                     </div>
                 </div>
