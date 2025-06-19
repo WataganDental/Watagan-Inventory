@@ -3152,6 +3152,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     manualBatchModeTabBtn.addEventListener('click', () => switchQuickUpdateTab('manualBatchModeTab'));
   }
 
+  const barcodeScannerModeTabBtn = document.getElementById('barcodeScannerModeTab');
+  if (barcodeScannerModeTabBtn) {
+    barcodeScannerModeTabBtn.addEventListener('click', () => switchQuickUpdateTab('barcodeScannerModeTab'));
+  }
+
   const moveProductIdInput = document.getElementById('moveProductId');
   if (moveProductIdInput) {
     moveProductIdInput.addEventListener('keypress', function(event) {
