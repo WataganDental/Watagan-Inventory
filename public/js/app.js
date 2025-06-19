@@ -3118,6 +3118,7 @@ function switchQuickUpdateTab(selectedTabId) {
 
 // Initialize and Bind Events
 document.addEventListener('DOMContentLoaded', async () => {
+  console.warn("If you encounter persistent 'message channel closed' errors or similar unexpected behavior, particularly after specific actions like switching modes, it might be caused by a browser extension. Try testing in an incognito window with extensions disabled, or selectively disable extensions to identify a potential conflict.");
   console.log('DOMContentLoaded fired'); 
   console.warn("Image Handling Recommendation: For optimal performance, ensure that product images are resized to thumbnails on the backend (e.g., using a Firebase Extension like 'Resize Images') and that these thumbnail URLs are stored in Firestore. The application currently lazy-loads images and displays them as thumbnails via CSS, but loading full-size images can still be inefficient.");
   initialDarkModeCheck();
@@ -3680,98 +3681,102 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       // START: Barcode Scanner Mode - Enter Key Pressed
       else if (isBarcodeScannerModeActive && quickStockBarcodeBuffer.trim() !== '') {
-        event.preventDefault();
-        const scannedValue = quickStockBarcodeBuffer.trim();
-        quickStockBarcodeBuffer = ""; // Clear buffer immediately
+        try {
+          event.preventDefault();
+          const scannedValue = quickStockBarcodeBuffer.trim();
+          quickStockBarcodeBuffer = ""; // Clear buffer immediately
 
-        const activeProductEl = document.getElementById('barcodeActiveProductName');
+          const activeProductEl = document.getElementById('barcodeActiveProductName');
 
-        if (scannedValue.startsWith('ACTION_')) { // It's an Action QR
-            if (!currentBarcodeModeProductId) {
-                setBarcodeStatus('Error: Scan a Product QR first before scanning an action.', true);
-                setLastActionFeedback('---', false); // Reset feedback to neutral
-                return;
-            }
-            db.collection('inventory').doc(currentBarcodeModeProductId).get().then(docSnapshot => {
-                if (!docSnapshot.exists) {
-                    setBarcodeStatus('Error: Active product not found in database. Please rescan product.', true);
-                    currentBarcodeModeProductId = null;
-                    activeProductEl.textContent = 'Active Product: None';
-                    setLastActionFeedback('---', false);
-                    return;
-                }
-                const product = { id: docSnapshot.id, ...docSnapshot.data() };
-                let currentQuantity = product.quantity;
-                let newQuantity = currentQuantity;
+          if (scannedValue.startsWith('ACTION_')) { // It's an Action QR
+              if (!currentBarcodeModeProductId) {
+                  setBarcodeStatus('Error: Scan a Product QR first before scanning an action.', true);
+                  setLastActionFeedback('---', false); // Reset feedback to neutral
+                  return;
+              }
+              db.collection('inventory').doc(currentBarcodeModeProductId).get().then(docSnapshot => {
+                  if (!docSnapshot.exists) {
+                      setBarcodeStatus('Error: Active product not found in database. Please rescan product.', true);
+                      currentBarcodeModeProductId = null;
+                      activeProductEl.textContent = 'Active Product: None';
+                      setLastActionFeedback('---', false);
+                      return;
+                  }
+                  const product = { id: docSnapshot.id, ...docSnapshot.data() };
+                  let currentQuantity = product.quantity;
+                  let newQuantity = currentQuantity;
 
-                if (scannedValue === 'ACTION_ADD_1') newQuantity = currentQuantity + 1;
-                else if (scannedValue === 'ACTION_SUB_1') newQuantity = currentQuantity - 1;
-                else if (scannedValue === 'ACTION_ADD_2') newQuantity = currentQuantity + 2;
-                else if (scannedValue === 'ACTION_SUB_2') newQuantity = currentQuantity - 2;
-                else if (scannedValue === 'ACTION_ADD_3') newQuantity = currentQuantity + 3;
-                else if (scannedValue === 'ACTION_SUB_3') newQuantity = currentQuantity - 3;
-                else if (scannedValue === 'ACTION_ADD_4') newQuantity = currentQuantity + 4;
-                else if (scannedValue === 'ACTION_SUB_4') newQuantity = currentQuantity - 4;
-                else if (scannedValue === 'ACTION_ADD_5') newQuantity = currentQuantity + 5;
-                else if (scannedValue === 'ACTION_SUB_5') newQuantity = currentQuantity - 5;
-                else if (scannedValue === 'ACTION_ADD_10') newQuantity = currentQuantity + 10;
-                else if (scannedValue === 'ACTION_SUB_10') newQuantity = currentQuantity - 10;
-                else if (scannedValue === 'ACTION_SET_0') newQuantity = 0;
-                else if (scannedValue === 'ACTION_SET_1') newQuantity = 1;
-                else if (scannedValue === 'ACTION_SET_5') newQuantity = 5;
-                else if (scannedValue === 'ACTION_SET_10') newQuantity = 10;
-                else if (scannedValue === 'ACTION_SET_20') newQuantity = 20;
-                else if (scannedValue === 'ACTION_SET_30') newQuantity = 30;
-                else if (scannedValue === 'ACTION_SET_40') newQuantity = 40;
-                else if (scannedValue === 'ACTION_CANCEL') {
-                    setBarcodeStatus(`Action cancelled for ${product.name}. Scan action or new product.`);
-                    setLastActionFeedback(`Cancelled. ${product.name} Qty: ${currentQuantity}`, false); // Neutral feedback
-                    return;
-                } else {
-                    setBarcodeStatus(`Error: Unknown action QR: ${scannedValue}`, true);
-                    setLastActionFeedback('---', false);
-                    return;
-                }
+                  if (scannedValue === 'ACTION_ADD_1') newQuantity = currentQuantity + 1;
+                  else if (scannedValue === 'ACTION_SUB_1') newQuantity = currentQuantity - 1;
+                  else if (scannedValue === 'ACTION_ADD_2') newQuantity = currentQuantity + 2;
+                  else if (scannedValue === 'ACTION_SUB_2') newQuantity = currentQuantity - 2;
+                  else if (scannedValue === 'ACTION_ADD_3') newQuantity = currentQuantity + 3;
+                  else if (scannedValue === 'ACTION_SUB_3') newQuantity = currentQuantity - 3;
+                  else if (scannedValue === 'ACTION_ADD_4') newQuantity = currentQuantity + 4;
+                  else if (scannedValue === 'ACTION_SUB_4') newQuantity = currentQuantity - 4;
+                  else if (scannedValue === 'ACTION_ADD_5') newQuantity = currentQuantity + 5;
+                  else if (scannedValue === 'ACTION_SUB_5') newQuantity = currentQuantity - 5;
+                  else if (scannedValue === 'ACTION_ADD_10') newQuantity = currentQuantity + 10;
+                  else if (scannedValue === 'ACTION_SUB_10') newQuantity = currentQuantity - 10;
+                  else if (scannedValue === 'ACTION_SET_0') newQuantity = 0;
+                  else if (scannedValue === 'ACTION_SET_1') newQuantity = 1;
+                  else if (scannedValue === 'ACTION_SET_5') newQuantity = 5;
+                  else if (scannedValue === 'ACTION_SET_10') newQuantity = 10;
+                  else if (scannedValue === 'ACTION_SET_20') newQuantity = 20;
+                  else if (scannedValue === 'ACTION_SET_30') newQuantity = 30;
+                  else if (scannedValue === 'ACTION_SET_40') newQuantity = 40;
+                  else if (scannedValue === 'ACTION_CANCEL') {
+                      setBarcodeStatus(`Action cancelled for ${product.name}. Scan action or new product.`);
+                      setLastActionFeedback(`Cancelled. ${product.name} Qty: ${currentQuantity}`, false); // Neutral feedback
+                      return;
+                  } else {
+                      setBarcodeStatus(`Error: Unknown action QR: ${scannedValue}`, true);
+                      setLastActionFeedback('---', false);
+                      return;
+                  }
 
-                if (newQuantity < 0) newQuantity = 0;
+                  if (newQuantity < 0) newQuantity = 0;
 
-                db.collection('inventory').doc(currentBarcodeModeProductId).update({ quantity: newQuantity })
-                    .then(() => {
-                        setLastActionFeedback(`${product.name}: ${scannedValue}. New Qty: ${newQuantity}`, false); // Success is default (false)
-                        setBarcodeStatus(`Scan next Action for ${product.name} or new Product QR.`);
-                        const invItem = inventory.find(p => p.id === currentBarcodeModeProductId);
-                        if (invItem) invItem.quantity = newQuantity;
-                        updateToOrderTable();
-                    })
-                    .catch(err => {
-                        setBarcodeStatus(`Error updating ${product.name}: ${err.message}`, true);
-                        setLastActionFeedback('Update Failed!', true);
-                    });
-            }).catch(err => {
-                 setBarcodeStatus(`Error fetching product ${currentBarcodeModeProductId}: ${err.message}`, true);
-                 setLastActionFeedback('Error!', true);
-            });
+                  db.collection('inventory').doc(currentBarcodeModeProductId).update({ quantity: newQuantity })
+                      .then(() => {
+                          setLastActionFeedback(`${product.name}: ${scannedValue}. New Qty: ${newQuantity}`, false); // Success is default (false)
+                          setBarcodeStatus(`Scan next Action for ${product.name} or new Product QR.`);
+                          const invItem = inventory.find(p => p.id === currentBarcodeModeProductId);
+                          if (invItem) invItem.quantity = newQuantity;
+                          updateToOrderTable();
+                      })
+                      .catch(err => {
+                          setBarcodeStatus(`Error updating ${product.name}: ${err.message}`, true);
+                          setLastActionFeedback('Update Failed!', true);
+                      });
+              }).catch(err => {
+                   setBarcodeStatus(`Error fetching product ${currentBarcodeModeProductId}: ${err.message}`, true);
+                   setLastActionFeedback('Error!', true);
+              });
 
-        } else { // It's a Product ID
-            db.collection('inventory').doc(scannedValue).get().then(docSnapshot => {
-                if (docSnapshot.exists) {
-                    const product = { id: docSnapshot.id, ...docSnapshot.data() };
-                    currentBarcodeModeProductId = product.id;
-                    activeProductEl.textContent = `Active Product: ${product.name} (Qty: ${product.quantity})`;
-                    setBarcodeStatus(`Scan Action QR for ${product.name}.`);
-                    setLastActionFeedback('---', false);
-                } else {
-                    currentBarcodeModeProductId = null;
-                    activeProductEl.textContent = 'Active Product: None';
-                    setBarcodeStatus(`Error: Product ID '${scannedValue}' Not Found. Scan valid Product QR.`, true);
-                    setLastActionFeedback('---', false);
-                }
-            }).catch(err => {
-                currentBarcodeModeProductId = null;
-                activeProductEl.textContent = 'Active Product: None';
-                setBarcodeStatus(`Error fetching product ID '${scannedValue}': ${err.message}`, true);
-                setLastActionFeedback('---', false);
-            });
+          } else { // It's a Product ID
+              db.collection('inventory').doc(scannedValue).get().then(docSnapshot => {
+                  if (docSnapshot.exists) {
+                      const product = { id: docSnapshot.id, ...docSnapshot.data() };
+                      currentBarcodeModeProductId = product.id;
+                      activeProductEl.textContent = `Active Product: ${product.name} (Qty: ${product.quantity})`;
+                      setBarcodeStatus(`Scan Action QR for ${product.name}.`);
+                      setLastActionFeedback('---', false);
+                  } else {
+                      currentBarcodeModeProductId = null;
+                      activeProductEl.textContent = 'Active Product: None';
+                      setBarcodeStatus(`Error: Product ID '${scannedValue}' Not Found. Scan valid Product QR.`, true);
+                      setLastActionFeedback('---', false);
+                  }
+              }).catch(err => {
+                  currentBarcodeModeProductId = null;
+                  activeProductEl.textContent = 'Active Product: None';
+                  setBarcodeStatus(`Error fetching product ID '${scannedValue}': ${err.message}`, true);
+                  setLastActionFeedback('---', false);
+              });
+          }
+        } catch (error) {
+          console.error("Synchronous error in keypress listener for Barcode Scanner Mode (Enter key):", error);
         }
       }
       // END: Barcode Scanner Mode - Enter Key Pressed
@@ -3785,9 +3790,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       editScanInputBuffer = "";
     } else {
       if (isBarcodeScannerModeActive) { // Buffer input for Barcode Scanner Mode
-        const activeElement = document.activeElement;
-        if (!activeElement || (activeElement.tagName !== 'INPUT' && activeElement.tagName !== 'TEXTAREA' && activeElement.tagName !== 'SELECT')) {
-           quickStockBarcodeBuffer += event.key;
+        try {
+          const activeElement = document.activeElement;
+          if (!activeElement || (activeElement.tagName !== 'INPUT' && activeElement.tagName !== 'TEXTAREA' && activeElement.tagName !== 'SELECT')) {
+             quickStockBarcodeBuffer += event.key;
+          }
+        } catch (error) {
+          console.error("Synchronous error in keypress listener for Barcode Scanner Mode (buffering):", error);
         }
       } else if (isQuickStockBarcodeActive && quickStockUpdateContainerVisible && quickScanModeTabActive && quickScanState === 'IDLE') {
         const activeElement = document.activeElement;
