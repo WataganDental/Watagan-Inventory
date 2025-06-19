@@ -816,6 +816,50 @@ async function waitForJsPDF() {
   }
 }
 
+// Utility to load PDFLib dynamically with polling
+async function loadPdfLib(scriptSrc = '/js/pdf-lib.min.js') {
+  return new Promise((resolve, reject) => {
+    // Check if PDFLib is already available
+    if (window.PDFLib) {
+      console.log(`PDFLib already available (when trying to load ${scriptSrc})`);
+      resolve(window.PDFLib);
+      return;
+    }
+
+    console.log(`Dynamically loading PDFLib from ${scriptSrc}...`);
+    const script = document.createElement('script');
+    script.src = scriptSrc;
+    script.async = true; // Keep async for non-blocking load
+
+    script.onload = () => {
+      console.log(`PDFLib script from ${scriptSrc} onload event fired.`);
+      let startTime = Date.now();
+      const maxWaitTime = 10000; // Use the 10-second timeout
+      const pollInterval = 100;  // Polling interval
+
+      const intervalId = setInterval(() => {
+        console.log(`Polling for PDFLib library (from ${scriptSrc})...`);
+        if (window.PDFLib) {
+          console.log(`Found PDFLib on window object (polling from ${scriptSrc})`);
+          clearInterval(intervalId);
+          resolve(window.PDFLib);
+        } else if (Date.now() - startTime > maxWaitTime) {
+          console.error(`PDFLib library not found on window object after polling timeout for ${scriptSrc}.`);
+          clearInterval(intervalId);
+          reject(new Error(`PDFLib library not found on window object after polling timeout for ${scriptSrc}`));
+        }
+      }, pollInterval);
+    };
+
+    script.onerror = (error) => {
+      console.error(`Failed to load PDFLib script from ${scriptSrc}:`, error);
+      reject(new Error(`Failed to load PDFLib script from ${scriptSrc}`));
+    };
+
+    document.head.appendChild(script);
+  });
+}
+
 // Collapsible Section Functionality
 function setupCollapsibleSection(buttonId, contentId, isInitiallyExpanded) {
   const button = document.getElementById(buttonId);
@@ -870,22 +914,21 @@ function ensureQRCodeIsAvailable(timeout = 5000) {
   });
 }
 
-function ensurePDFLibIsAvailable(timeout = 10000) {
-  return new Promise((resolve, reject) => {
-    const startTime = Date.now();
-    const checkPDFLib = () => {
-      if (window.PDFLib) {
-        console.log('PDFLib library is available.');
-        resolve();
-      } else if (Date.now() - startTime > timeout) {
-        console.error('PDFLib library did not load within timeout.');
-        reject(new Error('PDFLib library failed to load in time.'));
-      } else {
-        setTimeout(checkPDFLib, 100);
-      }
-    };
-    checkPDFLib();
-  });
+// Ensures PDFLib is available, attempting to load it if necessary.
+async function ensurePDFLibIsAvailable(timeout = 10000) { // Timeout in loadPdfLib is primary
+  if (window.PDFLib) {
+    console.log('PDFLib library is already available on window.');
+    return Promise.resolve();
+  }
+  console.log('ensurePDFLibIsAvailable: PDFLib not found, attempting to load dynamically...');
+  try {
+    await loadPdfLib('/js/pdf-lib.min.js'); // loadPdfLib has its own timeout
+    console.log('ensurePDFLibIsAvailable: PDFLib loaded successfully.');
+  } catch (error) {
+    console.error('ensurePDFLibIsAvailable: Failed to load PDFLib.', error);
+    // Rethrow the error so calling functions (like generateFastOrderReportPDF) can catch it.
+    throw error;
+  }
 }
 
 // Supplier Management
