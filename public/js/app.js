@@ -1212,9 +1212,10 @@ function addBatchEntry() {
   const batchUpdatesDiv = document.getElementById('batchUpdates');
   const entryId = `batch-${batchUpdates.length}`;
   const entryDiv = document.createElement('div');
-  entryDiv.className = 'flex gap-2 items-center';
+  entryDiv.className = 'flex gap-2 items-center'; // Keep this class for overall row alignment
   entryDiv.innerHTML = `
-    <input id="${entryId}-id" type="text" placeholder="Product ID (from scan)" class="border dark:border-gray-600 p-2 rounded flex-1 dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
+    <input id="${entryId}-id" type="text" placeholder="Product ID (from scan)" class="border dark:border-gray-600 p-2 rounded flex-1 dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400" style="min-width: 150px;">
+    <span id="${entryId}-name" class="text-sm text-gray-700 dark:text-gray-300 w-48 truncate" title="Product name will appear here" style="line-height: 2.5rem;"></span>
     <input id="${entryId}-quantity" type="number" placeholder="Quantity" class="border dark:border-gray-600 p-2 rounded w-24 dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
     <select id="${entryId}-action" class="border dark:border-gray-600 p-2 rounded w-32 dark:bg-slate-700 dark:text-gray-200">
       <option value="add">Add</option>
@@ -1232,9 +1233,59 @@ function addBatchEntry() {
     productIdInput.addEventListener('keypress', function(event) {
       if ((event.key === 'Enter' || event.keyCode === 13) && productIdInput.value.trim() !== '') {
         event.preventDefault();
-        stopUpdateScanner();
-        console.log('Enter in batch Product ID ' + entryId + '. Value: ' + productIdInput.value + '. Adding new row.');
-        addBatchEntry();
+        const currentProductId = productIdInput.value.trim();
+        const currentEntryId = productIdInput.id.replace('-id', '');
+        const nameSpan = document.getElementById(`${currentEntryId}-name`);
+
+        if (nameSpan) {
+          db.collection('inventory').doc(currentProductId).get().then(doc => {
+            if (doc.exists) {
+              nameSpan.textContent = doc.data().name;
+              nameSpan.title = doc.data().name;
+            } else {
+              nameSpan.textContent = 'Not Found';
+              nameSpan.title = 'Product Not Found';
+            }
+          }).catch(err => {
+            console.error("Error fetching product name for batch manual entry:", err);
+            nameSpan.textContent = 'Error';
+            nameSpan.title = 'Error fetching name';
+          });
+        }
+
+        stopUpdateScanner(); // Ensure any camera scanner for this batch is stopped
+        console.log('Enter in batch Product ID ' + entryId + '. Value: ' + currentProductId + '. Adding new row.');
+        // Logic to focus next or add new row
+        const quantityInput = document.getElementById(`${currentEntryId}-quantity`);
+        if (quantityInput) {
+            quantityInput.focus();
+        } else {
+            addBatchEntry(); // Fallback if quantity input somehow not found, though unlikely
+        }
+        // To decide whether to add a new row or just move focus, we might need more context
+        // For now, let's assume if we are on the last item, we add a new one.
+        // This part of the logic might need to be the same as what was there before,
+        // or adjusted based on whether this is the *last* entry.
+        // The original code just called addBatchEntry(); which might be too aggressive if not the last line.
+        // Let's refine to: focus quantity, and if it's the last entry, then add new.
+
+        // Check if this is the last entry in batchUpdates
+        const isLastEntry = batchUpdates.indexOf(currentEntryId) === batchUpdates.length - 1;
+        if (isLastEntry) {
+            // If quantity is filled, or if user presses enter again from quantity,
+            // then consider adding new row. For now, just focusing quantity is enough.
+            // The original 'addBatchEntry()' call here might have been for quick multi-add.
+            // Replicating previous behavior for now:
+            // addBatchEntry(); // This might be too aggressive if not the last line.
+            // Let's make it focus quantity first, then if enter on quantity of last line, add new.
+            // For now, just focus quantity. The original code was: addBatchEntry();
+            // The original logic was: stopUpdateScanner(); console.log(...); addBatchEntry();
+            // This means after typing ID and enter, it immediately added a new blank row.
+            // Let's keep that original behavior for adding a new row for speed.
+             addBatchEntry();
+        }
+
+
       }
     });
   }
@@ -2390,6 +2441,25 @@ async function startUpdateScanner() {
           const targetInput = document.getElementById(targetInputId);
           if (targetInput) {
             targetInput.value = code.data;
+
+            // Fetch and display product name
+            const nameSpan = document.getElementById(`${lastEntryArrayId}-name`);
+            if (nameSpan) {
+              db.collection('inventory').doc(code.data).get().then(doc => {
+                if (doc.exists) {
+                  nameSpan.textContent = doc.data().name;
+                  nameSpan.title = doc.data().name;
+                } else {
+                  nameSpan.textContent = 'Not Found';
+                  nameSpan.title = 'Product Not Found';
+                }
+              }).catch(err => {
+                console.error("Error fetching product name for batch scan:", err);
+                nameSpan.textContent = 'Error';
+                nameSpan.title = 'Error fetching name';
+              });
+            }
+
             const quantityInput = document.getElementById(`${lastEntryArrayId}-quantity`);
             if (quantityInput) {
               quantityInput.focus();
@@ -3376,6 +3446,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     } catch (e) { console.error('Error generating product QR code:', e); qrCodeElement.innerHTML = '<span class="text-xs text-red-500">QR Error</span>'; }
                 }
                 if (feedbackElem) feedbackElem.textContent = `Product: '${product.name}'. Enter Quantity or scan Action/Complete QR.`;
+                if (quickScanQuantityInput) quickScanQuantityInput.value = product.quantity; // Populate quantity
                 // Successfully found, so change state and deactivate barcode listener for this specific product.
                 // Note: quickScanState and isQuickStockBarcodeActive were already set before this .then()
             } else {
@@ -3483,6 +3554,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         } catch (e) { console.error('Error generating product QR code:', e); qrCodeElement.innerHTML = '<span class="text-xs text-red-500">QR Error</span>'; }
                     }
                     if (feedbackElem) feedbackElem.textContent = `Product: '${product.name}'. Enter Quantity or scan Action/Complete QR.`;
+                    if (quickScanQuantityInput) quickScanQuantityInput.value = product.quantity; // Populate quantity
                     // State remains PRODUCT_SELECTED as expected.
                 } else {
                     if (productNameElem) {
