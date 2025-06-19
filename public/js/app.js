@@ -3557,12 +3557,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         quickStockBarcodeBuffer = ""; // Clear buffer immediately
 
         const activeProductEl = document.getElementById('barcodeActiveProductName');
-        // const lastActionEl = document.getElementById('barcodeLastActionFeedback'); // Already available via setLastActionFeedback
 
         if (scannedValue.startsWith('ACTION_')) { // It's an Action QR
             if (!currentBarcodeModeProductId) {
                 setBarcodeStatus('Error: Scan a Product QR first before scanning an action.', true);
-                setLastActionFeedback('---');
+                setLastActionFeedback('---', false); // Reset feedback to neutral
                 return;
             }
             db.collection('inventory').doc(currentBarcodeModeProductId).get().then(docSnapshot => {
@@ -3570,7 +3569,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     setBarcodeStatus('Error: Active product not found in database. Please rescan product.', true);
                     currentBarcodeModeProductId = null;
                     activeProductEl.textContent = 'Active Product: None';
-                    setLastActionFeedback('---');
+                    setLastActionFeedback('---', false);
                     return;
                 }
                 const product = { id: docSnapshot.id, ...docSnapshot.data() };
@@ -3598,11 +3597,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 else if (scannedValue === 'ACTION_SET_40') newQuantity = 40;
                 else if (scannedValue === 'ACTION_CANCEL') {
                     setBarcodeStatus(`Action cancelled for ${product.name}. Scan action or new product.`);
-                    setLastActionFeedback(`Cancelled. ${product.name} Qty: ${currentQuantity}`);
+                    setLastActionFeedback(`Cancelled. ${product.name} Qty: ${currentQuantity}`, false); // Neutral feedback
                     return;
                 } else {
                     setBarcodeStatus(`Error: Unknown action QR: ${scannedValue}`, true);
-                    setLastActionFeedback('---');
+                    setLastActionFeedback('---', false);
                     return;
                 }
 
@@ -3610,7 +3609,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 db.collection('inventory').doc(currentBarcodeModeProductId).update({ quantity: newQuantity })
                     .then(() => {
-                        setLastActionFeedback(`${product.name}: ${scannedValue}. New Qty: ${newQuantity}`);
+                        setLastActionFeedback(`${product.name}: ${scannedValue}. New Qty: ${newQuantity}`, false); // Success is default (false)
                         setBarcodeStatus(`Scan next Action for ${product.name} or new Product QR.`);
                         const invItem = inventory.find(p => p.id === currentBarcodeModeProductId);
                         if (invItem) invItem.quantity = newQuantity;
@@ -3632,18 +3631,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     currentBarcodeModeProductId = product.id;
                     activeProductEl.textContent = `Active Product: ${product.name} (Qty: ${product.quantity})`;
                     setBarcodeStatus(`Scan Action QR for ${product.name}.`);
-                    setLastActionFeedback('---');
+                    setLastActionFeedback('---', false);
                 } else {
                     currentBarcodeModeProductId = null;
                     activeProductEl.textContent = 'Active Product: None';
                     setBarcodeStatus(`Error: Product ID '${scannedValue}' Not Found. Scan valid Product QR.`, true);
-                    setLastActionFeedback('---');
+                    setLastActionFeedback('---', false);
                 }
             }).catch(err => {
                 currentBarcodeModeProductId = null;
                 activeProductEl.textContent = 'Active Product: None';
                 setBarcodeStatus(`Error fetching product ID '${scannedValue}': ${err.message}`, true);
-                setLastActionFeedback('---');
+                setLastActionFeedback('---', false);
             });
         }
       }
