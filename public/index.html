@@ -243,16 +243,21 @@
                     <h3 class="text-xl font-semibold mb-3">Interactive Stock Update</h3>
 
                     <!-- New Search Elements -->
-                    <input type="text" id="interactiveProductSearch" placeholder="Type to search product by name..." class="border dark:border-gray-600 p-2 rounded w-full mb-2 dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
+                    <input type="text" id="interactiveProductSearch" placeholder="Type to search product by name..." class="border dark:border-gray-600 p-2 rounded w-full mb-2 dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400 hidden">
                     <div id="productSearchResults" class="mb-2 max-h-40 overflow-y-auto border dark:border-gray-600 rounded bg-white dark:bg-slate-700">
                         <!-- Search results will be populated here by JavaScript -->
                     </div>
-                    <div id="searchedProductQRDisplay" class="w-36 h-36 mx-auto mb-3 p-1 border dark:border-gray-500 rounded flex flex-col items-center justify-center bg-white text-gray-800 dark:text-gray-200">
-                        <span class="text-xs text-gray-400 dark:text-gray-300">Product QR will appear here</span>
+                    <div id="productInfoContainer" class="flex items-center justify-center gap-4 mx-auto mb-3">
+                        <div id="searchedProductQRDisplay" class="w-32 h-32 p-1 border dark:border-gray-500 rounded flex flex-col items-center justify-center bg-white text-gray-800 dark:text-gray-200">
+                            <span class="text-xs text-gray-400 dark:text-gray-300">Product QR</span>
+                        </div>
+                        <img id="quickScanProductImage" src="#" alt="Product Image" class="w-32 h-32 border dark:border-gray-500 rounded object-contain bg-white hidden">
                     </div>
 
                     <!-- New Input Fields and Submit Button -->
+                    <button id="scanForProductBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white p-2 rounded w-full mb-2 dark:bg-cyan-700 dark:hover:bg-cyan-600">Scan Product QR for Stock Update</button>
                     <input type="text" id="quickScanProductId" placeholder="Scan or select Product ID" class="border dark:border-gray-600 p-2 rounded w-full mb-2 dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400" autofocus>
+                    <div id="quickScanProductName" class="mt-1 mb-2 text-center text-lg font-semibold dark:text-gray-200">Product Name Will Appear Here</div>
                     <input type="number" id="quickScanQuantity" placeholder="Enter quantity or scan action" class="border dark:border-gray-600 p-2 rounded w-full mb-2 dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
                     <button id="submitQuickScanUpdateBtn" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded w-full mb-4 dark:bg-blue-700 dark:hover:bg-blue-600">Submit Update</button>
 
