@@ -2880,8 +2880,6 @@ function resetQuickScanUI(feedbackMessage) {
 function switchQuickUpdateTab(selectedTabId) {
   const quickScanModeTabBtn = document.getElementById('quickScanModeTab');
   const manualBatchModeTabBtn = document.getElementById('manualBatchModeTab');
-  const quickScanModeTabBtn = document.getElementById('quickScanModeTab');
-  const manualBatchModeTabBtn = document.getElementById('manualBatchModeTab');
   const barcodeScannerModeTabBtn = document.getElementById('barcodeScannerModeTab'); // New
   const quickScanModeContentPane = document.getElementById('quickScanModeContent');
   const manualBatchModeContentPane = document.getElementById('manualBatchModeContent');
