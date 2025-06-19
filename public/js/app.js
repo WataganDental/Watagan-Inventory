@@ -76,30 +76,28 @@ async function displayActionQRCodes() {
   container.innerHTML = ''; // Clear previous QRs
 
   const actions = [
-    // Additions
+    // Additions (for left side)
     { label: '+1 Unit', data: 'ACTION_ADD_1', type: 'add' },
-    { label: '-1 Unit', data: 'ACTION_SUB_1', type: 'subtract' },
-    { label: '+2 Units', data: 'ACTION_ADD_2', type: 'add' },
-    { label: '-2 Units', data: 'ACTION_SUB_2', type: 'subtract' },
-    { label: '+3 Units', data: 'ACTION_ADD_3', type: 'add' },
-    { label: '-3 Units', data: 'ACTION_SUB_3', type: 'subtract' },
-    { label: '+4 Units', data: 'ACTION_ADD_4', type: 'add' },
-    { label: '-4 Units', data: 'ACTION_SUB_4', type: 'subtract' },
-    { label: '+5 Units', data: 'ACTION_ADD_5', type: 'add' },
-    { label: '-5 Units', data: 'ACTION_SUB_5', type: 'subtract' },
     { label: '+10 Units', data: 'ACTION_ADD_10', type: 'add' },
+    { label: '+2 Units', data: 'ACTION_ADD_2', type: 'add' },
+    { label: '+3 Units', data: 'ACTION_ADD_3', type: 'add' },
+    { label: '+4 Units', data: 'ACTION_ADD_4', type: 'add' },
+    { label: '+5 Units', data: 'ACTION_ADD_5', type: 'add' },
+    { label: '+6 Units', data: 'ACTION_ADD_6', type: 'add' },
+    { label: '+7 Units', data: 'ACTION_ADD_7', type: 'add' },
+    { label: '+8 Units', data: 'ACTION_ADD_8', type: 'add' },
+    { label: '+9 Units', data: 'ACTION_ADD_9', type: 'add' },
+    // Subtractions (for right side)
+    { label: '-1 Unit', data: 'ACTION_SUB_1', type: 'subtract' },
     { label: '-10 Units', data: 'ACTION_SUB_10', type: 'subtract' },
-    // Set actions
-    { label: 'Set to 0', data: 'ACTION_SET_0', type: 'set' },
-    { label: 'Set to 1', data: 'ACTION_SET_1', type: 'set' },
-    { label: 'Set to 5', data: 'ACTION_SET_5', type: 'set' },
-    { label: 'Set to 10', data: 'ACTION_SET_10', type: 'set' },
-    { label: 'Set to 20', data: 'ACTION_SET_20', type: 'set' },
-    { label: 'Set to 30', data: 'ACTION_SET_30', type: 'set' },
-    { label: 'Set to 40', data: 'ACTION_SET_40', type: 'set' },
-    // Cancel
-    { label: 'Cancel Action', data: 'ACTION_CANCEL', type: 'cancel' },
-    { label: 'Complete Update', data: 'ACTION_COMPLETE', type: 'complete' }
+    { label: '-2 Units', data: 'ACTION_SUB_2', type: 'subtract' },
+    { label: '-3 Units', data: 'ACTION_SUB_3', type: 'subtract' },
+    { label: '-4 Units', data: 'ACTION_SUB_4', type: 'subtract' },
+    { label: '-5 Units', data: 'ACTION_SUB_5', type: 'subtract' },
+    { label: '-6 Units', data: 'ACTION_SUB_6', type: 'subtract' },
+    { label: '-7 Units', data: 'ACTION_SUB_7', type: 'subtract' },
+    { label: '-8 Units', data: 'ACTION_SUB_8', type: 'subtract' },
+    { label: '-9 Units', data: 'ACTION_SUB_9', type: 'subtract' }
   ];
 
   if (typeof QRCode === 'undefined') {
@@ -159,30 +157,28 @@ async function displayBarcodeModeActionQRCodes() {
   container.innerHTML = ''; // Clear previous QRs
 
   const actions = [
-    // Additions
+    // Additions (for left side)
     { label: '+1 Unit', data: 'ACTION_ADD_1', type: 'add' },
-    { label: '-1 Unit', data: 'ACTION_SUB_1', type: 'subtract' },
-    { label: '+2 Units', data: 'ACTION_ADD_2', type: 'add' },
-    { label: '-2 Units', data: 'ACTION_SUB_2', type: 'subtract' },
-    { label: '+3 Units', data: 'ACTION_ADD_3', type: 'add' },
-    { label: '-3 Units', data: 'ACTION_SUB_3', type: 'subtract' },
-    { label: '+4 Units', data: 'ACTION_ADD_4', type: 'add' },
-    { label: '-4 Units', data: 'ACTION_SUB_4', type: 'subtract' },
-    { label: '+5 Units', data: 'ACTION_ADD_5', type: 'add' },
-    { label: '-5 Units', data: 'ACTION_SUB_5', type: 'subtract' },
     { label: '+10 Units', data: 'ACTION_ADD_10', type: 'add' },
+    { label: '+2 Units', data: 'ACTION_ADD_2', type: 'add' },
+    { label: '+3 Units', data: 'ACTION_ADD_3', type: 'add' },
+    { label: '+4 Units', data: 'ACTION_ADD_4', type: 'add' },
+    { label: '+5 Units', data: 'ACTION_ADD_5', type: 'add' },
+    { label: '+6 Units', data: 'ACTION_ADD_6', type: 'add' },
+    { label: '+7 Units', data: 'ACTION_ADD_7', type: 'add' },
+    { label: '+8 Units', data: 'ACTION_ADD_8', type: 'add' },
+    { label: '+9 Units', data: 'ACTION_ADD_9', type: 'add' },
+    // Subtractions (for right side)
+    { label: '-1 Unit', data: 'ACTION_SUB_1', type: 'subtract' },
     { label: '-10 Units', data: 'ACTION_SUB_10', type: 'subtract' },
-    // Set actions
-    { label: 'Set to 0', data: 'ACTION_SET_0', type: 'set' },
-    { label: 'Set to 1', data: 'ACTION_SET_1', type: 'set' },
-    { label: 'Set to 5', data: 'ACTION_SET_5', type: 'set' },
-    { label: 'Set to 10', data: 'ACTION_SET_10', type: 'set' },
-    { label: 'Set to 20', data: 'ACTION_SET_20', type: 'set' },
-    { label: 'Set to 30', data: 'ACTION_SET_30', type: 'set' },
-    { label: 'Set to 40', data: 'ACTION_SET_40', type: 'set' },
-    // Cancel
-    { label: 'Cancel Action', data: 'ACTION_CANCEL', type: 'cancel' },
-    { label: 'Complete Update', data: 'ACTION_COMPLETE', type: 'complete' }
+    { label: '-2 Units', data: 'ACTION_SUB_2', type: 'subtract' },
+    { label: '-3 Units', data: 'ACTION_SUB_3', type: 'subtract' },
+    { label: '-4 Units', data: 'ACTION_SUB_4', type: 'subtract' },
+    { label: '-5 Units', data: 'ACTION_SUB_5', type: 'subtract' },
+    { label: '-6 Units', data: 'ACTION_SUB_6', type: 'subtract' },
+    { label: '-7 Units', data: 'ACTION_SUB_7', type: 'subtract' },
+    { label: '-8 Units', data: 'ACTION_SUB_8', type: 'subtract' },
+    { label: '-9 Units', data: 'ACTION_SUB_9', type: 'subtract' }
   ];
 
   if (typeof QRCode === 'undefined') {
