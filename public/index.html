@@ -230,56 +230,15 @@
             <div class="mb-4 border-b border-gray-200 dark:border-slate-700">
                 <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="quickStockUpdateTabs" role="tablist">
                     <li class="mr-2" role="presentation">
-                        <button class="inline-block p-4 border-b-2 rounded-t-lg" id="quickScanModeTab" data-tabs-target="#quickScanModeContent" type="button" role="tab" aria-controls="quickScanModeContent" aria-selected="true">Quick Scan Mode</button>
+                        <button class="inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" id="barcodeScannerModeTab" data-tabs-target="#barcodeScannerModeContent" type="button" role="tab" aria-controls="barcodeScannerModeContent" aria-selected="false">Barcode Scanner Mode</button>
                     </li>
                     <li class="mr-2" role="presentation">
                         <button class="inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" id="manualBatchModeTab" data-tabs-target="#manualBatchModeContent" type="button" role="tab" aria-controls="manualBatchModeContent" aria-selected="false">Manual Batch Entry</button>
-                    </li>
-                    <li class="mr-2" role="presentation">
-                        <button class="inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" id="barcodeScannerModeTab" data-tabs-target="#barcodeScannerModeContent" type="button" role="tab" aria-controls="barcodeScannerModeContent" aria-selected="false">Barcode Scanner Mode</button>
                     </li>
                 </ul>
             </div>
 
             <div>
-                <div id="quickScanModeContent" role="tabpanel" aria-labelledby="quickScanModeTab">
-                    <h3 class="text-xl font-semibold mb-3">Interactive Stock Update</h3>
-
-                    <!-- New Search Elements -->
-                    <input type="text" id="interactiveProductSearch" placeholder="Type to search product by name..." class="border dark:border-gray-600 p-2 rounded w-full mb-2 dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400 hidden">
-                    <div id="productSearchResults" class="mb-2 max-h-40 overflow-y-auto border dark:border-gray-600 rounded bg-white dark:bg-slate-700">
-                        <!-- Search results will be populated here by JavaScript -->
-                    </div>
-                    <div id="productInfoContainer" class="flex items-center justify-center gap-4 mx-auto mb-3">
-                        <div id="searchedProductQRDisplay" class="w-32 h-32 p-1 border dark:border-gray-500 rounded flex flex-col items-center justify-center bg-white text-gray-800 dark:text-gray-200">
-                            <span class="text-xs text-gray-400 dark:text-gray-300">Product QR</span>
-                        </div>
-                        <img id="quickScanProductImage" src="#" alt="Product Image" class="w-32 h-32 border dark:border-gray-500 rounded object-contain bg-white hidden">
-                    </div>
-
-                    <!-- New Input Fields and Submit Button -->
-                    <button id="scanForProductBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white p-2 rounded w-full mb-2 dark:bg-cyan-700 dark:hover:bg-cyan-600">Scan Product QR for Stock Update</button>
-                    <input type="text" id="quickScanProductId" placeholder="Scan or select Product ID" class="border dark:border-gray-600 p-2 rounded w-full mb-2 dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400" autofocus>
-                    <div id="quickScanProductName" class="mt-1 mb-2 text-center text-lg font-semibold dark:text-gray-200">Product Name Will Appear Here</div>
-                    <input type="number" id="quickScanQuantity" placeholder="Enter quantity or scan action" class="border dark:border-gray-600 p-2 rounded w-full mb-2 dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
-                    <button id="submitQuickScanUpdateBtn" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded w-full mb-4 dark:bg-blue-700 dark:hover:bg-blue-600">Submit Update</button>
-
-                    <!-- Existing Action QR Codes Container -->
-                    <h4 class="text-lg font-semibold mb-2 text-center">Scan Action QR Code</h4>
-                    <div id="actionQRCodesContainer" class="grid grid-cols-4 gap-2 p-2 border-t dark:border-slate-700 mb-4">
-                        <!-- Action QR Codes will be dynamically added here by JS -->
-                    </div>
-
-                    <!-- Feedback and Camera Controls -->
-                    <div class="mt-4 text-center">
-                        <video id="quickStockUpdateVideo" class="w-full max-w-md mx-auto mb-4 hidden bg-gray-200 dark:bg-slate-700 rounded" autoplay playsinline></video>
-                        <p id="quickStockUpdateFeedback" class="mt-2 text-center text-lg mb-3">Type to search for a product above.</p>
-                        <div class="space-x-2">
-                            <button id="startQuickStockScannerBtn" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded dark:bg-green-700 dark:hover:bg-green-600">Start Camera for Action</button>
-                            <button id="stopQuickStockScannerBtn" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded dark:bg-red-700 dark:hover:bg-red-600 hidden">Stop Camera</button>
-                        </div>
-                    </div>
-                </div>
                 <div class="hidden" id="manualBatchModeContent" role="tabpanel" aria-labelledby="manualBatchModeTab">
                     <h3 class="text-xl font-semibold mb-3">Manual Batch Update</h3>
                     <div id="updateProductFormContent" class="grid grid-cols-1 gap-4"> {/* Removed 'hidden' class here as tab controls visibility */}
