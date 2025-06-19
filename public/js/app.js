@@ -3325,6 +3325,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('generateOrderReportBtn').addEventListener('click', generateFastOrderReportPDF);
   document.getElementById('emailOrderReportBtn').addEventListener('click', emailOrderReport);
 
+  // START MOVED AND MODIFIED BLOCK
+  const generateOrderReportPdfLibBtnEl = document.getElementById('generateOrderReportPdfLibBtn');
+  console.log('[EventSetup] generateOrderReportPdfLibBtnEl:', generateOrderReportPdfLibBtnEl); // ADDED LOG
+  if (generateOrderReportPdfLibBtnEl) {
+    console.log('[EventSetup] Attaching event listener to generateOrderReportPdfLibBtnEl for generateDetailedOrderReportPDFWithQRCodes'); // ADDED LOG
+    generateOrderReportPdfLibBtnEl.addEventListener('click', generateDetailedOrderReportPDFWithQRCodes);
+  } else {
+    console.error('[EventSetup] generateOrderReportPdfLibBtnEl NOT FOUND.'); // ADDED LOG
+  }
+  // END MOVED AND MODIFIED BLOCK
+
   const qrCodePDFBtn = document.getElementById('generateQRCodePDFBtn');
   if (qrCodePDFBtn) {
     qrCodePDFBtn.addEventListener('click', generateQRCodePDF);
