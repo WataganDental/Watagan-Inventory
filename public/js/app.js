@@ -3422,6 +3422,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     initializeImageObserver();
 
+    // Test PDFLib functionality
+    console.log("Attempting to test PDFLib integration...");
+    if (window.PDFLib) {
+      console.log("window.PDFLib is defined. Attempting to call generateFastOrderReportPDF().");
+      try {
+        generateFastOrderReportPDF();
+        console.log("generateFastOrderReportPDF() was called successfully (no immediate error).");
+      } catch (e) {
+        console.error("Error calling generateFastOrderReportPDF():", e);
+      }
+    } else {
+      console.error("window.PDFLib is NOT defined. PDF generation test cannot run.");
+    }
+
   } catch (error) {
     console.error('Initialization failed:', error);
     const body = document.querySelector('body');
