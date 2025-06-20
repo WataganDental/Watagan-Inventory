@@ -29,6 +29,9 @@ let totalFilteredItems = 0;
 // Lazy Loading Global Variable
 let imageObserver = null;
 
+// Order Management Global Variables
+let currentEditingOrderId = null;
+
 // Helper functions for Barcode Scanner Mode UI
 function setBarcodeStatus(message, isError = false) {
     const statusEl = document.getElementById('barcodeScannerStatus');
@@ -3128,13 +3131,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   const reportsSectionContainer = document.getElementById('reportsSectionContainer');
   const quickStockUpdateContainer = document.getElementById('quickStockUpdateContainer');
 
+  // Ensure allViewContainers includes ordersSectionContainer if it exists
   const allViewContainers = [
-      inventoryViewContainer,
-      suppliersSectionContainer,
-      ordersSectionContainer,
-      reportsSectionContainer,
-      quickStockUpdateContainer
-  ].filter(container => container !== null); 
+    inventoryViewContainer,
+    suppliersSectionContainer,
+    ordersSectionContainer, // Ensure this is correctly captured
+    reportsSectionContainer,
+    quickStockUpdateContainer
+  ].filter(container => container !== null);
 
   const activeMenuClasses = ['bg-gray-300', 'dark:bg-slate-700', 'font-semibold', 'text-gray-900', 'dark:text-white'];
   const inactiveMenuClasses = ['text-gray-700', 'dark:text-gray-300', 'hover:bg-gray-300', 'dark:hover:bg-slate-700'];
@@ -3170,11 +3174,13 @@ document.addEventListener('DOMContentLoaded', async () => {
               viewFound = true;
               console.log(`Showing: ${container.id}`);
               if (container.id === 'quickStockUpdateContainer') {
-                // Default to Barcode Scanner tab or Manual Batch if Barcode Scanner is the first one now
                 const initialTabToSelect = document.getElementById('barcodeScannerModeTab') ? 'barcodeScannerModeTab' : 'manualBatchModeTab';
                 switchQuickUpdateTab(initialTabToSelect);
-                // isQuickStockBarcodeActive = true; // This was for the old Quick Scan mode, likely not needed or should be false.
-                                                 // Barcode Scanner Mode will set its own isBarcodeScannerModeActive = true.
+              } else if (container.id === 'ordersSectionContainer') {
+                // When showing the orders section, populate products and load orders
+                console.log('Orders section is being shown. Calling populateProductsDropdown and loadAndDisplayOrders.');
+                populateProductsDropdown();
+                loadAndDisplayOrders();
               }
           } else {
               if (container.id === 'quickStockUpdateContainer') {
@@ -3475,6 +3481,53 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     })();
 
+    // Order Management Event Listeners
+    const createOrderForm = document.getElementById('createOrderForm');
+    if (createOrderForm) {
+        createOrderForm.addEventListener('submit', handleSubmitOrder);
+    }
+
+    const filterOrderStatus = document.getElementById('filterOrderStatus');
+    if (filterOrderStatus) {
+        filterOrderStatus.addEventListener('change', loadAndDisplayOrders);
+    }
+
+    const confirmUpdateStatusBtn = document.getElementById('confirmUpdateStatusBtn');
+    if (confirmUpdateStatusBtn) {
+        confirmUpdateStatusBtn.addEventListener('click', handleUpdateOrderStatus);
+    }
+
+    const cancelUpdateStatusModalBtn = document.getElementById('cancelUpdateStatusModalBtn');
+    if (cancelUpdateStatusModalBtn) {
+        cancelUpdateStatusModalBtn.addEventListener('click', () => {
+            const modal = document.getElementById('updateOrderStatusModal');
+            if (modal) modal.classList.add('hidden');
+            currentEditingOrderId = null;
+        });
+    }
+
+    const ordersTableBody = document.getElementById('ordersTableBody');
+    if (ordersTableBody) {
+        ordersTableBody.addEventListener('click', (event) => {
+            if (event.target.classList.contains('open-update-status-modal-btn')) {
+                const orderId = event.target.dataset.orderId;
+                const currentStatus = event.target.dataset.currentStatus;
+
+                currentEditingOrderId = orderId; // Store globally or use hidden input
+
+                const modalOrderIdInput = document.getElementById('modalOrderId');
+                if (modalOrderIdInput) modalOrderIdInput.value = orderId;
+
+                const modalNewOrderStatusSelect = document.getElementById('modalNewOrderStatus');
+                if (modalNewOrderStatusSelect) modalNewOrderStatusSelect.value = currentStatus || 'pending';
+
+                const modal = document.getElementById('updateOrderStatusModal');
+                if (modal) modal.classList.remove('hidden');
+            }
+        });
+    }
+
+
   } catch (error) {
     console.error('Initialization failed:', error);
     const body = document.querySelector('body');
@@ -3490,3 +3543,240 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 });
+
+// --- ORDER MANAGEMENT FUNCTIONS ---
+
+// 1. Populate Products Dropdown for Order Form
+async function populateProductsDropdown() {
+    const orderProductIdSelect = document.getElementById('orderProductId');
+    if (!orderProductIdSelect) {
+        console.error('Order product ID select dropdown not found.');
+        return;
+    }
+
+    try {
+        const snapshot = await db.collection('inventory').orderBy('name').get();
+        // Clear existing options (except the "Loading..." or "Select Product" option)
+        // Keep the first option if it's a placeholder like "Select Product"
+        const firstOption = orderProductIdSelect.options[0];
+        orderProductIdSelect.innerHTML = ''; // Clear all
+        if (firstOption && firstOption.value === "") { // If the first was a placeholder
+             orderProductIdSelect.appendChild(firstOption); // Add it back
+             firstOption.textContent = 'Select Product'; // Change text if needed
+        } else { // Or create a new default placeholder
+            const defaultOption = document.createElement('option');
+            defaultOption.value = "";
+            defaultOption.textContent = "Select Product";
+            orderProductIdSelect.appendChild(defaultOption);
+        }
+
+
+        if (snapshot.empty) {
+            firstOption.textContent = 'No products available';
+            console.log('No products found in inventory to populate dropdown.');
+            return;
+        }
+
+        snapshot.forEach(doc => {
+            const product = doc.data();
+            const option = document.createElement('option');
+            option.value = doc.id; // Firestore document ID
+            option.textContent = product.name;
+            option.dataset.productName = product.name; // Store name for easy access
+            orderProductIdSelect.appendChild(option);
+        });
+        console.log('Products dropdown populated.');
+    } catch (error) {
+        console.error('Error populating products dropdown:', error);
+        orderProductIdSelect.innerHTML = '<option value="">Error loading products</option>';
+    }
+}
+
+// 2. Handle Order Creation
+async function handleSubmitOrder(event) {
+    event.preventDefault();
+    console.log('Attempting to submit order...');
+
+    const productId = document.getElementById('orderProductId').value;
+    const quantityInput = document.getElementById('orderQuantity');
+    const customerNameInput = document.getElementById('orderCustomerName');
+
+    const quantity = parseInt(quantityInput.value);
+    const customerName = customerNameInput.value.trim();
+
+    if (!productId) {
+        alert('Please select a product.');
+        return;
+    }
+    if (isNaN(quantity) || quantity <= 0) {
+        alert('Please enter a valid quantity greater than 0.');
+        return;
+    }
+    if (!customerName) {
+        alert('Please enter a customer name.');
+        return;
+    }
+
+    const selectedProductOption = document.getElementById('orderProductId').selectedOptions[0];
+    const productName = selectedProductOption ? selectedProductOption.dataset.productName : 'N/A';
+
+
+    const orderData = {
+        productId: productId,
+        productName: productName,
+        quantity: quantity,
+        customerName: customerName,
+        status: 'pending', // Default status
+        orderDate: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try {
+        const docRef = await db.collection('orders').add(orderData);
+        console.log('Order created successfully with ID:', docRef.id);
+        alert('Order created successfully!');
+
+        // Reset form
+        document.getElementById('createOrderForm').reset();
+        document.getElementById('orderProductId').value = ""; // Ensure select is reset
+
+        // Refresh orders dashboard
+        loadAndDisplayOrders();
+
+    } catch (error) {
+        console.error('Error creating order:', error);
+        alert('Failed to create order: ' + error.message);
+    }
+}
+
+// 3. Load and Display Orders in Dashboard
+async function loadAndDisplayOrders() {
+    const ordersTableBody = document.getElementById('ordersTableBody');
+    const filterOrderStatus = document.getElementById('filterOrderStatus').value;
+
+    if (!ordersTableBody) {
+        console.error('Orders table body not found.');
+        return;
+    }
+    console.log(`Loading orders with status filter: '${filterOrderStatus || 'All'}'`);
+
+    ordersTableBody.innerHTML = '<tr><td colspan="7" class="text-center p-4">Loading orders...</td></tr>';
+
+    try {
+        let query = db.collection('orders').orderBy('orderDate', 'desc');
+        if (filterOrderStatus) {
+            query = query.where('status', '==', filterOrderStatus);
+        }
+
+        const snapshot = await query.get();
+
+        if (snapshot.empty) {
+            ordersTableBody.innerHTML = '<tr><td colspan="7" class="text-center p-4">No orders found.</td></tr>';
+            console.log('No orders found for the current filter.');
+            return;
+        }
+
+        ordersTableBody.innerHTML = ''; // Clear loading message
+
+        snapshot.forEach(doc => {
+            const order = doc.data();
+            const orderId = doc.id;
+
+            const row = ordersTableBody.insertRow();
+            row.className = 'hover:bg-gray-50 dark:hover:bg-slate-700/50';
+
+            // Order ID
+            const cellId = row.insertCell();
+            cellId.textContent = orderId.substring(0, 8) + '...'; // Shorten ID for display
+            cellId.className = 'px-4 py-2 border-b dark:border-slate-700';
+            cellId.title = orderId;
+
+
+            // Product Name
+            const cellProductName = row.insertCell();
+            cellProductName.textContent = order.productName || 'N/A';
+            cellProductName.className = 'px-4 py-2 border-b dark:border-slate-700';
+
+            // Quantity
+            const cellQuantity = row.insertCell();
+            cellQuantity.textContent = order.quantity;
+            cellQuantity.className = 'px-4 py-2 border-b dark:border-slate-700 text-center';
+
+            // Customer Name
+            const cellCustomerName = row.insertCell();
+            cellCustomerName.textContent = order.customerName;
+            cellCustomerName.className = 'px-4 py-2 border-b dark:border-slate-700';
+
+            // Status
+            const cellStatus = row.insertCell();
+            const statusBadge = document.createElement('span');
+            statusBadge.textContent = order.status.charAt(0).toUpperCase() + order.status.slice(1);
+            statusBadge.className = 'px-2 py-1 text-xs font-semibold rounded-full';
+            if (order.status === 'pending') {
+                statusBadge.classList.add('bg-yellow-200', 'text-yellow-800', 'dark:bg-yellow-700', 'dark:text-yellow-100');
+            } else if (order.status === 'fulfilled') {
+                statusBadge.classList.add('bg-green-200', 'text-green-800', 'dark:bg-green-700', 'dark:text-green-100');
+            } else if (order.status === 'cancelled') {
+                statusBadge.classList.add('bg-red-200', 'text-red-800', 'dark:bg-red-700', 'dark:text-red-100');
+            } else {
+                 statusBadge.classList.add('bg-gray-200', 'text-gray-800', 'dark:bg-gray-700', 'dark:text-gray-100');
+            }
+            cellStatus.appendChild(statusBadge);
+            cellStatus.className = 'px-4 py-2 border-b dark:border-slate-700';
+
+
+            // Order Date
+            const cellOrderDate = row.insertCell();
+            cellOrderDate.textContent = order.orderDate && order.orderDate.toDate ? order.orderDate.toDate().toLocaleDateString() : 'Invalid Date';
+            cellOrderDate.className = 'px-4 py-2 border-b dark:border-slate-700';
+
+            // Actions
+            const cellActions = row.insertCell();
+            const updateBtn = document.createElement('button');
+            updateBtn.textContent = 'Update Status';
+            updateBtn.classList.add('open-update-status-modal-btn', 'bg-blue-500', 'hover:bg-blue-600', 'text-white', 'text-xs', 'py-1', 'px-2', 'rounded', 'dark:bg-blue-600', 'dark:hover:bg-blue-500');
+            updateBtn.dataset.orderId = orderId;
+            updateBtn.dataset.currentStatus = order.status;
+            cellActions.appendChild(updateBtn);
+            cellActions.className = 'px-4 py-2 border-b dark:border-slate-700 text-center';
+        });
+        console.log(`Orders table updated with ${snapshot.size} orders.`);
+
+    } catch (error) {
+        console.error('Error loading and displaying orders:', error);
+        ordersTableBody.innerHTML = `<tr><td colspan="7" class="text-center p-4 text-red-500">Error loading orders: ${error.message}</td></tr>`;
+    }
+}
+
+// 4. Handle Order Status Update
+async function handleUpdateOrderStatus() {
+    const orderId = document.getElementById('modalOrderId').value; // Or use currentEditingOrderId
+    const newStatus = document.getElementById('modalNewOrderStatus').value;
+
+    if (!orderId) {
+        alert('Error: Order ID is missing.');
+        return;
+    }
+    if (!newStatus) {
+        alert('Please select a new status.');
+        return;
+    }
+
+    console.log(`Attempting to update order ${orderId} to status ${newStatus}`);
+
+    try {
+        await db.collection('orders').doc(orderId).update({
+            status: newStatus
+        });
+        console.log(`Order ${orderId} status updated to ${newStatus}`);
+        alert('Order status updated successfully!');
+
+        document.getElementById('updateOrderStatusModal').classList.add('hidden');
+        currentEditingOrderId = null; // Reset
+
+        loadAndDisplayOrders(); // Refresh the orders list
+
+    } catch (error) {
+        console.error(`Error updating order status for ${orderId}:`, error);
+        alert('Failed to update order status: ' + error.message);
+    }
+}
