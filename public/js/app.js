@@ -1186,7 +1186,7 @@ async function updateToOrderTable() {
     const quantity = item.quantity !== undefined && item.quantity !== null ? item.quantity : 0;
     const quantityOrdered = item.quantityOrdered !== undefined && item.quantityOrdered !== null ? item.quantityOrdered : 0;
     const minQuantity = item.minQuantity !== undefined && item.minQuantity !== null ? item.minQuantity : 0;
-    return (quantity + quantityOrdered) < minQuantity;
+    return (quantity + quantityOrdered) <= minQuantity;
   });
 
   const toOrderTable = document.getElementById('toOrderTable');
@@ -3584,7 +3584,7 @@ async function populateProductsDropdown() {
             const minQuantity = product.minQuantity !== undefined && product.minQuantity !== null ? product.minQuantity : 0;
 
             if (minQuantity > 0) {
-                return (quantity + quantityOrdered) < minQuantity;
+                return (quantity + quantityOrdered) <= minQuantity;
             } else {
                 // If minQuantity is 0 (or not set), only allow ordering if there's absolutely no stock and none on order.
                 return quantity === 0 && quantityOrdered === 0;
@@ -3600,9 +3600,9 @@ async function populateProductsDropdown() {
         if (products.length === 0) {
             const noProductsOption = document.createElement('option');
             noProductsOption.value = "";
-            noProductsOption.textContent = "No products need reordering";
+            noProductsOption.textContent = "No products currently require ordering"; // Updated message
             orderProductIdSelect.appendChild(noProductsOption);
-            console.log('No products found that need reordering.');
+            console.log('No products found that require ordering for the dropdown.');
         } else {
             const defaultOption = document.createElement('option');
             defaultOption.value = "";
@@ -3619,7 +3619,7 @@ async function populateProductsDropdown() {
                 option.dataset.productName = product.name; // Store name for easy access
                 orderProductIdSelect.appendChild(option);
             });
-            console.log('Filtered products dropdown populated with new logic.');
+            console.log('Filtered products dropdown populated with new logic and updated text.');
         }
     } catch (error) {
         console.error('Error populating products dropdown:', error);
@@ -3804,19 +3804,63 @@ async function handleUpdateOrderStatus() {
     console.log(`Attempting to update order ${orderId} to status ${newStatus}`);
 
     try {
-        await db.collection('orders').doc(orderId).update({
-            status: newStatus
-        });
-        console.log(`Order ${orderId} status updated to ${newStatus}`);
-        alert('Order status updated successfully!');
+        if (newStatus === 'cancelled') {
+            const orderRef = db.collection('orders').doc(orderId);
+            const orderDoc = await orderRef.get();
 
+            if (!orderDoc.exists) {
+                console.error('Order document not found for cancellation:', orderId);
+                alert('Error: Could not find the order to cancel.');
+                document.getElementById('updateOrderStatusModal').classList.add('hidden');
+                currentEditingOrderId = null;
+                return;
+            }
+
+            const cancelledOrderData = orderDoc.data();
+            const productId = cancelledOrderData.productId;
+            const cancelledQuantity = cancelledOrderData.quantity;
+
+            if (!productId || typeof cancelledQuantity !== 'number' || cancelledQuantity <= 0) {
+                console.error('Invalid product ID or quantity in the order being cancelled.', cancelledOrderData);
+                alert('Error: Order data is invalid for cancellation process.');
+                document.getElementById('updateOrderStatusModal').classList.add('hidden');
+                currentEditingOrderId = null;
+                return;
+            }
+
+            // Decrement quantityOrdered in inventory
+            const productRef = db.collection('inventory').doc(productId);
+            await productRef.update({
+                quantityOrdered: firebase.firestore.FieldValue.increment(-cancelledQuantity)
+            });
+            console.log(`Decremented quantityOrdered for product ${productId} by ${cancelledQuantity} due to order cancellation.`);
+
+            // Delete the order document
+            await orderRef.delete();
+            console.log(`Order ${orderId} deleted successfully.`);
+            alert('Order cancelled, inventory updated, and order removed.');
+
+        } else {
+            // Handle other status updates (e.g., pending, fulfilled)
+            await db.collection('orders').doc(orderId).update({
+                status: newStatus
+            });
+            console.log(`Order ${orderId} status updated to ${newStatus}`);
+            alert('Order status updated successfully.');
+        }
+
+        // Consolidate post-operation actions
         document.getElementById('updateOrderStatusModal').classList.add('hidden');
         currentEditingOrderId = null; // Reset
 
-        loadAndDisplayOrders(); // Refresh the orders list
+        loadAndDisplayOrders();
+        loadInventory();      // Refresh inventory to show updated quantityOrdered
+        updateToOrderTable(); // Refresh "to order" table as it depends on quantityOrdered
 
     } catch (error) {
-        console.error(`Error updating order status for ${orderId}:`, error);
-        alert('Failed to update order status: ' + error.message);
+        console.error(`Error processing order ${orderId}:`, error);
+        alert('Failed to update order: ' + error.message);
+        document.getElementById('updateOrderStatusModal').classList.add('hidden');
+        currentEditingOrderId = null;
     }
 }
