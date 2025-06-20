@@ -3554,38 +3554,46 @@ async function populateProductsDropdown() {
         return;
     }
 
+    orderProductIdSelect.innerHTML = '<option value="">Loading products...</option>'; // Initial message
+
     try {
-        const snapshot = await db.collection('inventory').orderBy('name').get();
-        // Clear existing options (except the "Loading..." or "Select Product" option)
-        // Keep the first option if it's a placeholder like "Select Product"
-        const firstOption = orderProductIdSelect.options[0];
-        orderProductIdSelect.innerHTML = ''; // Clear all
-        if (firstOption && firstOption.value === "") { // If the first was a placeholder
-             orderProductIdSelect.appendChild(firstOption); // Add it back
-             firstOption.textContent = 'Select Product'; // Change text if needed
-        } else { // Or create a new default placeholder
+        const snapshot = await db.collection('inventory').get();
+        let products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // Filter products: quantity <= minQuantity
+        products = products.filter(product => {
+            const quantity = product.quantity !== undefined && product.quantity !== null ? product.quantity : 0;
+            const minQuantity = product.minQuantity !== undefined && product.minQuantity !== null ? product.minQuantity : 0;
+            return quantity <= minQuantity;
+        });
+
+        // Sort filtered products by name
+        products.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+        // Clear existing options and populate
+        orderProductIdSelect.innerHTML = '';
+
+        if (products.length === 0) {
+            const noProductsOption = document.createElement('option');
+            noProductsOption.value = "";
+            noProductsOption.textContent = "No products need reordering";
+            orderProductIdSelect.appendChild(noProductsOption);
+            console.log('No products found that need reordering.');
+        } else {
             const defaultOption = document.createElement('option');
             defaultOption.value = "";
-            defaultOption.textContent = "Select Product";
+            defaultOption.textContent = "Select Product to Order";
             orderProductIdSelect.appendChild(defaultOption);
+
+            products.forEach(product => {
+                const option = document.createElement('option');
+                option.value = product.id; // Firestore document ID
+                option.textContent = `${product.name} (Qty: ${product.quantity}, Min: ${product.minQuantity})`;
+                option.dataset.productName = product.name; // Store name for easy access
+                orderProductIdSelect.appendChild(option);
+            });
+            console.log('Filtered products dropdown populated.');
         }
-
-
-        if (snapshot.empty) {
-            firstOption.textContent = 'No products available';
-            console.log('No products found in inventory to populate dropdown.');
-            return;
-        }
-
-        snapshot.forEach(doc => {
-            const product = doc.data();
-            const option = document.createElement('option');
-            option.value = doc.id; // Firestore document ID
-            option.textContent = product.name;
-            option.dataset.productName = product.name; // Store name for easy access
-            orderProductIdSelect.appendChild(option);
-        });
-        console.log('Products dropdown populated.');
     } catch (error) {
         console.error('Error populating products dropdown:', error);
         orderProductIdSelect.innerHTML = '<option value="">Error loading products</option>';
@@ -3599,10 +3607,8 @@ async function handleSubmitOrder(event) {
 
     const productId = document.getElementById('orderProductId').value;
     const quantityInput = document.getElementById('orderQuantity');
-    const customerNameInput = document.getElementById('orderCustomerName');
 
     const quantity = parseInt(quantityInput.value);
-    const customerName = customerNameInput.value.trim();
 
     if (!productId) {
         alert('Please select a product.');
@@ -3610,10 +3616,6 @@ async function handleSubmitOrder(event) {
     }
     if (isNaN(quantity) || quantity <= 0) {
         alert('Please enter a valid quantity greater than 0.');
-        return;
-    }
-    if (!customerName) {
-        alert('Please enter a customer name.');
         return;
     }
 
@@ -3625,7 +3627,6 @@ async function handleSubmitOrder(event) {
         productId: productId,
         productName: productName,
         quantity: quantity,
-        customerName: customerName,
         status: 'pending', // Default status
         orderDate: firebase.firestore.FieldValue.serverTimestamp()
     };
@@ -3659,7 +3660,7 @@ async function loadAndDisplayOrders() {
     }
     console.log(`Loading orders with status filter: '${filterOrderStatus || 'All'}'`);
 
-    ordersTableBody.innerHTML = '<tr><td colspan="7" class="text-center p-4">Loading orders...</td></tr>';
+    ordersTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4">Loading orders...</td></tr>'; // Adjusted colspan to 6
 
     try {
         let query = db.collection('orders').orderBy('orderDate', 'desc');
@@ -3670,7 +3671,7 @@ async function loadAndDisplayOrders() {
         const snapshot = await query.get();
 
         if (snapshot.empty) {
-            ordersTableBody.innerHTML = '<tr><td colspan="7" class="text-center p-4">No orders found.</td></tr>';
+            ordersTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4">No orders found.</td></tr>'; // Adjusted colspan to 6
             console.log('No orders found for the current filter.');
             return;
         }
@@ -3700,11 +3701,6 @@ async function loadAndDisplayOrders() {
             const cellQuantity = row.insertCell();
             cellQuantity.textContent = order.quantity;
             cellQuantity.className = 'px-4 py-2 border-b dark:border-slate-700 text-center';
-
-            // Customer Name
-            const cellCustomerName = row.insertCell();
-            cellCustomerName.textContent = order.customerName;
-            cellCustomerName.className = 'px-4 py-2 border-b dark:border-slate-700';
 
             // Status
             const cellStatus = row.insertCell();
@@ -3743,7 +3739,7 @@ async function loadAndDisplayOrders() {
 
     } catch (error) {
         console.error('Error loading and displaying orders:', error);
-        ordersTableBody.innerHTML = `<tr><td colspan="7" class="text-center p-4 text-red-500">Error loading orders: ${error.message}</td></tr>`;
+        ordersTableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-red-500">Error loading orders: ${error.message}</td></tr>`; // Adjusted colspan to 6
     }
 }
 
