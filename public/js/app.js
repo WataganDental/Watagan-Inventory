@@ -2140,6 +2140,80 @@ async function generateSupplierOrderQRCodePDF() {
   }
 }
 
+async function emailSupplierOrder() {
+  console.log('emailSupplierOrder() called');
+  try {
+    // 1. Trigger PDF Generation (and download for user)
+    await generateSupplierOrderQRCodePDF(); // Assumes this function now correctly filters and generates the PDF the user just saw/downloaded.
+
+    // 2. Get Selected Supplier
+    const supplierDropdown = document.getElementById('filterOrderSupplierDropdown');
+    const selectedSupplierName = supplierDropdown ? supplierDropdown.value : "";
+    console.log(`Selected supplier for email: '${selectedSupplierName}'`);
+
+    // 3. Fetch and Filter Products (Re-filter as per logic for email body consistency)
+    const inventorySnapshot = await db.collection('inventory').get();
+    let allProducts = inventorySnapshot.docs.map(doc => doc.data());
+
+    let filteredBySupplierProducts = allProducts;
+    if (selectedSupplierName) {
+      filteredBySupplierProducts = allProducts.filter(p => p.supplier === selectedSupplierName);
+    }
+
+    const productsToEmail = filteredBySupplierProducts.filter(item =>
+      ((item.quantity || 0) <= (item.minQuantity || 0)) ||
+      ((item.minQuantity || 0) === 0 && (item.quantity || 0) === 0)
+    );
+
+    // Sort products by name for the email body
+    productsToEmail.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+
+    // 4. Handle No Products for Email
+    // This check might seem redundant if generateSupplierOrderQRCodePDF already alerted,
+    // but it's good practice if this function could be called independently or if PDF function's alert is removed.
+    if (productsToEmail.length === 0) {
+      alert('No products to include in the email based on the selected supplier and reordering criteria.');
+      return;
+    }
+
+    // 5. Construct Email Subject
+    let subject = "Order for Supplier: ";
+    if (selectedSupplierName) {
+      subject += selectedSupplierName;
+    } else {
+      subject += "Multiple Suppliers / All Requiring Reorder";
+    }
+
+    // 6. Construct Email Body
+    let body = "";
+    body += "Supplier: " + (selectedSupplierName || "All Suppliers Requiring Reorder") + "\n\n";
+    body += "Products to Order:\n";
+
+    productsToEmail.forEach(product => {
+      let qtyToOrderText;
+      if (!product.reorderQuantity || product.reorderQuantity <= 0) {
+        qtyToOrderText = "custom";
+      } else {
+        const qtyToOrder = Math.max(0, (product.reorderQuantity || 0) - (product.quantity || 0));
+        qtyToOrderText = qtyToOrder.toString();
+      }
+      body += `- ${product.name} - Quantity to Order: ${qtyToOrderText}\n`;
+    });
+
+    body += "\n\nPlease remember to attach the generated PDF (e.g., Supplier_Order_QR_Codes.pdf or Supplier_Order_QR_[SupplierName].pdf) that was downloaded moments ago.\n";
+
+    // 7. Create and Trigger mailto: Link
+    const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoLink;
+
+  } catch (error) {
+    console.error('Failed to prepare email for supplier order:', error);
+    alert('Failed to prepare email for supplier order: ' + error.message);
+  }
+}
+
+
 async function emailOrderReport() {
   try {
     const snapshot = await db.collection('inventory').get();
@@ -2988,6 +3062,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     generateSupplierOrderQRCodePDFBtn.addEventListener('click', generateSupplierOrderQRCodePDF);
   } else {
     console.warn('Button with ID generateSupplierOrderQRCodePDFBtn not found.');
+  }
+
+  const emailSupplierOrderBtn = document.getElementById('emailSupplierOrderBtn');
+  if (emailSupplierOrderBtn) {
+    emailSupplierOrderBtn.addEventListener('click', emailSupplierOrder);
+  } else {
+    console.warn('Button with ID emailSupplierOrderBtn not found.');
   }
 
   const exportInventoryCSVBtnEl = document.getElementById('exportInventoryCSVBtn');
