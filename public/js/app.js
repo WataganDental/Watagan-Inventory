@@ -1942,19 +1942,26 @@ async function generateSupplierOrderQRCodePDF() {
     console.log(`Selected supplier for PDF: '${selectedSupplier}'`);
 
     const inventorySnapshot = await db.collection('inventory').get();
-    let products = inventorySnapshot.docs.map(doc => doc.data());
+    let filteredProducts = inventorySnapshot.docs.map(doc => doc.data());
 
     if (selectedSupplier) {
-      products = products.filter(p => p.supplier === selectedSupplier);
+      filteredProducts = filteredProducts.filter(p => p.supplier === selectedSupplier);
     }
 
-    if (products.length === 0) {
-      alert('No products found for the selected supplier.');
+    // New filtering logic
+    const productsToRender = filteredProducts.filter(item =>
+      ((item.quantity || 0) <= (item.minQuantity || 0)) ||
+      ((item.minQuantity || 0) === 0 && (item.quantity || 0) === 0)
+    );
+
+    if (productsToRender.length === 0) {
+      alert('No products found for the selected supplier that meet the reordering criteria.');
       return;
     }
 
     // Sort products by name for consistent report generation
-    products.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    // Ensure sorting happens on productsToRender, which is the list being used for the PDF
+    productsToRender.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     const doc = new JsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -2021,7 +2028,7 @@ async function generateSupplierOrderQRCodePDF() {
     let pageNumber = 1;
     doc.setFontSize(fontSize); // Reset font size for content
 
-    for (const product of products) {
+    for (const product of productsToRender) { // Changed products to productsToRender
       let qtyToOrder;
       let qtyToOrderText;
       let numericQtyToOrderForCostCalc = 0;
