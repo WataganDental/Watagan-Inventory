@@ -1098,7 +1098,15 @@ function updateInventoryTable(itemsToDisplay) {
 
   itemsToDisplay.forEach(item => {
     const row = document.createElement('tr');
-    row.className = item.quantity <= item.minQuantity ? 'bg-red-100 dark:bg-red-800/60' : '';
+
+    let rowClass = '';
+    if (item.quantityOrdered && item.quantityOrdered > 0) {
+      rowClass = 'bg-amber-100 dark:bg-amber-700/60'; // Ordered status color
+    } else if (item.quantity <= item.minQuantity) {
+      rowClass = 'bg-red-100 dark:bg-red-800/60'; // Low stock color
+    }
+    row.className = rowClass;
+
     // NOTE: Images are displayed as w-16 h-16 thumbnails via CSS.
     // However, the item.photo URL likely points to the original uploaded image.
     // For optimal performance and reduced data usage, it is highly recommended
@@ -1171,7 +1179,16 @@ function updateInventoryTable(itemsToDisplay) {
 
 async function updateToOrderTable() {
   const snapshot = await db.collection('inventory').get();
-  let toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity);
+  let items = snapshot.docs.map(doc => doc.data()); // All inventory items
+
+  // Filter products: (quantity + quantityOrdered) < minQuantity
+  let toOrderItems = items.filter(item => {
+    const quantity = item.quantity !== undefined && item.quantity !== null ? item.quantity : 0;
+    const quantityOrdered = item.quantityOrdered !== undefined && item.quantityOrdered !== null ? item.quantityOrdered : 0;
+    const minQuantity = item.minQuantity !== undefined && item.minQuantity !== null ? item.minQuantity : 0;
+    return (quantity + quantityOrdered) < minQuantity;
+  });
+
   const toOrderTable = document.getElementById('toOrderTable');
   toOrderTable.innerHTML = '';
 
@@ -3560,11 +3577,18 @@ async function populateProductsDropdown() {
         const snapshot = await db.collection('inventory').get();
         let products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        // Filter products: quantity <= minQuantity
+        // Filter products based on new "to order" logic
         products = products.filter(product => {
             const quantity = product.quantity !== undefined && product.quantity !== null ? product.quantity : 0;
+            const quantityOrdered = product.quantityOrdered !== undefined && product.quantityOrdered !== null ? product.quantityOrdered : 0;
             const minQuantity = product.minQuantity !== undefined && product.minQuantity !== null ? product.minQuantity : 0;
-            return quantity <= minQuantity;
+
+            if (minQuantity > 0) {
+                return (quantity + quantityOrdered) < minQuantity;
+            } else {
+                // If minQuantity is 0 (or not set), only allow ordering if there's absolutely no stock and none on order.
+                return quantity === 0 && quantityOrdered === 0;
+            }
         });
 
         // Sort filtered products by name
@@ -3588,11 +3612,14 @@ async function populateProductsDropdown() {
             products.forEach(product => {
                 const option = document.createElement('option');
                 option.value = product.id; // Firestore document ID
-                option.textContent = `${product.name} (Qty: ${product.quantity}, Min: ${product.minQuantity})`;
+                const displayQuantity = product.quantity !== undefined && product.quantity !== null ? product.quantity : 0;
+                const displayQuantityOrdered = product.quantityOrdered !== undefined && product.quantityOrdered !== null ? product.quantityOrdered : 0;
+                const displayMinQuantity = product.minQuantity !== undefined && product.minQuantity !== null ? product.minQuantity : 0;
+                option.textContent = `${product.name} (Qty: ${displayQuantity}, Ordered: ${displayQuantityOrdered}, Min: ${displayMinQuantity})`;
                 option.dataset.productName = product.name; // Store name for easy access
                 orderProductIdSelect.appendChild(option);
             });
-            console.log('Filtered products dropdown populated.');
+            console.log('Filtered products dropdown populated with new logic.');
         }
     } catch (error) {
         console.error('Error populating products dropdown:', error);
@@ -3634,17 +3661,34 @@ async function handleSubmitOrder(event) {
     try {
         const docRef = await db.collection('orders').add(orderData);
         console.log('Order created successfully with ID:', docRef.id);
+
+        // After successfully creating the order, update quantityOrdered in inventory
+        try {
+            const productRef = db.collection('inventory').doc(productId);
+            await productRef.update({
+                quantityOrdered: firebase.firestore.FieldValue.increment(quantity)
+            });
+            console.log(`Updated quantityOrdered for product ${productId} by ${quantity}`);
+        } catch (inventoryError) {
+            console.error(`Error updating quantityOrdered for product ${productId}:`, inventoryError);
+            // Log this error, but the order itself was created.
+            // UI might need to inform user about this partial failure if critical.
+            alert(`Order created, but failed to update ordered quantity for product: ${inventoryError.message}`);
+        }
+
         alert('Order created successfully!');
 
         // Reset form
         document.getElementById('createOrderForm').reset();
         document.getElementById('orderProductId').value = ""; // Ensure select is reset
 
-        // Refresh orders dashboard
+        // Refresh orders dashboard and inventory (as quantityOrdered changed)
         loadAndDisplayOrders();
+        loadInventory(); // To reflect changes in inventory table (quantityOrdered column)
+        updateToOrderTable(); // If quantityOrdered affects this table's logic
 
     } catch (error) {
-        console.error('Error creating order:', error);
+        console.error('Error creating order or updating inventory:', error);
         alert('Failed to create order: ' + error.message);
     }
 }
