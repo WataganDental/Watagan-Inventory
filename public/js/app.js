@@ -286,26 +286,23 @@ try {
 }
 
 // Password Visibility Toggle Function
-function setupPasswordVisibilityToggle(inputId, toggleButtonId, eyeIconId, eyeSlashIconId) {
-  const passwordInput = document.getElementById(inputId);
-  const toggleButton = document.getElementById(toggleButtonId);
-  const eyeIcon = document.getElementById(eyeIconId);
-  const eyeSlashIcon = document.getElementById(eyeSlashIconId);
-
-  if (passwordInput && toggleButton && eyeIcon && eyeSlashIcon) {
-    toggleButton.addEventListener('click', () => {
-      if (passwordInput.type === 'password') {
-        passwordInput.type = 'text';
-        eyeIcon.classList.add('hidden');
-        eyeSlashIcon.classList.remove('hidden');
+function setupPasswordVisibilityToggle(passwordField, toggleBtn, eyeIcn, eyeSlashIcn) {
+  if (passwordField && toggleBtn && eyeIcn && eyeSlashIcn) {
+    toggleBtn.addEventListener('click', () => {
+      if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        eyeIcn.classList.add('hidden');
+        eyeSlashIcn.classList.remove('hidden');
       } else {
-        passwordInput.type = 'password';
-        eyeSlashIcon.classList.add('hidden');
-        eyeIcon.classList.remove('hidden');
+        passwordField.type = 'password';
+        eyeSlashIcn.classList.add('hidden');
+        eyeIcn.classList.remove('hidden');
       }
     });
   } else {
-    console.warn(`Password visibility toggle elements not found for input: ${inputId}`);
+    // Attempt to get the ID of the passwordField for a more informative warning
+    const fieldId = passwordField ? passwordField.id : 'undefined field';
+    console.warn(`One or more password visibility toggle elements not found for input field: ${fieldId}`);
   }
 }
 
@@ -3264,7 +3261,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         signUpButton.addEventListener('click', handleSignUp);
     }
     const logoutButton = document.getElementById('logoutButton');
-    const logoutButton = document.getElementById('logoutButton');
     if (logoutButton) {
         logoutButton.addEventListener('click', handleLogout);
     }
@@ -3274,8 +3270,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Setup password visibility toggles
-    setupPasswordVisibilityToggle('password', 'togglePasswordVisibility', 'eyeIconPassword', 'eyeSlashIconPassword');
-    setupPasswordVisibilityToggle('confirmPassword', 'toggleConfirmPasswordVisibility', 'eyeIconConfirmPassword', 'eyeSlashIconConfirmPassword');
+    const passwordField = document.getElementById('password');
+    const togglePasswordButton = document.getElementById('togglePasswordVisibility');
+    const eyeIconPassword = document.getElementById('eyeIconPassword');
+    const eyeSlashIconPassword = document.getElementById('eyeSlashIconPassword');
+    setupPasswordVisibilityToggle(passwordField, togglePasswordButton, eyeIconPassword, eyeSlashIconPassword);
+
+    const confirmPasswordField = document.getElementById('confirmPassword');
+    const toggleConfirmPasswordButton = document.getElementById('toggleConfirmPasswordVisibility');
+    const eyeIconConfirmPassword = document.getElementById('eyeIconConfirmPassword');
+    const eyeSlashIconConfirmPassword = document.getElementById('eyeSlashIconConfirmPassword');
+    setupPasswordVisibilityToggle(confirmPasswordField, toggleConfirmPasswordButton, eyeIconConfirmPassword, eyeSlashIconConfirmPassword);
 
     initializeImageObserver();
     await ensureQRCodeIsAvailable();
