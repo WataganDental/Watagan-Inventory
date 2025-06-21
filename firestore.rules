@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions to get user's role and check authentication state
+    function getUserRole() {
+      return get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.role;
+    }
+    function isAdmin() {
+      return request.auth != null && getUserRole() == 'admin';
+    }
+    function isStaff() {
+      return request.auth != null && getUserRole() == 'staff';
+    }
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // user_roles/{userId} collection
+    match /user_roles/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false; // No client-side writes for now
+    }
+
+    // inventory/{productId} collection
+    match /inventory/{productId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() || isStaff();
+      allow update: if isAdmin() || isStaff();
+      allow delete: if isAdmin();
+    }
+
+    // orders/{orderId} collection
+    match /orders/{orderId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() || isStaff();
+      allow update: if isAdmin() || isStaff(); // Staff can update status
+      allow delete: if isAdmin(); // Admin can delete directly
+    }
+
+    // suppliers/{supplierId} collection
+    match /suppliers/{supplierId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // locations/{locationId} collection
+    match /locations/{locationId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Default deny-all rule for any path not explicitly matched
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
