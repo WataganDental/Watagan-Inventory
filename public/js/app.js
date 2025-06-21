@@ -202,6 +202,19 @@ const firebaseConfig = {
   measurementId: "G-PVQTBS5BSH"
 };
 
+// Moved auth related DOM elements to a higher scope to be accessible by onAuthStateChanged
+let auth;
+const authContainer = document.getElementById('authContainer');
+const appNavbar = document.getElementById('appNavbar');
+const appMainContainer = document.getElementById('appMainContainer');
+const loginForm = document.getElementById('loginForm');
+const emailInput = document.getElementById('email');
+const passwordInput = document.getElementById('password');
+// loginButton is implicitly handled by form submit
+const signUpButton = document.getElementById('signUpButton');
+const authErrorMessage = document.getElementById('authErrorMessage');
+
+
 try {
   let app;
   if (firebase.apps.length === 0) {
@@ -213,55 +226,150 @@ try {
   }
   db = firebase.firestore();
   storage = firebase.storage();
-  const auth = firebase.auth(); // Added Firebase Auth
+  auth = firebase.auth(); // Initialize auth here
   console.log('Firestore instance created:', !!db);
   console.log('Storage instance created:', !!storage);
   console.log('Auth instance created:', !!auth);
 
-    // Listen for auth state changes
-    auth.onAuthStateChanged((user) => {
-      if (user) {
-        // User is signed in anonymously.
-        console.log("User signed in anonymously:", user.uid);
-        // You can access user.uid here.
-        // Potentially, re-load data or enable UI elements that depend on auth.
-        if (typeof loadInventory === 'function') {
-          console.log("Auth state changed: User signed in. Reloading inventory.");
-          // loadInventory(); // Temporarily commenting out to avoid potential loadInventory issues before it's fully defined or if it has side effects not desired on initial auth.
-        } else {
-          console.log("Auth state changed: User signed in. loadInventory function not found globally, or not yet defined.");
-        }
-      } else {
-        // User is signed out.
-        console.log("User is signed out. Attempting anonymous sign-in.");
-        auth.signInAnonymously()
-          .then(() => {
-            console.log("Anonymous sign-in successful after detecting user was out.");
-            // User is now signed in. onAuthStateChanged will be called again.
-          })
-          .catch((error) => {
-            console.error("Anonymous sign-in error:", error.code, error.message);
-            // Handle sign-in errors here (e.g., display a message to the user)
-            alert("Authentication failed: " + error.message + "\nPlease ensure Anonymous sign-in is enabled in your Firebase project's Authentication settings and that your Firebase configuration is correct, and that the domains are correctly whitelisted if running locally for testing.");
-          });
-      }
-    });
+  // onAuthStateChanged Listener
+  auth.onAuthStateChanged(user => {
+    const logoutBtn = document.getElementById('logoutButton'); // Get it here as it's part of appNavbar
 
-    // Attempt initial anonymous sign-in if no user is initially detected by onAuthStateChanged
-    if (!auth.currentUser) {
-        console.log("No current user on app load, attempting initial anonymous sign-in.");
-        auth.signInAnonymously()
-            .then(() => {
-                console.log("Initial anonymous sign-in successful.");
-            })
-            .catch((error) => {
-                console.error("Initial anonymous sign-in error:", error.code, error.message);
-                 alert("Initial Authentication failed: " + error.message + "\nPlease ensure Anonymous sign-in is enabled in your Firebase project's Authentication settings and that your Firebase configuration is correct, and that the domains are correctly whitelisted if running locally for testing.");
-            });
+    if (user) {
+      // User is signed in.
+      console.log('Auth state changed: User is signed in', user.email);
+      if (authContainer) authContainer.classList.add('hidden');
+      if (appNavbar) appNavbar.classList.remove('hidden');
+      if (appMainContainer) appMainContainer.classList.remove('hidden');
+      if (logoutBtn) logoutBtn.classList.remove('hidden');
+
+      // Initialize app data for the logged-in user
+      loadInventory();
+      loadSuppliers();
+      loadLocations();
+
+      // Determine the default view or last viewed, then call showView.
+      // For now, let's default to inventoryViewContainer if menuInventory exists.
+      const menuInventoryEl = document.getElementById('menuInventory');
+      if (menuInventoryEl) {
+          showView('inventoryViewContainer', menuInventoryEl.id);
+      } else {
+          // Fallback or error if default menu item isn't found
+          console.warn("Default menu item 'menuInventory' not found after login.");
+      }
+
+
+    } else {
+      // User is signed out.
+      console.log('Auth state changed: User is signed out');
+      if (authContainer) authContainer.classList.remove('hidden');
+      if (appNavbar) appNavbar.classList.add('hidden');
+      if (appMainContainer) appMainContainer.classList.add('hidden');
+      if (logoutBtn) logoutBtn.classList.add('hidden');
+
+      // Clear any sensitive data from UI (optional for now, covered by hiding appMainContainer)
+      // e.g., document.getElementById('inventoryTable').innerHTML = '';
     }
+    clearAuthError(); // Clear any previous auth errors when state changes
+  });
+
 } catch (error) {
   console.error('Firebase initialization failed:', error);
+  if (authErrorMessage) { // Display error in the auth form if possible
+      authErrorMessage.textContent = 'Critical error: Firebase initialization failed. Please contact support.';
+      authErrorMessage.classList.remove('hidden');
+  } else {
+      alert('Critical error: Firebase initialization failed. Please contact support.');
+  }
 }
+
+
+// Auth UI Helper Functions
+function displayAuthError(message) {
+  if (authErrorMessage) {
+    authErrorMessage.textContent = message;
+    authErrorMessage.classList.remove('hidden');
+  }
+}
+function clearAuthError() {
+  if (authErrorMessage) {
+    authErrorMessage.textContent = '';
+    authErrorMessage.classList.add('hidden');
+  }
+}
+
+// Auth Event Handlers
+async function handleSignUp(event) {
+  event.preventDefault();
+  clearAuthError();
+  const email = emailInput.value;
+  const password = passwordInput.value;
+
+  if (!email || !password) {
+    displayAuthError('Email and password are required.');
+    return;
+  }
+  if (password.length < 6) {
+    displayAuthError('Password should be at least 6 characters.');
+    return;
+  }
+
+  try {
+    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+    console.log('User signed up:', userCredential.user);
+    if(loginForm) loginForm.reset();
+    // onAuthStateChanged will handle UI update
+  } catch (error) {
+    displayAuthError(error.message);
+    console.error('Sign up error:', error);
+  }
+}
+
+async function handleLogin(event) {
+  event.preventDefault();
+  clearAuthError();
+  const email = emailInput.value;
+  const password = passwordInput.value;
+
+  if (!email || !password) {
+    displayAuthError('Email and password are required.');
+    return;
+  }
+
+  try {
+    const userCredential = await auth.signInWithEmailAndPassword(email, password);
+    console.log('User logged in:', userCredential.user);
+    if(loginForm) loginForm.reset();
+    // onAuthStateChanged will handle UI update
+  } catch (error) {
+    displayAuthError(error.message);
+    console.error('Login error:', error);
+  }
+}
+
+function handleLogout() {
+  auth.signOut().then(() => {
+    console.log('User logged out');
+    // onAuthStateChanged will handle UI update
+    // Optionally clear specific app data here if not handled by hiding containers
+    if (productUsageChartInstance) {
+        productUsageChartInstance.destroy();
+        productUsageChartInstance = null;
+    }
+    document.getElementById('inventoryTable').innerHTML = '';
+    document.getElementById('ordersTableBody').innerHTML = '';
+    document.getElementById('supplierSummariesTableBody').innerHTML = '<tr><td colspan="4" class="text-center p-4">Loading supplier summaries...</td></tr>';
+    const trendProductSelect = document.getElementById('trendProductSelect');
+    if (trendProductSelect) {
+        trendProductSelect.innerHTML = '<option value="">Loading products...</option>';
+    }
+
+  }).catch((error) => {
+    console.error('Logout error:', error);
+    alert('Logout failed: ' + error.message);
+  });
+}
+
 
 // Utility to load jsPDF dynamically with polling
 async function loadJsPDF(scriptSrc = '/js/jspdf.umd.min.js') {
@@ -3078,13 +3186,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   try {
+    // DOM elements for Auth are already defined globally or within Firebase init scope
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
+    }
+    if (signUpButton) {
+        signUpButton.addEventListener('click', handleSignUp);
+    }
+    const logoutButton = document.getElementById('logoutButton');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', handleLogout);
+    }
+
     initializeImageObserver();
     await ensureQRCodeIsAvailable();
-    loadInventory(); 
-    
-    await loadSuppliers();
-    await loadLocations();
-    addBatchEntry(); 
+    // loadInventory(); // Moved to onAuthStateChanged
+    // await loadSuppliers(); // Moved to onAuthStateChanged
+    // await loadLocations(); // Moved to onAuthStateChanged
+    // addBatchEntry(); // This might need to be conditional or moved if it depends on auth state
 
     console.log('DOMContentLoaded: About to schedule collapsible section initialization.');
     setTimeout(() => {
