@@ -268,6 +268,7 @@ const firebaseConfig = {
 
 // Moved auth related DOM elements to a higher scope to be accessible by onAuthStateChanged
 let auth;
+const googleProvider = new firebase.auth.GoogleAuthProvider();
 const authContainer = document.getElementById('authContainer');
 const appNavbar = document.getElementById('appNavbar');
 const appMainContainer = document.getElementById('appMainContainer');
@@ -400,6 +401,57 @@ function setupPasswordVisibilityToggle(passwordField, toggleBtn, eyeIcn, eyeSlas
   }
 }
 
+
+async function handleGoogleSignIn() {
+  clearAuthError(); // Assumes clearAuthError() function exists to hide previous messages
+
+  try {
+    const userCredential = await firebase.auth().signInWithPopup(googleProvider);
+    const user = userCredential.user;
+    console.log('Google Sign-In successful for user:', user.email, 'UID:', user.uid);
+
+    // Check if it's a new user and create a default role if so
+    if (userCredential.additionalUserInfo && userCredential.additionalUserInfo.isNewUser) {
+      console.log('New user via Google Sign-In. Creating default role.');
+      const userRoleRef = db.collection('user_roles').doc(user.uid);
+      try {
+        await userRoleRef.set({ role: 'staff' });
+        console.log(`Default 'staff' role created for new Google user: ${user.uid}`);
+        // Update client-side role immediately if onAuthStateChanged hasn't fired yet or to ensure consistency
+        // This might be slightly redundant if onAuthStateChanged also defaults, but ensures role doc exists for rules
+        currentUserRole = 'staff';
+        updateUserInterfaceForRole(currentUserRole); // Explicitly call to update UI if needed sooner than onAuthStateChanged fires for role fetch
+      } catch (roleError) {
+        console.error('Error creating default role for new Google user:', roleError);
+        // Not displaying this specific error to user via displayAuthMessage for now,
+        // as login was successful. The onAuthStateChanged role fetch will default client-side.
+        // However, this means their Firestore Rules permissions might be temporarily limited if this doc write fails.
+      }
+    }
+    // onAuthStateChanged will handle hiding authContainer and showing app UI.
+    // It will also fetch the role (which should now exist for new users).
+    // No need to reset loginForm here as it wasn't used.
+
+  } catch (error) {
+    console.error('Google Sign-In error:', error);
+    let errorMessage = error.message;
+    if (error.code === 'auth/popup-closed-by-user') {
+      errorMessage = 'Google Sign-In popup was closed. Please try again.';
+    } else if (error.code === 'auth/account-exists-with-different-credential') {
+      errorMessage = 'An account already exists with this email address using a different sign-in method. Try logging in with your original method.';
+    }
+    // Ensure displayAuthMessage exists and is used
+    if (typeof displayAuthMessage === 'function') {
+      displayAuthMessage(errorMessage, 'error');
+    } else { // Fallback if displayAuthMessage is not defined (it should be from previous steps)
+      const authErrorMessage = document.getElementById('authErrorMessage');
+      if (authErrorMessage) {
+         authErrorMessage.textContent = errorMessage;
+         authErrorMessage.classList.remove('hidden');
+      }
+    }
+  }
+}
 
 // Auth UI Helper Functions
 function displayAuthMessage(message, type = 'error') {
@@ -3363,6 +3415,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const forgotPasswordButton = document.getElementById('forgotPasswordButton');
     if (forgotPasswordButton) {
         forgotPasswordButton.addEventListener('click', handleForgotPassword);
+    }
+    const googleSignInButton = document.getElementById('googleSignInButton');
+    if (googleSignInButton) {
+      googleSignInButton.addEventListener('click', handleGoogleSignIn);
     }
 
     // Setup password visibility toggles
