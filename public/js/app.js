@@ -474,6 +474,14 @@ try {
         if (logoutBtn) logoutBtn.classList.add('hidden');
         currentUserRole = null;
         updateUserInterfaceForRole(null);
+        // auth.signInAnonymously() // Commented out as per requirement
+        //   .then(() => {
+        //     console.log("Anonymous sign-in successful after detecting user was out.");
+        //   })
+        //   .catch((error) => {
+        //     console.error("Anonymous sign-in error:", error.code, error.message);
+        //     alert("Authentication failed: " + error.message + "\nPlease ensure Anonymous sign-in is enabled in your Firebase project's Authentication settings and that your Firebase configuration is correct, and that the domains are correctly whitelisted if running locally for testing.");
+        //   });
       }
     });
 
@@ -483,15 +491,15 @@ try {
     // No explicit signInAnonymously call here unless onAuthStateChanged logic is insufficient.
     // The existing onAuthStateChanged handles the anonymous sign-in if user is null.
     if (!auth.currentUser) {
-        console.log("No current user on app load, attempting initial anonymous sign-in.");
-        auth.signInAnonymously()
-            .then(() => {
-                console.log("Initial anonymous sign-in successful.");
-            })
-            .catch((error) => {
-                console.error("Initial anonymous sign-in error:", error.code, error.message);
-                 alert("Initial Authentication failed: " + error.message + "\nPlease ensure Anonymous sign-in is enabled in your Firebase project's Authentication settings and that your Firebase configuration is correct, and that the domains are correctly whitelisted if running locally for testing.");
-            });
+        console.log("No current user on app load, anonymous sign-in call REMOVED."); // MODIFIED Log
+        // auth.signInAnonymously() // Commented out as per requirement
+        //     .then(() => {
+        //         console.log("Initial anonymous sign-in successful.");
+        //     })
+        //     .catch((error) => {
+        //         console.error("Initial anonymous sign-in error:", error.code, error.message);
+        //          alert("Initial Authentication failed: " + error.message + "\nPlease ensure Anonymous sign-in is enabled in your Firebase project's Authentication settings and that your Firebase configuration is correct, and that the domains are correctly whitelisted if running locally for testing.");
+        //     });
     }
 } catch (error) {
   console.error('Firebase initialization failed:', error);
