@@ -29,74 +29,99 @@ let totalFilteredItems = 0;
 // Lazy Loading Global Variable
 let imageObserver = null;
 
-// Order Management Global Variables
-let currentEditingOrderId = null;
+// Moved showView function here to ensure it's defined before being called by onAuthStateChanged
+function showView(viewIdToShow, clickedMenuId) {
+  // This function relies on allViewContainers and setActiveMenuItem (which uses menuItems)
+  // being initialized. If this is called before DOMContentLoaded completes and these variables are set,
+  // it will cause errors. The ReferenceError for showView itself is fixed by this move,
+  // but dependency errors might arise if not called at the right time.
+  console.log(`Attempting to show view: ${viewIdToShow} triggered by ${clickedMenuId}`);
 
-// Product Usage Chart Global Variable
-let productUsageChartInstance = null;
+  // These would ideally be passed as parameters or ensured to be globally available and initialized.
+  // For now, re-querying them or hoping they are global. This is a potential refactor point.
+  const allViewContainers = [
+    document.getElementById('inventoryViewContainer'),
+    document.getElementById('suppliersSectionContainer'),
+    document.getElementById('ordersSectionContainer'),
+    document.getElementById('reportsSectionContainer'),
+    document.getElementById('quickStockUpdateContainer')
+  ].filter(container => container !== null);
 
-let currentUserRole = null;
+  let viewFound = false;
+  allViewContainers.forEach(container => {
+      if (container.id === viewIdToShow) {
+          container.classList.remove('hidden');
+          viewFound = true;
+          console.log(`Showing: ${container.id}`);
+          if (container.id === 'quickStockUpdateContainer') {
+            const initialTabToSelect = document.getElementById('barcodeScannerModeTab') ? 'barcodeScannerModeTab' : 'manualBatchModeTab';
+            if (typeof switchQuickUpdateTab === 'function') { // Defensive check
+                switchQuickUpdateTab(initialTabToSelect);
+            } else {
+                console.error("switchQuickUpdateTab is not defined or available when trying to show quickStockUpdateContainer");
+            }
+          } else if (container.id === 'ordersSectionContainer') {
+            // When showing the orders section, populate products and load orders
+            console.log('Orders section is being shown. Calling populateProductsDropdown and loadAndDisplayOrders.');
+            if (typeof populateProductsDropdown === 'function') populateProductsDropdown(); else console.error("populateProductsDropdown is not defined");
+            if (typeof loadAndDisplayOrders === 'function') loadAndDisplayOrders(); else console.error("loadAndDisplayOrders is not defined");
+          } else if (container.id === 'reportsSectionContainer') {
+            if (typeof updateInventoryDashboard === 'function') updateInventoryDashboard(); else console.error("updateInventoryDashboard is not defined");
+            if (typeof generateSupplierOrderSummaries === 'function') generateSupplierOrderSummaries(); else console.error("generateSupplierOrderSummaries is not defined");
+            if (typeof populateTrendProductSelect === 'function') populateTrendProductSelect(); else console.error("populateTrendProductSelect is not defined");
+            if (typeof generateProductUsageChart === 'function') generateProductUsageChart(''); else console.error("generateProductUsageChart is not defined");
+          }
+      } else {
+          if (container.id === 'quickStockUpdateContainer') {
+              if(typeof quickStockBarcodeBuffer !== 'undefined') quickStockBarcodeBuffer = "";
+              if(typeof isBarcodeScannerModeActive !== 'undefined') isBarcodeScannerModeActive = false;
 
-function updateUserInterfaceForRole(role) {
-  console.log("Updating UI for role:", role);
+              if (typeof stream !== 'undefined' && stream) { // Ensure stream is defined
+                  if (typeof stopUpdateScanner === 'function' && document.getElementById('updateVideo') && !document.getElementById('updateVideo').classList.contains('hidden')) stopUpdateScanner();
+                  if (typeof stopMoveScanner === 'function' && document.getElementById('moveVideo') && !document.getElementById('moveVideo').classList.contains('hidden')) stopMoveScanner();
+                  if (typeof stopEditScanner === 'function' && document.getElementById('editVideo') && !document.getElementById('editVideo').classList.contains('hidden')) stopEditScanner();
+              }
+          }
+          container.classList.add('hidden');
+          console.log(`Hiding: ${container.id}`);
+      }
+  });
 
-  // Get references to UI elements that need role-based visibility/state
-  const menuSuppliers = document.getElementById('menuSuppliers');
-  // Assuming admin functions for suppliers and locations are within these sections:
-  const productManagementSection = document.getElementById('productManagement'); // Contains add/edit product
-  const suppliersSectionContainer = document.getElementById('suppliersSectionContainer'); // Contains supplier/location forms
+  if (viewFound) {
+      // setActiveMenuItem needs to be globally available or passed.
+      // This is a simplified version assuming menuItems are queryable here.
+      const menuItems = [
+          document.getElementById('menuInventory'),
+          document.getElementById('menuSuppliers'),
+          document.getElementById('menuOrders'),
+          document.getElementById('menuReports'),
+          document.getElementById('menuQuickStockUpdate')
+      ].filter(item => item !== null);
+      const activeMenuClasses = ['bg-gray-300', 'dark:bg-slate-700', 'font-semibold', 'text-gray-900', 'dark:text-white'];
+      const inactiveMenuClasses = ['text-gray-700', 'dark:text-gray-300', 'hover:bg-gray-300', 'dark:hover:bg-slate-700'];
 
-  // Specific buttons (ensure these IDs exist in your HTML)
-  const addSupplierBtn = document.getElementById('addSupplierBtn');
-  const addLocationBtn = document.getElementById('addLocationBtn');
-  // Assuming delete buttons for suppliers/locations might have a common class e.g. '.delete-supplier-btn', '.delete-location-btn'
-  // Or we target their containers if simpler. For now, let's focus on the main menu and add buttons.
-
-  if (role === 'admin') {
-    // Admin sees everything, can do everything (for elements we control here)
-    if (menuSuppliers) menuSuppliers.classList.remove('hidden');
-    if (addSupplierBtn) addSupplierBtn.classList.remove('hidden'); // Or .disabled = false;
-    if (addLocationBtn) addLocationBtn.classList.remove('hidden'); // Or .disabled = false;
-    // Any elements specifically for admins can be shown here.
-
-    // Example: Enable product deletion for admin (if we add such buttons later)
-    // const deleteProductButtons = document.querySelectorAll('.delete-product-btn');
-    // deleteProductButtons.forEach(btn => btn.classList.remove('hidden'));
-
-  } else if (role === 'staff') {
-    // Staff has restricted access
-    if (menuSuppliers) menuSuppliers.classList.add('hidden');
-    if (addSupplierBtn) addSupplierBtn.classList.add('hidden'); // Or .disabled = true;
-    if (addLocationBtn) addLocationBtn.classList.add('hidden'); // Or .disabled = true;
-
-    // Hide delete buttons for suppliers and locations if they exist and are identifiable
-    // This might require adding specific classes or more granular IDs to those buttons in HTML
-    // For now, hiding the whole "Suppliers & Locations" section via the menu is the primary effect.
-    // If suppliersSectionContainer itself contains these forms, we could hide parts of it too.
-    // e.g., if supplierFormContent and locationFormContent are specific divs for forms:
-    const supplierFormContent = document.getElementById('supplierFormContent');
-    const locationFormContent = document.getElementById('locationFormContent');
-    if (supplierFormContent) supplierFormContent.classList.add('hidden'); // Hide entire form section
-    if (locationFormContent) locationFormContent.classList.add('hidden');   // Hide entire form section
-
-    // Example: Hide product deletion for staff
-    // const deleteProductButtons = document.querySelectorAll('.delete-product-btn');
-    // deleteProductButtons.forEach(btn => btn.classList.add('hidden'));
-
-  } else {
-    // Default for unknown roles or if role is null (though we default to 'staff' if undefined)
-    // Most restrictive view
-    console.warn("Unknown or null role:", role, "Applying most restrictive UI.");
-    if (menuSuppliers) menuSuppliers.classList.add('hidden');
-    if (addSupplierBtn) addSupplierBtn.classList.add('hidden');
-    if (addLocationBtn) addLocationBtn.classList.add('hidden');
-    const supplierFormContent = document.getElementById('supplierFormContent');
-    const locationFormContent = document.getElementById('locationFormContent');
-    if (supplierFormContent) supplierFormContent.classList.add('hidden');
-    if (locationFormContent) locationFormContent.classList.add('hidden');
+      menuItems.forEach(item => {
+          if (item.id === clickedMenuId) {
+              inactiveMenuClasses.forEach(cls => item.classList.remove(cls));
+              activeMenuClasses.forEach(cls => item.classList.add(cls));
+              const icon = item.querySelector('svg');
+              if (icon) {
+                  icon.classList.remove('text-gray-500', 'dark:text-gray-400', 'group-hover:text-gray-700', 'dark:group-hover:text-gray-200');
+                  icon.classList.add('text-gray-700', 'dark:text-gray-100');
+              }
+          } else {
+              activeMenuClasses.forEach(cls => item.classList.remove(cls));
+              inactiveMenuClasses.forEach(cls => item.classList.add(cls));
+              const icon = item.querySelector('svg');
+              if (icon) {
+                  icon.classList.remove('text-gray-700', 'dark:text-gray-100');
+                  icon.classList.add('text-gray-500', 'dark:text-gray-400', 'group-hover:text-gray-700', 'dark:group-hover:text-gray-200');
+              }
+          }
+      });
+  } else if (viewIdToShow) {
+      console.warn(`View with ID '${viewIdToShow}' not found among registered containers.`);
   }
-
-  // Ensure other UI elements are reset or set to a default state common to all roles if necessary
 }
 
 // Helper functions for Barcode Scanner Mode UI
@@ -266,22 +291,6 @@ const firebaseConfig = {
   measurementId: "G-PVQTBS5BSH"
 };
 
-// Moved auth related DOM elements to a higher scope to be accessible by onAuthStateChanged
-let auth;
-const googleProvider = new firebase.auth.GoogleAuthProvider();
-const authContainer = document.getElementById('authContainer');
-const appNavbar = document.getElementById('appNavbar');
-const appMainContainer = document.getElementById('appMainContainer');
-const loginForm = document.getElementById('loginForm');
-const emailInput = document.getElementById('email'); // Used by login, signup, and forgot password
-const passwordInput = document.getElementById('password');
-const confirmPasswordInput = document.getElementById('confirmPassword');
-// loginButton is implicitly handled by form submit
-const signUpButton = document.getElementById('signUpButton');
-const authErrorMessage = document.getElementById('authErrorMessage');
-// Forgot Password button will be fetched in DOMContentLoaded
-
-
 try {
   let app;
   if (firebase.apps.length === 0) {
@@ -293,298 +302,55 @@ try {
   }
   db = firebase.firestore();
   storage = firebase.storage();
-  auth = firebase.auth(); // Initialize auth here
+  const auth = firebase.auth(); // Added Firebase Auth
   console.log('Firestore instance created:', !!db);
   console.log('Storage instance created:', !!storage);
   console.log('Auth instance created:', !!auth);
 
-  // onAuthStateChanged Listener
-  auth.onAuthStateChanged(user => {
-    const logoutBtn = document.getElementById('logoutButton'); // Get it here as it's part of appNavbar
-
-    if (user) {
-      // User is signed in.
-      console.log('Auth state changed: User is signed in', user.email);
-      if (authContainer) authContainer.classList.add('hidden');
-      if (appNavbar) appNavbar.classList.remove('hidden');
-      if (appMainContainer) appMainContainer.classList.remove('hidden');
-      if (logoutBtn) logoutBtn.classList.remove('hidden');
-
-      // Initialize app data for the logged-in user
-      loadInventory();
-      loadSuppliers();
-      loadLocations();
-
-      // Determine the default view or last viewed, then call showView.
-      // For now, let's default to inventoryViewContainer if menuInventory exists.
-      const menuInventoryEl = document.getElementById('menuInventory');
-
-      // --- Start: Fetch user role ---
-      const userRoleRef = db.collection('user_roles').doc(user.uid);
-      userRoleRef.get().then(docSnapshot => {
-        if (docSnapshot.exists) {
-          currentUserRole = docSnapshot.data().role;
-          console.log('User role loaded:', currentUserRole);
+    // Listen for auth state changes
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        // User is signed in anonymously.
+        console.log("User signed in anonymously:", user.uid);
+        // You can access user.uid here.
+        // Potentially, re-load data or enable UI elements that depend on auth.
+        if (typeof loadInventory === 'function') {
+          console.log("Auth state changed: User signed in. Reloading inventory.");
+          // loadInventory(); // Temporarily commenting out to avoid potential loadInventory issues before it's fully defined or if it has side effects not desired on initial auth.
         } else {
-          currentUserRole = 'staff'; // Default role if no specific role is found in Firestore
-          console.log('No specific role found for user, defaulting to:', currentUserRole);
+          console.log("Auth state changed: User signed in. loadInventory function not found globally, or not yet defined.");
         }
-        updateUserInterfaceForRole(currentUserRole); // Call the function
-
-        // After role is determined (or defaulted), then show the view.
-        // This ensures that any UI adjustments based on role can be applied before the user sees the view.
-        if (menuInventoryEl) {
-            showView('inventoryViewContainer', menuInventoryEl.id);
-        } else {
-            console.warn("Default menu item 'menuInventory' not found after login.");
-        }
-
-      }).catch(error => {
-        console.error("Error fetching user role:", error);
-        currentUserRole = 'staff'; // Fallback to default role on error
-        updateUserInterfaceForRole(currentUserRole); // Call the function even on error (with default role)
-
-        // Still attempt to show view even if role fetch fails
-        if (menuInventoryEl) {
-            showView('inventoryViewContainer', menuInventoryEl.id);
-        } else {
-            console.warn("Default menu item 'menuInventory' not found after login (after role fetch error).");
-        }
-      });
-      // --- End: Fetch user role ---
-      // Note: The call to showView is now inside the .then() and .catch() of role fetching.
-
-    } else {
-      // User is signed out.
-      console.log('Auth state changed: User is signed out');
-      if (authContainer) authContainer.classList.remove('hidden');
-      if (appNavbar) appNavbar.classList.add('hidden');
-      if (appMainContainer) appMainContainer.classList.add('hidden');
-      if (logoutBtn) logoutBtn.classList.add('hidden');
-      currentUserRole = null; // Reset role on logout
-      updateUserInterfaceForRole(null); // Reset UI for logged-out state
-
-      // Clear any sensitive data from UI (optional for now, covered by hiding appMainContainer)
-      // e.g., document.getElementById('inventoryTable').innerHTML = '';
-    }
-    clearAuthError(); // Clear any previous auth errors when state changes
-  });
-
-} catch (error) {
-  console.error('Firebase initialization failed:', error);
-  if (authErrorMessage) { // Display error in the auth form if possible
-      authErrorMessage.textContent = 'Critical error: Firebase initialization failed. Please contact support.';
-      authErrorMessage.classList.remove('hidden');
-  } else {
-      alert('Critical error: Firebase initialization failed. Please contact support.');
-  }
-}
-
-// Password Visibility Toggle Function
-function setupPasswordVisibilityToggle(passwordField, toggleBtn, eyeIcn, eyeSlashIcn) {
-  if (passwordField && toggleBtn && eyeIcn && eyeSlashIcn) {
-    toggleBtn.addEventListener('click', () => {
-      if (passwordField.type === 'password') {
-        passwordField.type = 'text';
-        eyeIcn.classList.add('hidden');
-        eyeSlashIcn.classList.remove('hidden');
       } else {
-        passwordField.type = 'password';
-        eyeSlashIcn.classList.add('hidden');
-        eyeIcn.classList.remove('hidden');
+        // User is signed out.
+        console.log("User is signed out. Attempting anonymous sign-in.");
+        auth.signInAnonymously()
+          .then(() => {
+            console.log("Anonymous sign-in successful after detecting user was out.");
+            // User is now signed in. onAuthStateChanged will be called again.
+          })
+          .catch((error) => {
+            console.error("Anonymous sign-in error:", error.code, error.message);
+            // Handle sign-in errors here (e.g., display a message to the user)
+            alert("Authentication failed: " + error.message + "\nPlease ensure Anonymous sign-in is enabled in your Firebase project's Authentication settings and that your Firebase configuration is correct, and that the domains are correctly whitelisted if running locally for testing.");
+          });
       }
     });
-  } else {
-    // Attempt to get the ID of the passwordField for a more informative warning
-    const fieldId = passwordField ? passwordField.id : 'undefined field';
-    console.warn(`One or more password visibility toggle elements not found for input field: ${fieldId}`);
-  }
+
+    // Attempt initial anonymous sign-in if no user is initially detected by onAuthStateChanged
+    if (!auth.currentUser) {
+        console.log("No current user on app load, attempting initial anonymous sign-in.");
+        auth.signInAnonymously()
+            .then(() => {
+                console.log("Initial anonymous sign-in successful.");
+            })
+            .catch((error) => {
+                console.error("Initial anonymous sign-in error:", error.code, error.message);
+                 alert("Initial Authentication failed: " + error.message + "\nPlease ensure Anonymous sign-in is enabled in your Firebase project's Authentication settings and that your Firebase configuration is correct, and that the domains are correctly whitelisted if running locally for testing.");
+            });
+    }
+} catch (error) {
+  console.error('Firebase initialization failed:', error);
 }
-
-
-async function handleGoogleSignIn() {
-  clearAuthError(); // Assumes clearAuthError() function exists to hide previous messages
-
-  try {
-    const userCredential = await firebase.auth().signInWithPopup(googleProvider);
-    const user = userCredential.user;
-    console.log('Google Sign-In successful for user:', user.email, 'UID:', user.uid);
-
-    // Check if it's a new user and create a default role if so
-    if (userCredential.additionalUserInfo && userCredential.additionalUserInfo.isNewUser) {
-      console.log('New user via Google Sign-In. Creating default role.');
-      const userRoleRef = db.collection('user_roles').doc(user.uid);
-      try {
-        await userRoleRef.set({ role: 'staff' });
-        console.log(`Default 'staff' role created for new Google user: ${user.uid}`);
-        // Update client-side role immediately if onAuthStateChanged hasn't fired yet or to ensure consistency
-        // This might be slightly redundant if onAuthStateChanged also defaults, but ensures role doc exists for rules
-        currentUserRole = 'staff';
-        updateUserInterfaceForRole(currentUserRole); // Explicitly call to update UI if needed sooner than onAuthStateChanged fires for role fetch
-      } catch (roleError) {
-        console.error('Error creating default role for new Google user:', roleError);
-        // Not displaying this specific error to user via displayAuthMessage for now,
-        // as login was successful. The onAuthStateChanged role fetch will default client-side.
-        // However, this means their Firestore Rules permissions might be temporarily limited if this doc write fails.
-      }
-    }
-    // onAuthStateChanged will handle hiding authContainer and showing app UI.
-    // It will also fetch the role (which should now exist for new users).
-    // No need to reset loginForm here as it wasn't used.
-
-  } catch (error) {
-    console.error('Google Sign-In error:', error);
-    let errorMessage = error.message;
-    if (error.code === 'auth/popup-closed-by-user') {
-      errorMessage = 'Google Sign-In popup was closed. Please try again.';
-    } else if (error.code === 'auth/account-exists-with-different-credential') {
-      errorMessage = 'An account already exists with this email address using a different sign-in method. Try logging in with your original method.';
-    }
-    // Ensure displayAuthMessage exists and is used
-    if (typeof displayAuthMessage === 'function') {
-      displayAuthMessage(errorMessage, 'error');
-    } else { // Fallback if displayAuthMessage is not defined (it should be from previous steps)
-      const authErrorMessage = document.getElementById('authErrorMessage');
-      if (authErrorMessage) {
-         authErrorMessage.textContent = errorMessage;
-         authErrorMessage.classList.remove('hidden');
-      }
-    }
-  }
-}
-
-// Auth UI Helper Functions
-function displayAuthMessage(message, type = 'error') {
-    if (authErrorMessage) {
-        authErrorMessage.textContent = message;
-        authErrorMessage.classList.remove('hidden');
-        // Clear previous type classes
-        authErrorMessage.classList.remove(
-            'text-red-700', 'bg-red-100', 'dark:bg-red-200', 'dark:text-red-800',
-            'text-green-700', 'bg-green-100', 'dark:bg-green-200', 'dark:text-green-800'
-        );
-
-        if (type === 'error') {
-            authErrorMessage.classList.add('text-red-700', 'bg-red-100', 'dark:bg-red-200', 'dark:text-red-800');
-        } else if (type === 'success') {
-            authErrorMessage.classList.add('text-green-700', 'bg-green-100', 'dark:bg-green-200', 'dark:text-green-800');
-        }
-    }
-}
-
-function clearAuthError() { // Renamed to clearAuthMessage for consistency, or keep as is if only for errors
-  if (authErrorMessage) {
-    authErrorMessage.textContent = '';
-    authErrorMessage.classList.add('hidden');
-    // Ensure all type-specific classes are removed when clearing
-    authErrorMessage.classList.remove(
-        'text-red-700', 'bg-red-100', 'dark:bg-red-200', 'dark:text-red-800',
-        'text-green-700', 'bg-green-100', 'dark:bg-green-200', 'dark:text-green-800'
-    );
-  }
-}
-
-// Auth Event Handlers
-async function handleSignUp(event) {
-  event.preventDefault();
-  clearAuthError();
-  const email = emailInput.value;
-  const password = passwordInput.value;
-  const confirmPassword = confirmPasswordInput.value;
-
-  if (!email || !password || !confirmPassword) {
-    displayAuthMessage('Email, password, and confirm password are required.', 'error');
-    return;
-  }
-  if (password.length < 6) {
-    displayAuthMessage('Password should be at least 6 characters.', 'error');
-    return;
-  }
-  if (password !== confirmPassword) {
-    displayAuthMessage('Passwords do not match.', 'error');
-    return;
-  }
-
-  try {
-    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-    console.log('User signed up:', userCredential.user);
-    if(loginForm) loginForm.reset();
-    // onAuthStateChanged will handle UI update
-  } catch (error) {
-    displayAuthMessage(error.message, 'error');
-    console.error('Sign up error:', error);
-  }
-}
-
-async function handleLogin(event) {
-  event.preventDefault();
-  clearAuthError();
-  const email = emailInput.value;
-  const password = passwordInput.value;
-
-  if (!email || !password) {
-    displayAuthMessage('Email and password are required.', 'error');
-    return;
-  }
-
-  try {
-    const userCredential = await auth.signInWithEmailAndPassword(email, password);
-    console.log('User logged in:', userCredential.user);
-    if(loginForm) loginForm.reset();
-    // onAuthStateChanged will handle UI update
-  } catch (error) {
-    displayAuthMessage(error.message, 'error');
-    console.error('Login error:', error);
-  }
-}
-
-async function handleForgotPassword() {
-    clearAuthError();
-    const email = emailInput.value;
-
-    if (!email) {
-        displayAuthMessage('Please enter your email address to reset your password.', 'error');
-        return;
-    }
-    if (!/^\S+@\S+\.\S+$/.test(email)) { // Basic email format check
-        displayAuthMessage('Please enter a valid email address.', 'error');
-        return;
-    }
-
-    try {
-        await auth.sendPasswordResetEmail(email);
-        displayAuthMessage(`Password reset email sent to ${email}. Please check your inbox (and spam folder).`, 'success');
-    } catch (error) {
-        console.error('Forgot password error:', error);
-        displayAuthMessage(error.message, 'error');
-    }
-}
-
-function handleLogout() {
-  currentUserRole = null;
-  updateUserInterfaceForRole(null); // Call to immediately reset UI
-  auth.signOut().then(() => {
-    console.log('User logged out');
-    // onAuthStateChanged will handle UI update (which also sets currentUserRole to null and calls updateUserInterfaceForRole(null))
-    // Optionally clear specific app data here if not handled by hiding containers
-    if (productUsageChartInstance) {
-        productUsageChartInstance.destroy();
-        productUsageChartInstance = null;
-    }
-    document.getElementById('inventoryTable').innerHTML = '';
-    document.getElementById('ordersTableBody').innerHTML = '';
-    document.getElementById('supplierSummariesTableBody').innerHTML = '<tr><td colspan="4" class="text-center p-4">Loading supplier summaries...</td></tr>';
-    const trendProductSelect = document.getElementById('trendProductSelect');
-    if (trendProductSelect) {
-        trendProductSelect.innerHTML = '<option value="">Loading products...</option>';
-    }
-
-  }).catch((error) => {
-    console.error('Logout error:', error);
-    alert('Logout failed: ' + error.message);
-  });
-}
-
 
 // Utility to load jsPDF dynamically with polling
 async function loadJsPDF(scriptSrc = '/js/jspdf.umd.min.js') {
@@ -1424,15 +1190,7 @@ function updateInventoryTable(itemsToDisplay) {
 
   itemsToDisplay.forEach(item => {
     const row = document.createElement('tr');
-
-    let rowClass = '';
-    if (item.quantityOrdered && item.quantityOrdered > 0) {
-      rowClass = 'bg-amber-100 dark:bg-amber-700/60'; // Ordered status color
-    } else if (item.quantity <= item.minQuantity) {
-      rowClass = 'bg-red-100 dark:bg-red-800/60'; // Low stock color
-    }
-    row.className = rowClass;
-
+    row.className = item.quantity <= item.minQuantity ? 'bg-red-100 dark:bg-red-800/60' : '';
     // NOTE: Images are displayed as w-16 h-16 thumbnails via CSS.
     // However, the item.photo URL likely points to the original uploaded image.
     // For optimal performance and reduced data usage, it is highly recommended
@@ -1505,16 +1263,7 @@ function updateInventoryTable(itemsToDisplay) {
 
 async function updateToOrderTable() {
   const snapshot = await db.collection('inventory').get();
-  let items = snapshot.docs.map(doc => doc.data()); // All inventory items
-
-  // Filter products: (quantity + quantityOrdered) < minQuantity
-  let toOrderItems = items.filter(item => {
-    const quantity = item.quantity !== undefined && item.quantity !== null ? item.quantity : 0;
-    const quantityOrdered = item.quantityOrdered !== undefined && item.quantityOrdered !== null ? item.quantityOrdered : 0;
-    const minQuantity = item.minQuantity !== undefined && item.minQuantity !== null ? item.minQuantity : 0;
-    return (quantity + quantityOrdered) <= minQuantity;
-  });
-
+  let toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity);
   const toOrderTable = document.getElementById('toOrderTable');
   toOrderTable.innerHTML = '';
 
@@ -3204,147 +2953,6 @@ function switchQuickUpdateTab(selectedTabId) {
     }
 }
 
-async function populateTrendProductSelect() {
-    const selectElement = document.getElementById('trendProductSelect');
-    if (!selectElement) {
-        console.error('Trend product select element not found.');
-        return;
-    }
-    selectElement.innerHTML = '<option value="">Loading products...</option>';
-
-    try {
-        const snapshot = await db.collection('inventory').orderBy('name').get();
-        if (snapshot.empty) {
-            selectElement.innerHTML = '<option value="">No products found</option>';
-            return;
-        }
-
-        selectElement.innerHTML = '<option value="">Select Product...</option>'; // Clear loading and add default
-        snapshot.docs.forEach(doc => {
-            const product = doc.data();
-            const option = document.createElement('option');
-            option.value = doc.id; // Product ID
-            option.textContent = product.name;
-            selectElement.appendChild(option);
-        });
-    } catch (error) {
-        console.error('Error populating trend product select:', error);
-        selectElement.innerHTML = '<option value="">Error loading products</option>';
-    }
-}
-
-async function generateProductUsageChart(productId) {
-    const canvas = document.getElementById('productUsageChart');
-    if (!canvas) {
-        console.error('Product usage chart canvas not found.');
-        return;
-    }
-    const ctx = canvas.getContext('2d');
-
-    if (productUsageChartInstance) {
-        productUsageChartInstance.destroy();
-        productUsageChartInstance = null;
-    }
-
-    if (!productId) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // Optionally, display a message on the canvas like "Select a product to view trends."
-        return;
-    }
-
-    console.log(`Generating product usage chart for productId: ${productId}`);
-
-    try {
-        const ordersSnapshot = await db.collection('orders')
-            .where('productId', '==', productId)
-            .orderBy('orderDate', 'desc')
-            .get();
-
-        const monthlyUsage = {};
-        const monthLabels = [];
-        const today = new Date();
-
-        for (let i = 11; i >= 0; i--) {
-            const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-            const year = d.getFullYear();
-            const month = (d.getMonth() + 1).toString().padStart(2, '0');
-            const monthKey = `${year}-${month}`;
-            monthLabels.push(monthKey);
-            monthlyUsage[monthKey] = 0; // Initialize each month's usage
-        }
-
-        ordersSnapshot.docs.forEach(doc => {
-            const orderData = doc.data();
-            if (orderData.orderDate && orderData.orderDate.toDate) {
-                const orderDate = orderData.orderDate.toDate();
-                const monthKey = `${orderDate.getFullYear()}-${(orderDate.getMonth() + 1).toString().padStart(2, '0')}`;
-                if (monthlyUsage.hasOwnProperty(monthKey)) {
-                    monthlyUsage[monthKey] += (orderData.quantity || 0);
-                }
-            }
-        });
-
-        const dataValues = monthLabels.map(label => monthlyUsage[label]);
-
-        if (typeof Chart === 'undefined') {
-            console.error('Chart.js is not loaded. Cannot render product usage chart.');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.font = "16px Arial";
-            ctx.fillStyle = "red";
-            ctx.textAlign = "center";
-            ctx.fillText("Error: Chart library not loaded.", canvas.width/2, canvas.height/2);
-            return;
-        }
-
-        productUsageChartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: monthLabels,
-                datasets: [{
-                    label: 'Units Ordered/Used per Month',
-                    data: dataValues,
-                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: { display: true, text: 'Units' }
-                    },
-                    x: {
-                        title: { display: true, text: 'Month' }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                    },
-                    title: {
-                        display: true,
-                        text: `Monthly Usage Trend for Product ID: ${productId}`
-                    }
-                }
-            }
-        });
-        console.log('Product usage chart rendered.');
-
-    } catch (error) {
-        console.error('Error generating product usage chart:', error);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.font = "16px Arial";
-        ctx.fillStyle = "red";
-        ctx.textAlign = "center";
-        ctx.fillText("Error loading chart data.", canvas.width/2, canvas.height/2);
-    }
-}
-
-
 // Initialize and Bind Events
 document.addEventListener('DOMContentLoaded', async () => {
   console.warn("If you encounter persistent 'message channel closed' errors or similar unexpected behavior, particularly after specific actions like switching modes, it might be caused by a browser extension. Try testing in an incognito window with extensions disabled, or selectively disable extensions to identify a potential conflict.");
@@ -3401,45 +3009,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   try {
-    // DOM elements for Auth are already defined globally or within Firebase init scope
-    if (loginForm) {
-        loginForm.addEventListener('submit', handleLogin);
-    }
-    if (signUpButton) {
-        signUpButton.addEventListener('click', handleSignUp);
-    }
-    const logoutButton = document.getElementById('logoutButton');
-    if (logoutButton) {
-        logoutButton.addEventListener('click', handleLogout);
-    }
-    const forgotPasswordButton = document.getElementById('forgotPasswordButton');
-    if (forgotPasswordButton) {
-        forgotPasswordButton.addEventListener('click', handleForgotPassword);
-    }
-    const googleSignInButton = document.getElementById('googleSignInButton');
-    if (googleSignInButton) {
-      googleSignInButton.addEventListener('click', handleGoogleSignIn);
-    }
-
-    // Setup password visibility toggles
-    const passwordField = document.getElementById('password');
-    const togglePasswordButton = document.getElementById('togglePasswordVisibility');
-    const eyeIconPassword = document.getElementById('eyeIconPassword');
-    const eyeSlashIconPassword = document.getElementById('eyeSlashIconPassword');
-    setupPasswordVisibilityToggle(passwordField, togglePasswordButton, eyeIconPassword, eyeSlashIconPassword);
-
-    const confirmPasswordField = document.getElementById('confirmPassword');
-    const toggleConfirmPasswordButton = document.getElementById('toggleConfirmPasswordVisibility');
-    const eyeIconConfirmPassword = document.getElementById('eyeIconConfirmPassword');
-    const eyeSlashIconConfirmPassword = document.getElementById('eyeSlashIconConfirmPassword');
-    setupPasswordVisibilityToggle(confirmPasswordField, toggleConfirmPasswordButton, eyeIconConfirmPassword, eyeSlashIconConfirmPassword);
-
     initializeImageObserver();
     await ensureQRCodeIsAvailable();
-    // loadInventory(); // Moved to onAuthStateChanged
-    // await loadSuppliers(); // Moved to onAuthStateChanged
-    // await loadLocations(); // Moved to onAuthStateChanged
-    // addBatchEntry(); // This might need to be conditional or moved if it depends on auth state
+    loadInventory();
+
+    await loadSuppliers();
+    await loadLocations();
+    addBatchEntry();
 
     console.log('DOMContentLoaded: About to schedule collapsible section initialization.');
     setTimeout(() => {
@@ -3551,16 +3127,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('generateOrderReportBtn').addEventListener('click', generateFastOrderReportPDF);
   document.getElementById('emailOrderReportBtn').addEventListener('click', emailOrderReport);
 
-  // START MOVED AND MODIFIED BLOCK
-  const generateOrderReportPdfLibBtnEl = document.getElementById('generateOrderReportPdfLibBtn');
-  console.log('[EventSetup] generateOrderReportPdfLibBtnEl:', generateOrderReportPdfLibBtnEl); // ADDED LOG
-  if (generateOrderReportPdfLibBtnEl) {
-    console.log('[EventSetup] Attaching event listener to generateOrderReportPdfLibBtnEl for generateDetailedOrderReportPDFWithQRCodes'); // ADDED LOG
-    generateOrderReportPdfLibBtnEl.addEventListener('click', generateDetailedOrderReportPDFWithQRCodes);
+  // Wiring for the "Generate Detailed Order Report with QR Codes (Slow)" button
+  const generateDetailedOrderReportBtnEl = document.getElementById('generateDetailedOrderReportBtn');
+  if (generateDetailedOrderReportBtnEl) {
+    generateDetailedOrderReportBtnEl.addEventListener('click', generateDetailedOrderReportPDFWithQRCodes);
   } else {
-    console.error('[EventSetup] generateOrderReportPdfLibBtnEl NOT FOUND.'); // ADDED LOG
+    console.error("Button with ID 'generateDetailedOrderReportBtn' not found in DOM.");
   }
-  // END MOVED AND MODIFIED BLOCK
 
   const qrCodePDFBtn = document.getElementById('generateQRCodePDFBtn');
   if (qrCodePDFBtn) {
@@ -3647,13 +3220,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const reportsSectionContainer = document.getElementById('reportsSectionContainer');
   const quickStockUpdateContainer = document.getElementById('quickStockUpdateContainer');
 
-  // Ensure allViewContainers includes ordersSectionContainer if it exists
   const allViewContainers = [
-    inventoryViewContainer,
-    suppliersSectionContainer,
-    ordersSectionContainer, // Ensure this is correctly captured
-    reportsSectionContainer,
-    quickStockUpdateContainer
+      inventoryViewContainer,
+      suppliersSectionContainer,
+      ordersSectionContainer,
+      reportsSectionContainer,
+      quickStockUpdateContainer
   ].filter(container => container !== null);
 
   const activeMenuClasses = ['bg-gray-300', 'dark:bg-slate-700', 'font-semibold', 'text-gray-900', 'dark:text-white'];
@@ -3681,52 +3253,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
   }
 
-  function showView(viewIdToShow, clickedMenuId) {
-      console.log(`Attempting to show view: ${viewIdToShow} triggered by ${clickedMenuId}`);
-      let viewFound = false;
-      allViewContainers.forEach(container => {
-          if (container.id === viewIdToShow) {
-              container.classList.remove('hidden');
-              viewFound = true;
-              console.log(`Showing: ${container.id}`);
-              if (container.id === 'quickStockUpdateContainer') {
-                const initialTabToSelect = document.getElementById('barcodeScannerModeTab') ? 'barcodeScannerModeTab' : 'manualBatchModeTab';
-                switchQuickUpdateTab(initialTabToSelect);
-              } else if (container.id === 'ordersSectionContainer') {
-                // When showing the orders section, populate products and load orders
-                console.log('Orders section is being shown. Calling populateProductsDropdown and loadAndDisplayOrders.');
-                populateProductsDropdown();
-                loadAndDisplayOrders();
-              } else if (container.id === 'reportsSectionContainer') {
-                updateInventoryDashboard(); // Existing call
-                generateSupplierOrderSummaries(); // New call
-                populateTrendProductSelect();   // New call
-                generateProductUsageChart('');  // Initialize/clear chart
-              }
-          } else {
-              if (container.id === 'quickStockUpdateContainer') {
-                  quickStockBarcodeBuffer = ""; // Clear buffer
-                  isBarcodeScannerModeActive = false; // Ensure barcode scanner mode is deactivated
-                  // isQuickStockBarcodeActive = false; // This line is already removed/obsolete
-                  // The (quickScanState !== 'IDLE') block and its calls to stopQuickStockUpdateScanner/resetQuickScanUI are obsolete and removed.
-
-                  // Stop general camera streams if active when hiding the entire Quick Stock Update container
-                  if (stream) {
-                      if (typeof stopUpdateScanner === 'function' && document.getElementById('updateVideo') && !document.getElementById('updateVideo').classList.contains('hidden')) stopUpdateScanner();
-                      if (typeof stopMoveScanner === 'function' && document.getElementById('moveVideo') && !document.getElementById('moveVideo').classList.contains('hidden')) stopMoveScanner();
-                      if (typeof stopEditScanner === 'function' && document.getElementById('editVideo') && !document.getElementById('editVideo').classList.contains('hidden')) stopEditScanner();
-                  }
-              }
-              container.classList.add('hidden');
-              console.log(`Hiding: ${container.id}`);
-          }
-      });
-      if (viewFound) {
-          setActiveMenuItem(clickedMenuId);
-      } else if (viewIdToShow) { 
-          console.warn(`View with ID '${viewIdToShow}' not found among registered containers.`);
-      }
-  }
+  // The original showView function definition has been cut from here and moved to the top of the file.
 
   if (menuInventory) {
       menuInventory.addEventListener('click', (e) => {
@@ -3753,7 +3280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       menuReports.addEventListener('click', (e) => {
           e.preventDefault();
           showView('reportsSectionContainer', menuReports.id);
-          // updateInventoryDashboard(); // This is now called inside showView for reportsSectionContainer
+          updateInventoryDashboard();
       });
   }
 
@@ -4002,61 +3529,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     })();
 
-    // Order Management Event Listeners
-    const createOrderForm = document.getElementById('createOrderForm');
-    if (createOrderForm) {
-        createOrderForm.addEventListener('submit', handleSubmitOrder);
-    }
-
-    const filterOrderStatus = document.getElementById('filterOrderStatus');
-    if (filterOrderStatus) {
-        filterOrderStatus.addEventListener('change', loadAndDisplayOrders);
-    }
-
-    const confirmUpdateStatusBtn = document.getElementById('confirmUpdateStatusBtn');
-    if (confirmUpdateStatusBtn) {
-        confirmUpdateStatusBtn.addEventListener('click', handleUpdateOrderStatus);
-    }
-
-    const cancelUpdateStatusModalBtn = document.getElementById('cancelUpdateStatusModalBtn');
-    if (cancelUpdateStatusModalBtn) {
-        cancelUpdateStatusModalBtn.addEventListener('click', () => {
-            const modal = document.getElementById('updateOrderStatusModal');
-            if (modal) modal.classList.add('hidden');
-            currentEditingOrderId = null;
-        });
-    }
-
-    const ordersTableBody = document.getElementById('ordersTableBody');
-    if (ordersTableBody) {
-        ordersTableBody.addEventListener('click', (event) => {
-            if (event.target.classList.contains('open-update-status-modal-btn')) {
-                const orderId = event.target.dataset.orderId;
-                const currentStatus = event.target.dataset.currentStatus;
-
-                currentEditingOrderId = orderId; // Store globally or use hidden input
-
-                const modalOrderIdInput = document.getElementById('modalOrderId');
-                if (modalOrderIdInput) modalOrderIdInput.value = orderId;
-
-                const modalNewOrderStatusSelect = document.getElementById('modalNewOrderStatus');
-                if (modalNewOrderStatusSelect) modalNewOrderStatusSelect.value = currentStatus || 'pending';
-
-                const modal = document.getElementById('updateOrderStatusModal');
-                if (modal) modal.classList.remove('hidden');
-            }
-        });
-    }
-
-    // Advanced Reporting Event Listeners
-    const trendProductSelect = document.getElementById('trendProductSelect');
-    if (trendProductSelect) {
-        trendProductSelect.addEventListener('change', (event) => {
-            generateProductUsageChart(event.target.value);
-        });
-    }
-
-
   } catch (error) {
     console.error('Initialization failed:', error);
     const body = document.querySelector('body');
@@ -4072,379 +3544,3 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 });
-
-// --- ORDER MANAGEMENT FUNCTIONS ---
-
-// 1. Populate Products Dropdown for Order Form
-async function populateProductsDropdown() {
-    const orderProductIdSelect = document.getElementById('orderProductId');
-    if (!orderProductIdSelect) {
-        console.error('Order product ID select dropdown not found.');
-        return;
-    }
-
-    orderProductIdSelect.innerHTML = '<option value="">Loading products...</option>'; // Initial message
-
-    try {
-        const snapshot = await db.collection('inventory').get();
-        let products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        // Filter products based on new "to order" logic
-        products = products.filter(product => {
-            const quantity = product.quantity !== undefined && product.quantity !== null ? product.quantity : 0;
-            const quantityOrdered = product.quantityOrdered !== undefined && product.quantityOrdered !== null ? product.quantityOrdered : 0;
-            const minQuantity = product.minQuantity !== undefined && product.minQuantity !== null ? product.minQuantity : 0;
-
-            if (minQuantity > 0) {
-                return (quantity + quantityOrdered) <= minQuantity;
-            } else {
-                // If minQuantity is 0 (or not set), only allow ordering if there's absolutely no stock and none on order.
-                return quantity === 0 && quantityOrdered === 0;
-            }
-        });
-
-        // Sort filtered products by name
-        products.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
-        // Clear existing options and populate
-        orderProductIdSelect.innerHTML = '';
-
-        if (products.length === 0) {
-            const noProductsOption = document.createElement('option');
-            noProductsOption.value = "";
-            noProductsOption.textContent = "No products currently require ordering"; // Updated message
-            orderProductIdSelect.appendChild(noProductsOption);
-            console.log('No products found that require ordering for the dropdown.');
-        } else {
-            const defaultOption = document.createElement('option');
-            defaultOption.value = "";
-            defaultOption.textContent = "Select Product to Order";
-            orderProductIdSelect.appendChild(defaultOption);
-
-            products.forEach(product => {
-                const option = document.createElement('option');
-                option.value = product.id; // Firestore document ID
-                const displayQuantity = product.quantity !== undefined && product.quantity !== null ? product.quantity : 0;
-                const displayQuantityOrdered = product.quantityOrdered !== undefined && product.quantityOrdered !== null ? product.quantityOrdered : 0;
-                const displayMinQuantity = product.minQuantity !== undefined && product.minQuantity !== null ? product.minQuantity : 0;
-                option.textContent = `${product.name} (Qty: ${displayQuantity}, Ordered: ${displayQuantityOrdered}, Min: ${displayMinQuantity})`;
-                option.dataset.productName = product.name; // Store name for easy access
-                orderProductIdSelect.appendChild(option);
-            });
-            console.log('Filtered products dropdown populated with new logic and updated text.');
-        }
-    } catch (error) {
-        console.error('Error populating products dropdown:', error);
-        orderProductIdSelect.innerHTML = '<option value="">Error loading products</option>';
-    }
-}
-
-// 2. Handle Order Creation
-async function handleSubmitOrder(event) {
-    event.preventDefault();
-    console.log('Attempting to submit order...');
-
-    const productId = document.getElementById('orderProductId').value;
-    const quantityInput = document.getElementById('orderQuantity');
-
-    const quantity = parseInt(quantityInput.value);
-
-    if (!productId) {
-        alert('Please select a product.');
-        return;
-    }
-    if (isNaN(quantity) || quantity <= 0) {
-        alert('Please enter a valid quantity greater than 0.');
-        return;
-    }
-
-    const selectedProductOption = document.getElementById('orderProductId').selectedOptions[0];
-    const productName = selectedProductOption ? selectedProductOption.dataset.productName : 'N/A';
-
-
-    const orderData = {
-        productId: productId,
-        productName: productName,
-        quantity: quantity,
-        status: 'pending', // Default status
-        orderDate: firebase.firestore.FieldValue.serverTimestamp()
-    };
-
-    try {
-        const docRef = await db.collection('orders').add(orderData);
-        console.log('Order created successfully with ID:', docRef.id);
-
-        // After successfully creating the order, update quantityOrdered in inventory
-        try {
-            const productRef = db.collection('inventory').doc(productId);
-            await productRef.update({
-                quantityOrdered: firebase.firestore.FieldValue.increment(quantity)
-            });
-            console.log(`Updated quantityOrdered for product ${productId} by ${quantity}`);
-        } catch (inventoryError) {
-            console.error(`Error updating quantityOrdered for product ${productId}:`, inventoryError);
-            // Log this error, but the order itself was created.
-            // UI might need to inform user about this partial failure if critical.
-            alert(`Order created, but failed to update ordered quantity for product: ${inventoryError.message}`);
-        }
-
-        alert('Order created successfully!');
-
-        // Reset form
-        document.getElementById('createOrderForm').reset();
-        document.getElementById('orderProductId').value = ""; // Ensure select is reset
-
-        // Refresh orders dashboard and inventory (as quantityOrdered changed)
-        loadAndDisplayOrders();
-        loadInventory(); // To reflect changes in inventory table (quantityOrdered column)
-        updateToOrderTable(); // If quantityOrdered affects this table's logic
-
-    } catch (error) {
-        console.error('Error creating order or updating inventory:', error);
-        alert('Failed to create order: ' + error.message);
-    }
-}
-
-// 3. Load and Display Orders in Dashboard
-async function loadAndDisplayOrders() {
-    const ordersTableBody = document.getElementById('ordersTableBody');
-    const filterOrderStatus = document.getElementById('filterOrderStatus').value;
-
-    if (!ordersTableBody) {
-        console.error('Orders table body not found.');
-        return;
-    }
-    console.log(`Loading orders with status filter: '${filterOrderStatus || 'All'}'`);
-
-    ordersTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4">Loading orders...</td></tr>'; // Adjusted colspan to 6
-
-    try {
-        let query = db.collection('orders').orderBy('orderDate', 'desc');
-        if (filterOrderStatus) {
-            query = query.where('status', '==', filterOrderStatus);
-        }
-
-        const snapshot = await query.get();
-
-        if (snapshot.empty) {
-            ordersTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4">No orders found.</td></tr>'; // Adjusted colspan to 6
-            console.log('No orders found for the current filter.');
-            return;
-        }
-
-        ordersTableBody.innerHTML = ''; // Clear loading message
-
-        snapshot.forEach(doc => {
-            const order = doc.data();
-            const orderId = doc.id;
-
-            const row = ordersTableBody.insertRow();
-            row.className = 'hover:bg-gray-50 dark:hover:bg-slate-700/50';
-
-            // Order ID
-            const cellId = row.insertCell();
-            cellId.textContent = orderId.substring(0, 8) + '...'; // Shorten ID for display
-            cellId.className = 'px-4 py-2 border-b dark:border-slate-700';
-            cellId.title = orderId;
-
-
-            // Product Name
-            const cellProductName = row.insertCell();
-            cellProductName.textContent = order.productName || 'N/A';
-            cellProductName.className = 'px-4 py-2 border-b dark:border-slate-700';
-
-            // Quantity
-            const cellQuantity = row.insertCell();
-            cellQuantity.textContent = order.quantity;
-            cellQuantity.className = 'px-4 py-2 border-b dark:border-slate-700 text-center';
-
-            // Status
-            const cellStatus = row.insertCell();
-            const statusBadge = document.createElement('span');
-            statusBadge.textContent = order.status.charAt(0).toUpperCase() + order.status.slice(1);
-            statusBadge.className = 'px-2 py-1 text-xs font-semibold rounded-full';
-            if (order.status === 'pending') {
-                statusBadge.classList.add('bg-yellow-200', 'text-yellow-800', 'dark:bg-yellow-700', 'dark:text-yellow-100');
-            } else if (order.status === 'fulfilled') {
-                statusBadge.classList.add('bg-green-200', 'text-green-800', 'dark:bg-green-700', 'dark:text-green-100');
-            } else if (order.status === 'cancelled') {
-                statusBadge.classList.add('bg-red-200', 'text-red-800', 'dark:bg-red-700', 'dark:text-red-100');
-            } else {
-                 statusBadge.classList.add('bg-gray-200', 'text-gray-800', 'dark:bg-gray-700', 'dark:text-gray-100');
-            }
-            cellStatus.appendChild(statusBadge);
-            cellStatus.className = 'px-4 py-2 border-b dark:border-slate-700';
-
-
-            // Order Date
-            const cellOrderDate = row.insertCell();
-            cellOrderDate.textContent = order.orderDate && order.orderDate.toDate ? order.orderDate.toDate().toLocaleDateString() : 'Invalid Date';
-            cellOrderDate.className = 'px-4 py-2 border-b dark:border-slate-700';
-
-            // Actions
-            const cellActions = row.insertCell();
-            const updateBtn = document.createElement('button');
-            updateBtn.textContent = 'Update Status';
-            updateBtn.classList.add('open-update-status-modal-btn', 'bg-blue-500', 'hover:bg-blue-600', 'text-white', 'text-xs', 'py-1', 'px-2', 'rounded', 'dark:bg-blue-600', 'dark:hover:bg-blue-500');
-            updateBtn.dataset.orderId = orderId;
-            updateBtn.dataset.currentStatus = order.status;
-            cellActions.appendChild(updateBtn);
-            cellActions.className = 'px-4 py-2 border-b dark:border-slate-700 text-center';
-        });
-        console.log(`Orders table updated with ${snapshot.size} orders.`);
-
-    } catch (error) {
-        console.error('Error loading and displaying orders:', error);
-        ordersTableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-red-500">Error loading orders: ${error.message}</td></tr>`; // Adjusted colspan to 6
-    }
-}
-
-// 4. Handle Order Status Update
-async function handleUpdateOrderStatus() {
-    const orderId = document.getElementById('modalOrderId').value; // Or use currentEditingOrderId
-    const newStatus = document.getElementById('modalNewOrderStatus').value;
-
-    if (!orderId) {
-        alert('Error: Order ID is missing.');
-        return;
-    }
-    if (!newStatus) {
-        alert('Please select a new status.');
-        return;
-    }
-
-    console.log(`Attempting to update order ${orderId} to status ${newStatus}`);
-
-    try {
-        if (newStatus === 'cancelled') {
-            const orderRef = db.collection('orders').doc(orderId);
-            const orderDoc = await orderRef.get();
-
-            if (!orderDoc.exists) {
-                console.error('Order document not found for cancellation:', orderId);
-                alert('Error: Could not find the order to cancel.');
-                document.getElementById('updateOrderStatusModal').classList.add('hidden');
-                currentEditingOrderId = null;
-                return;
-            }
-
-            const cancelledOrderData = orderDoc.data();
-            const productId = cancelledOrderData.productId;
-            const cancelledQuantity = cancelledOrderData.quantity;
-
-            if (!productId || typeof cancelledQuantity !== 'number' || cancelledQuantity <= 0) {
-                console.error('Invalid product ID or quantity in the order being cancelled.', cancelledOrderData);
-                alert('Error: Order data is invalid for cancellation process.');
-                document.getElementById('updateOrderStatusModal').classList.add('hidden');
-                currentEditingOrderId = null;
-                return;
-            }
-
-            // Decrement quantityOrdered in inventory
-            const productRef = db.collection('inventory').doc(productId);
-            await productRef.update({
-                quantityOrdered: firebase.firestore.FieldValue.increment(-cancelledQuantity)
-            });
-            console.log(`Decremented quantityOrdered for product ${productId} by ${cancelledQuantity} due to order cancellation.`);
-
-            // Delete the order document
-            await orderRef.delete();
-            console.log(`Order ${orderId} deleted successfully.`);
-            alert('Order cancelled, inventory updated, and order removed.');
-
-        } else {
-            // Handle other status updates (e.g., pending, fulfilled)
-            await db.collection('orders').doc(orderId).update({
-                status: newStatus
-            });
-            console.log(`Order ${orderId} status updated to ${newStatus}`);
-            alert('Order status updated successfully.');
-        }
-
-        // Consolidate post-operation actions
-        document.getElementById('updateOrderStatusModal').classList.add('hidden');
-        currentEditingOrderId = null; // Reset
-
-        loadAndDisplayOrders();
-        loadInventory();      // Refresh inventory to show updated quantityOrdered
-        updateToOrderTable(); // Refresh "to order" table as it depends on quantityOrdered
-
-    } catch (error) {
-        console.error(`Error processing order ${orderId}:`, error);
-        alert('Failed to update order: ' + error.message);
-        document.getElementById('updateOrderStatusModal').classList.add('hidden');
-        currentEditingOrderId = null;
-    }
-}
-
-async function generateSupplierOrderSummaries() {
-    console.log('Generating supplier order summaries...');
-    const tableBody = document.getElementById('supplierSummariesTableBody');
-    if (!tableBody) {
-        console.error('Supplier summaries table body not found.');
-        return;
-    }
-    tableBody.innerHTML = '<tr><td colspan="4" class="text-center p-4">Loading summaries...</td></tr>';
-
-    try {
-        const ordersSnapshot = await db.collection('orders').get();
-        const inventorySnapshot = await db.collection('inventory').get();
-
-        const inventoryMap = new Map();
-        inventorySnapshot.docs.forEach(doc => inventoryMap.set(doc.id, doc.data()));
-
-        const supplierSummaries = {};
-
-        ordersSnapshot.docs.forEach(orderDoc => {
-            const orderData = orderDoc.data();
-            const productDetails = inventoryMap.get(orderData.productId);
-
-            if (!productDetails) {
-                console.warn(`Product details not found for productId: ${orderData.productId} in order ${orderDoc.id}`);
-                // Optionally, handle this case, e.g., by assigning to a default supplier or skipping cost calculation
-                return; // Skip this order if product details are crucial and missing
-            }
-
-            const supplierName = productDetails.supplier || 'Unknown Supplier';
-            const orderQuantity = orderData.quantity || 0;
-            const productCost = productDetails.cost || 0;
-            const orderValue = orderQuantity * productCost;
-
-            if (!supplierSummaries[supplierName]) {
-                supplierSummaries[supplierName] = {
-                    distinctProductIds: new Set(),
-                    totalQuantity: 0,
-                    totalCost: 0
-                };
-            }
-
-            supplierSummaries[supplierName].distinctProductIds.add(orderData.productId);
-            supplierSummaries[supplierName].totalQuantity += orderQuantity;
-            supplierSummaries[supplierName].totalCost += orderValue;
-        });
-
-        tableBody.innerHTML = ''; // Clear loading message
-
-        if (Object.keys(supplierSummaries).length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="4" class="text-center p-4">No supplier order data available.</td></tr>';
-            console.log('No supplier order data to display.');
-            return;
-        }
-
-        for (const supplierName in supplierSummaries) {
-            const summary = supplierSummaries[supplierName];
-            const row = tableBody.insertRow();
-            row.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap">${supplierName}</td>
-                <td class="px-6 py-4 text-right">${summary.distinctProductIds.size}</td>
-                <td class="px-6 py-4 text-right">${summary.totalQuantity}</td>
-                <td class="px-6 py-4 text-right">${summary.totalCost.toFixed(2)}</td>
-            `;
-        }
-        console.log('Supplier order summaries populated.');
-
-    } catch (error) {
-        console.error('Error generating supplier order summaries:', error);
-        tableBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-red-500">Error loading supplier summaries: ${error.message}</td></tr>`;
-    }
-}
