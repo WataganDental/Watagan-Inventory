@@ -7,7 +7,7 @@ const { getAuth } = require("firebase-admin/auth");
 initializeApp();
 
 exports.updateInventoryOnOrderCreation = onDocumentCreated(
-  { region: "us-central1" }, // Match your deployment region
+  { region: "us-central1" },
   "orders/{orderId}",
   async (event) => {
     const snap = event.data;
@@ -45,14 +45,12 @@ exports.updateInventoryOnOrderCreation = onDocumentCreated(
 exports.listUsersAndRoles = onCall(
   { region: "us-central1" },
   async (context) => {
-    // Check if the user is authenticated
     if (!context.auth) {
       throw new Error("The function must be called while authenticated.");
     }
 
     const callerUid = context.auth.uid;
 
-    // Check if the caller is an admin
     let userRoleDoc;
     try {
       userRoleDoc = await getFirestore().collection("user_roles").doc(callerUid).get();
@@ -70,7 +68,6 @@ exports.listUsersAndRoles = onCall(
       throw new Error("Caller is not an admin.");
     }
 
-    // List users
     try {
       const listUsersResult = await getAuth().listUsers(1000);
       const usersPromises = listUsersResult.users.map(async (userRecord) => {
