@@ -48,14 +48,21 @@ exports.listUsersAndRoles = functions.https.onCall(async (data, context) => {
   const callerUid = context.auth.uid;
 
   // Check if the calling user is an admin by reading their role from Firestore
+  let userRoleDoc;
   try {
-    const userRoleDoc = await admin.firestore().collection('user_roles').doc(callerUid).get();
-    if (!userRoleDoc.exists || userRoleDoc.data().role !== 'admin') {
-      throw new functions.https.HttpsError('permission-denied', 'Caller is not an admin.');
-    }
+    userRoleDoc = await admin.firestore().collection('user_roles').doc(callerUid).get();
   } catch (error) {
-    console.error('Error checking admin role for caller:', callerUid, error);
-    throw new functions.https.HttpsError('internal', 'Could not verify admin privileges.');
+    // If Firestore read fails, log it and re-throw a specific error or let it propagate
+    console.error('Firestore error when checking admin role for caller:', callerUid, error);
+    // Re-throwing the original error might give more context,
+    // or throw a new one indicating a problem with accessing roles.
+    throw new functions.https.HttpsError('unavailable', `Failed to retrieve user role information: ${error.message}`);
+  }
+
+  if (!userRoleDoc.exists || userRoleDoc.data().role !== 'admin') {
+    // Log this attempt for audit purposes if desired
+    console.warn(`Permission denied for user ${callerUid} attempting to list users. Role: ${userRoleDoc.exists ? userRoleDoc.data().role : 'document_does_not_exist'}`);
+    throw new functions.https.HttpsError('permission-denied', 'Caller is not an admin.');
   }
 
   // If admin, proceed to list users
