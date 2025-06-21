@@ -1,107 +1,104 @@
-const functions = require('firebase-functions');
-const admin = require('firebase-admin');
-admin.initializeApp();
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onCall } = require("firebase-functions/v2/https");
+const { initializeApp } = require("firebase-admin/app");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getAuth } = require("firebase-admin/auth");
 
-exports.updateInventoryOnOrderCreation = functions.firestore
-  .document('orders/{orderId}')
-  .onCreate(async (snap, context) => {
+initializeApp();
+
+exports.updateInventoryOnOrderCreation = onDocumentCreated(
+  { region: "us-central1" }, // Match your deployment region
+  "orders/{orderId}",
+  async (event) => {
+    const snap = event.data;
     const orderData = snap.data();
     const productId = orderData.productId;
     const quantitySold = orderData.quantity;
 
-    if (!productId || typeof quantitySold !== 'number' || quantitySold <= 0) {
-      console.log('Invalid order data: Missing productId or invalid quantitySold.', orderData);
+    if (!productId || typeof quantitySold !== "number" || quantitySold <= 0) {
+      console.log("Invalid order data: Missing productId or invalid quantitySold.", orderData);
       return null;
     }
 
-    const inventoryRef = admin.firestore().collection('inventory').doc(productId);
+    const inventoryRef = getFirestore().collection("inventory").doc(productId);
 
     try {
-      await admin.firestore().runTransaction(async (transaction) => {
+      await getFirestore().runTransaction(async (transaction) => {
         const productDoc = await transaction.get(inventoryRef);
         if (!productDoc.exists) {
           throw new Error(`Product with ID ${productId} not found in inventory.`);
         }
 
-        // Using FieldValue.increment for atomic update
         transaction.update(inventoryRef, {
-          quantity: admin.firestore.FieldValue.increment(-quantitySold)
+          quantity: FieldValue.increment(-quantitySold),
         });
       });
-      console.log(`Inventory updated for product ${productId} by -${quantitySold}. OrderId: ${context.params.orderId}`);
+      console.log(`Inventory updated for product ${productId} by -${quantitySold}. OrderId: ${event.params.orderId}`);
       return null;
     } catch (error) {
       console.error(`Error updating inventory for product ${productId}:`, error);
-      // Optional: Add custom error reporting or retry logic
-      // Re-throw the error if you want the function to report a failure
-      // throw error;
-      return null; // Or return a specific error response
+      return null;
     }
-  });
-
-exports.listUsersAndRoles = functions.https.onCall(async (data, context) => {
-  // Check if the user calling the function is authenticated
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
   }
+);
 
-  const callerUid = context.auth.uid;
+exports.listUsersAndRoles = onCall(
+  { region: "us-central1" },
+  async (context) => {
+    // Check if the user is authenticated
+    if (!context.auth) {
+      throw new Error("The function must be called while authenticated.");
+    }
 
-  // Check if the calling user is an admin by reading their role from Firestore
-  let userRoleDoc;
-  try {
-    userRoleDoc = await admin.firestore().collection('user_roles').doc(callerUid).get();
-  } catch (error) {
-    // If Firestore read fails, log it and re-throw a specific error or let it propagate
-    console.error('Firestore error when checking admin role for caller:', callerUid, error);
-    // Re-throwing the original error might give more context,
-    // or throw a new one indicating a problem with accessing roles.
-    throw new functions.https.HttpsError('unavailable', `Failed to retrieve user role information: ${error.message}`);
-  }
+    const callerUid = context.auth.uid;
 
-  if (!userRoleDoc.exists || userRoleDoc.data().role !== 'admin') {
-    // Log this attempt for audit purposes if desired
-    console.warn(`Permission denied for user ${callerUid} attempting to list users. Role: ${userRoleDoc.exists ? userRoleDoc.data().role : 'document_does_not_exist'}`);
-    throw new functions.https.HttpsError('permission-denied', 'Caller is not an admin.');
-  }
+    // Check if the caller is an admin
+    let userRoleDoc;
+    try {
+      userRoleDoc = await getFirestore().collection("user_roles").doc(callerUid).get();
+    } catch (error) {
+      console.error("Firestore error when checking admin role for caller:", callerUid, error);
+      throw new Error(`Failed to retrieve user role information: ${error.message}`);
+    }
 
-  // If admin, proceed to list users
-  try {
-    const listUsersResult = await admin.auth().listUsers(1000); // Max 1000 users per page
-    const usersPromises = listUsersResult.users.map(async (userRecord) => {
-      let userRole = 'staff'; // Default role if not found in user_roles
-      try {
-        const roleDoc = await admin.firestore().collection('user_roles').doc(userRecord.uid).get();
-        if (roleDoc.exists && roleDoc.data().role) {
-          userRole = roleDoc.data().role;
-        } else if (!roleDoc.exists) {
-          // Optionally, if a user exists in Auth but not in user_roles,
-          // you could assign a default here, but it's better handled by client or specific logic.
-          // For now, just defaulting to 'staff' if no specific role is set.
-          console.log(`No role document found for user ${userRecord.uid}, defaulting to 'staff' in list.`);
+    if (!userRoleDoc.exists || userRoleDoc.data().role !== "admin") {
+      console.warn(
+        `Permission denied for user ${callerUid} attempting to list users. Role: ${
+          userRoleDoc.exists ? userRoleDoc.data().role : "document_does_not_exist"
+        }`
+      );
+      throw new Error("Caller is not an admin.");
+    }
+
+    // List users
+    try {
+      const listUsersResult = await getAuth().listUsers(1000);
+      const usersPromises = listUsersResult.users.map(async (userRecord) => {
+        let userRole = "staff";
+        try {
+          const roleDoc = await getFirestore().collection("user_roles").doc(userRecord.uid).get();
+          if (roleDoc.exists && roleDoc.data().role) {
+            userRole = roleDoc.data().role;
+          } else if (!roleDoc.exists) {
+            console.log(`No role document found for user ${userRecord.uid}, defaulting to 'staff' in list.`);
+          }
+        } catch (roleError) {
+          console.error(`Error fetching role for user ${userRecord.uid}:`, roleError);
         }
-      } catch (roleError) {
-        console.error(`Error fetching role for user ${userRecord.uid}:`, roleError);
-        // Keep default role 'staff' in case of error fetching individual role
-      }
-      return {
-        uid: userRecord.uid,
-        email: userRecord.email,
-        displayName: userRecord.displayName, // Good to have if available
-        currentRole: userRole,
-        disabled: userRecord.disabled // Good to know if account is disabled
-      };
-    });
+        return {
+          uid: userRecord.uid,
+          email: userRecord.email,
+          displayName: userRecord.displayName,
+          currentRole: userRole,
+          disabled: userRecord.disabled,
+        };
+      });
 
-    const usersWithRoles = await Promise.all(usersPromises);
-
-    // TODO: Implement pagination if expecting more than 1000 users.
-    // listUsersResult.pageToken can be used for the next page.
-
-    return { users: usersWithRoles };
-
-  } catch (error) {
-    console.error('Error listing users or their roles:', error);
-    throw new functions.https.HttpsError('internal', 'Unable to list users and their roles.');
+      const usersWithRoles = await Promise.all(usersPromises);
+      return { users: usersWithRoles };
+    } catch (error) {
+      console.error("Error listing users or their roles:", error);
+      throw new Error("Unable to list users and their roles.");
+    }
   }
-});
+);
