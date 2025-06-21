@@ -32,6 +32,9 @@ let imageObserver = null;
 // Order Management Global Variables
 let currentEditingOrderId = null;
 
+// Product Usage Chart Global Variable
+let productUsageChartInstance = null;
+
 // Helper functions for Barcode Scanner Mode UI
 function setBarcodeStatus(message, isError = false) {
     const statusEl = document.getElementById('barcodeScannerStatus');
@@ -2878,6 +2881,147 @@ function switchQuickUpdateTab(selectedTabId) {
     }
 }
 
+async function populateTrendProductSelect() {
+    const selectElement = document.getElementById('trendProductSelect');
+    if (!selectElement) {
+        console.error('Trend product select element not found.');
+        return;
+    }
+    selectElement.innerHTML = '<option value="">Loading products...</option>';
+
+    try {
+        const snapshot = await db.collection('inventory').orderBy('name').get();
+        if (snapshot.empty) {
+            selectElement.innerHTML = '<option value="">No products found</option>';
+            return;
+        }
+
+        selectElement.innerHTML = '<option value="">Select Product...</option>'; // Clear loading and add default
+        snapshot.docs.forEach(doc => {
+            const product = doc.data();
+            const option = document.createElement('option');
+            option.value = doc.id; // Product ID
+            option.textContent = product.name;
+            selectElement.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error populating trend product select:', error);
+        selectElement.innerHTML = '<option value="">Error loading products</option>';
+    }
+}
+
+async function generateProductUsageChart(productId) {
+    const canvas = document.getElementById('productUsageChart');
+    if (!canvas) {
+        console.error('Product usage chart canvas not found.');
+        return;
+    }
+    const ctx = canvas.getContext('2d');
+
+    if (productUsageChartInstance) {
+        productUsageChartInstance.destroy();
+        productUsageChartInstance = null;
+    }
+
+    if (!productId) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Optionally, display a message on the canvas like "Select a product to view trends."
+        return;
+    }
+
+    console.log(`Generating product usage chart for productId: ${productId}`);
+
+    try {
+        const ordersSnapshot = await db.collection('orders')
+            .where('productId', '==', productId)
+            .orderBy('orderDate', 'desc')
+            .get();
+
+        const monthlyUsage = {};
+        const monthLabels = [];
+        const today = new Date();
+
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            const year = d.getFullYear();
+            const month = (d.getMonth() + 1).toString().padStart(2, '0');
+            const monthKey = `${year}-${month}`;
+            monthLabels.push(monthKey);
+            monthlyUsage[monthKey] = 0; // Initialize each month's usage
+        }
+
+        ordersSnapshot.docs.forEach(doc => {
+            const orderData = doc.data();
+            if (orderData.orderDate && orderData.orderDate.toDate) {
+                const orderDate = orderData.orderDate.toDate();
+                const monthKey = `${orderDate.getFullYear()}-${(orderDate.getMonth() + 1).toString().padStart(2, '0')}`;
+                if (monthlyUsage.hasOwnProperty(monthKey)) {
+                    monthlyUsage[monthKey] += (orderData.quantity || 0);
+                }
+            }
+        });
+
+        const dataValues = monthLabels.map(label => monthlyUsage[label]);
+
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js is not loaded. Cannot render product usage chart.');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = "16px Arial";
+            ctx.fillStyle = "red";
+            ctx.textAlign = "center";
+            ctx.fillText("Error: Chart library not loaded.", canvas.width/2, canvas.height/2);
+            return;
+        }
+
+        productUsageChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: monthLabels,
+                datasets: [{
+                    label: 'Units Ordered/Used per Month',
+                    data: dataValues,
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Units' }
+                    },
+                    x: {
+                        title: { display: true, text: 'Month' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: `Monthly Usage Trend for Product ID: ${productId}`
+                    }
+                }
+            }
+        });
+        console.log('Product usage chart rendered.');
+
+    } catch (error) {
+        console.error('Error generating product usage chart:', error);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "red";
+        ctx.textAlign = "center";
+        ctx.fillText("Error loading chart data.", canvas.width/2, canvas.height/2);
+    }
+}
+
+
 // Initialize and Bind Events
 document.addEventListener('DOMContentLoaded', async () => {
   console.warn("If you encounter persistent 'message channel closed' errors or similar unexpected behavior, particularly after specific actions like switching modes, it might be caused by a browser extension. Try testing in an incognito window with extensions disabled, or selectively disable extensions to identify a potential conflict.");
@@ -3198,6 +3342,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.log('Orders section is being shown. Calling populateProductsDropdown and loadAndDisplayOrders.');
                 populateProductsDropdown();
                 loadAndDisplayOrders();
+              } else if (container.id === 'reportsSectionContainer') {
+                updateInventoryDashboard(); // Existing call
+                generateSupplierOrderSummaries(); // New call
+                populateTrendProductSelect();   // New call
+                generateProductUsageChart('');  // Initialize/clear chart
               }
           } else {
               if (container.id === 'quickStockUpdateContainer') {
@@ -3249,7 +3398,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       menuReports.addEventListener('click', (e) => {
           e.preventDefault();
           showView('reportsSectionContainer', menuReports.id);
-          updateInventoryDashboard();
+          // updateInventoryDashboard(); // This is now called inside showView for reportsSectionContainer
       });
   }
 
@@ -3541,6 +3690,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const modal = document.getElementById('updateOrderStatusModal');
                 if (modal) modal.classList.remove('hidden');
             }
+        });
+    }
+
+    // Advanced Reporting Event Listeners
+    const trendProductSelect = document.getElementById('trendProductSelect');
+    if (trendProductSelect) {
+        trendProductSelect.addEventListener('change', (event) => {
+            generateProductUsageChart(event.target.value);
         });
     }
 
@@ -3862,5 +4019,77 @@ async function handleUpdateOrderStatus() {
         alert('Failed to update order: ' + error.message);
         document.getElementById('updateOrderStatusModal').classList.add('hidden');
         currentEditingOrderId = null;
+    }
+}
+
+async function generateSupplierOrderSummaries() {
+    console.log('Generating supplier order summaries...');
+    const tableBody = document.getElementById('supplierSummariesTableBody');
+    if (!tableBody) {
+        console.error('Supplier summaries table body not found.');
+        return;
+    }
+    tableBody.innerHTML = '<tr><td colspan="4" class="text-center p-4">Loading summaries...</td></tr>';
+
+    try {
+        const ordersSnapshot = await db.collection('orders').get();
+        const inventorySnapshot = await db.collection('inventory').get();
+
+        const inventoryMap = new Map();
+        inventorySnapshot.docs.forEach(doc => inventoryMap.set(doc.id, doc.data()));
+
+        const supplierSummaries = {};
+
+        ordersSnapshot.docs.forEach(orderDoc => {
+            const orderData = orderDoc.data();
+            const productDetails = inventoryMap.get(orderData.productId);
+
+            if (!productDetails) {
+                console.warn(`Product details not found for productId: ${orderData.productId} in order ${orderDoc.id}`);
+                // Optionally, handle this case, e.g., by assigning to a default supplier or skipping cost calculation
+                return; // Skip this order if product details are crucial and missing
+            }
+
+            const supplierName = productDetails.supplier || 'Unknown Supplier';
+            const orderQuantity = orderData.quantity || 0;
+            const productCost = productDetails.cost || 0;
+            const orderValue = orderQuantity * productCost;
+
+            if (!supplierSummaries[supplierName]) {
+                supplierSummaries[supplierName] = {
+                    distinctProductIds: new Set(),
+                    totalQuantity: 0,
+                    totalCost: 0
+                };
+            }
+
+            supplierSummaries[supplierName].distinctProductIds.add(orderData.productId);
+            supplierSummaries[supplierName].totalQuantity += orderQuantity;
+            supplierSummaries[supplierName].totalCost += orderValue;
+        });
+
+        tableBody.innerHTML = ''; // Clear loading message
+
+        if (Object.keys(supplierSummaries).length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="4" class="text-center p-4">No supplier order data available.</td></tr>';
+            console.log('No supplier order data to display.');
+            return;
+        }
+
+        for (const supplierName in supplierSummaries) {
+            const summary = supplierSummaries[supplierName];
+            const row = tableBody.insertRow();
+            row.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap">${supplierName}</td>
+                <td class="px-6 py-4 text-right">${summary.distinctProductIds.size}</td>
+                <td class="px-6 py-4 text-right">${summary.totalQuantity}</td>
+                <td class="px-6 py-4 text-right">${summary.totalCost.toFixed(2)}</td>
+            `;
+        }
+        console.log('Supplier order summaries populated.');
+
+    } catch (error) {
+        console.error('Error generating supplier order summaries:', error);
+        tableBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-red-500">Error loading supplier summaries: ${error.message}</td></tr>`;
     }
 }
