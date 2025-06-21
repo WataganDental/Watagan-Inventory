@@ -35,6 +35,70 @@ let currentEditingOrderId = null;
 // Product Usage Chart Global Variable
 let productUsageChartInstance = null;
 
+let currentUserRole = null;
+
+function updateUserInterfaceForRole(role) {
+  console.log("Updating UI for role:", role);
+
+  // Get references to UI elements that need role-based visibility/state
+  const menuSuppliers = document.getElementById('menuSuppliers');
+  // Assuming admin functions for suppliers and locations are within these sections:
+  const productManagementSection = document.getElementById('productManagement'); // Contains add/edit product
+  const suppliersSectionContainer = document.getElementById('suppliersSectionContainer'); // Contains supplier/location forms
+
+  // Specific buttons (ensure these IDs exist in your HTML)
+  const addSupplierBtn = document.getElementById('addSupplierBtn');
+  const addLocationBtn = document.getElementById('addLocationBtn');
+  // Assuming delete buttons for suppliers/locations might have a common class e.g. '.delete-supplier-btn', '.delete-location-btn'
+  // Or we target their containers if simpler. For now, let's focus on the main menu and add buttons.
+
+  if (role === 'admin') {
+    // Admin sees everything, can do everything (for elements we control here)
+    if (menuSuppliers) menuSuppliers.classList.remove('hidden');
+    if (addSupplierBtn) addSupplierBtn.classList.remove('hidden'); // Or .disabled = false;
+    if (addLocationBtn) addLocationBtn.classList.remove('hidden'); // Or .disabled = false;
+    // Any elements specifically for admins can be shown here.
+
+    // Example: Enable product deletion for admin (if we add such buttons later)
+    // const deleteProductButtons = document.querySelectorAll('.delete-product-btn');
+    // deleteProductButtons.forEach(btn => btn.classList.remove('hidden'));
+
+  } else if (role === 'staff') {
+    // Staff has restricted access
+    if (menuSuppliers) menuSuppliers.classList.add('hidden');
+    if (addSupplierBtn) addSupplierBtn.classList.add('hidden'); // Or .disabled = true;
+    if (addLocationBtn) addLocationBtn.classList.add('hidden'); // Or .disabled = true;
+
+    // Hide delete buttons for suppliers and locations if they exist and are identifiable
+    // This might require adding specific classes or more granular IDs to those buttons in HTML
+    // For now, hiding the whole "Suppliers & Locations" section via the menu is the primary effect.
+    // If suppliersSectionContainer itself contains these forms, we could hide parts of it too.
+    // e.g., if supplierFormContent and locationFormContent are specific divs for forms:
+    const supplierFormContent = document.getElementById('supplierFormContent');
+    const locationFormContent = document.getElementById('locationFormContent');
+    if (supplierFormContent) supplierFormContent.classList.add('hidden'); // Hide entire form section
+    if (locationFormContent) locationFormContent.classList.add('hidden');   // Hide entire form section
+
+    // Example: Hide product deletion for staff
+    // const deleteProductButtons = document.querySelectorAll('.delete-product-btn');
+    // deleteProductButtons.forEach(btn => btn.classList.add('hidden'));
+
+  } else {
+    // Default for unknown roles or if role is null (though we default to 'staff' if undefined)
+    // Most restrictive view
+    console.warn("Unknown or null role:", role, "Applying most restrictive UI.");
+    if (menuSuppliers) menuSuppliers.classList.add('hidden');
+    if (addSupplierBtn) addSupplierBtn.classList.add('hidden');
+    if (addLocationBtn) addLocationBtn.classList.add('hidden');
+    const supplierFormContent = document.getElementById('supplierFormContent');
+    const locationFormContent = document.getElementById('locationFormContent');
+    if (supplierFormContent) supplierFormContent.classList.add('hidden');
+    if (locationFormContent) locationFormContent.classList.add('hidden');
+  }
+
+  // Ensure other UI elements are reset or set to a default state common to all roles if necessary
+}
+
 // Helper functions for Barcode Scanner Mode UI
 function setBarcodeStatus(message, isError = false) {
     const statusEl = document.getElementById('barcodeScannerStatus');
@@ -253,13 +317,41 @@ try {
       // Determine the default view or last viewed, then call showView.
       // For now, let's default to inventoryViewContainer if menuInventory exists.
       const menuInventoryEl = document.getElementById('menuInventory');
-      if (menuInventoryEl) {
-          showView('inventoryViewContainer', menuInventoryEl.id);
-      } else {
-          // Fallback or error if default menu item isn't found
-          console.warn("Default menu item 'menuInventory' not found after login.");
-      }
 
+      // --- Start: Fetch user role ---
+      const userRoleRef = db.collection('user_roles').doc(user.uid);
+      userRoleRef.get().then(docSnapshot => {
+        if (docSnapshot.exists) {
+          currentUserRole = docSnapshot.data().role;
+          console.log('User role loaded:', currentUserRole);
+        } else {
+          currentUserRole = 'staff'; // Default role if no specific role is found in Firestore
+          console.log('No specific role found for user, defaulting to:', currentUserRole);
+        }
+        updateUserInterfaceForRole(currentUserRole); // Call the function
+
+        // After role is determined (or defaulted), then show the view.
+        // This ensures that any UI adjustments based on role can be applied before the user sees the view.
+        if (menuInventoryEl) {
+            showView('inventoryViewContainer', menuInventoryEl.id);
+        } else {
+            console.warn("Default menu item 'menuInventory' not found after login.");
+        }
+
+      }).catch(error => {
+        console.error("Error fetching user role:", error);
+        currentUserRole = 'staff'; // Fallback to default role on error
+        updateUserInterfaceForRole(currentUserRole); // Call the function even on error (with default role)
+
+        // Still attempt to show view even if role fetch fails
+        if (menuInventoryEl) {
+            showView('inventoryViewContainer', menuInventoryEl.id);
+        } else {
+            console.warn("Default menu item 'menuInventory' not found after login (after role fetch error).");
+        }
+      });
+      // --- End: Fetch user role ---
+      // Note: The call to showView is now inside the .then() and .catch() of role fetching.
 
     } else {
       // User is signed out.
@@ -268,6 +360,8 @@ try {
       if (appNavbar) appNavbar.classList.add('hidden');
       if (appMainContainer) appMainContainer.classList.add('hidden');
       if (logoutBtn) logoutBtn.classList.add('hidden');
+      currentUserRole = null; // Reset role on logout
+      updateUserInterfaceForRole(null); // Reset UI for logged-out state
 
       // Clear any sensitive data from UI (optional for now, covered by hiding appMainContainer)
       // e.g., document.getElementById('inventoryTable').innerHTML = '';
@@ -415,9 +509,11 @@ async function handleForgotPassword() {
 }
 
 function handleLogout() {
+  currentUserRole = null;
+  updateUserInterfaceForRole(null); // Call to immediately reset UI
   auth.signOut().then(() => {
     console.log('User logged out');
-    // onAuthStateChanged will handle UI update
+    // onAuthStateChanged will handle UI update (which also sets currentUserRole to null and calls updateUserInterfaceForRole(null))
     // Optionally clear specific app data here if not handled by hiding containers
     if (productUsageChartInstance) {
         productUsageChartInstance.destroy();
