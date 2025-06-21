@@ -29,6 +29,43 @@ let totalFilteredItems = 0;
 // Lazy Loading Global Variable
 let imageObserver = null;
 
+let currentUserRole = null; // Ensure this is global for access by updateUserInterfaceForRole and auth changes
+
+function updateUserInterfaceForRole(role) {
+  console.log("Updating UI for role:", role);
+
+  const menuSuppliers = document.getElementById('menuSuppliers');
+  const addSupplierBtn = document.getElementById('addSupplierBtn');
+  const addLocationBtn = document.getElementById('addLocationBtn');
+  const supplierFormContent = document.getElementById('supplierFormContent');
+  const locationFormContent = document.getElementById('locationFormContent');
+  const menuUserManagement = document.getElementById('menuUserManagement');
+
+  // Default to hiding elements that require admin role
+  if (menuSuppliers && menuSuppliers.parentElement) menuSuppliers.parentElement.classList.add('hidden'); // Assuming hidden on <li>
+  if (addSupplierBtn) addSupplierBtn.classList.add('hidden');
+  if (addLocationBtn) addLocationBtn.classList.add('hidden');
+  if (supplierFormContent) supplierFormContent.classList.add('hidden');
+  if (locationFormContent) locationFormContent.classList.add('hidden');
+  if (menuUserManagement && menuUserManagement.parentElement) menuUserManagement.parentElement.classList.add('hidden');
+
+
+  if (role === 'admin') {
+    if (menuSuppliers && menuSuppliers.parentElement) menuSuppliers.parentElement.classList.remove('hidden');
+    if (addSupplierBtn) addSupplierBtn.classList.remove('hidden');
+    if (addLocationBtn) addLocationBtn.classList.remove('hidden');
+    if (supplierFormContent) supplierFormContent.classList.remove('hidden');
+    if (locationFormContent) locationFormContent.classList.remove('hidden');
+    if (menuUserManagement && menuUserManagement.parentElement) menuUserManagement.parentElement.classList.remove('hidden');
+  } else if (role === 'staff') {
+    // Staff-specific UI adjustments can go here if needed.
+    // Most are covered by default hiding.
+  } else {
+    console.warn("Unknown or null role for UI update:", role, "Applying most restrictive UI.");
+  }
+}
+
+
 // Moved showView function here to ensure it's defined before being called by onAuthStateChanged
 function showView(viewIdToShow, clickedMenuId) {
   // This function relies on allViewContainers and setActiveMenuItem (which uses menuItems)
@@ -44,7 +81,8 @@ function showView(viewIdToShow, clickedMenuId) {
     document.getElementById('suppliersSectionContainer'),
     document.getElementById('ordersSectionContainer'),
     document.getElementById('reportsSectionContainer'),
-    document.getElementById('quickStockUpdateContainer')
+    document.getElementById('quickStockUpdateContainer'),
+    document.getElementById('userManagementSectionContainer') // Added User Management
   ].filter(container => container !== null);
 
   let viewFound = false;
@@ -70,6 +108,8 @@ function showView(viewIdToShow, clickedMenuId) {
             if (typeof generateSupplierOrderSummaries === 'function') generateSupplierOrderSummaries(); else console.error("generateSupplierOrderSummaries is not defined");
             if (typeof populateTrendProductSelect === 'function') populateTrendProductSelect(); else console.error("populateTrendProductSelect is not defined");
             if (typeof generateProductUsageChart === 'function') generateProductUsageChart(''); else console.error("generateProductUsageChart is not defined");
+          } else if (container.id === 'userManagementSectionContainer') {
+            if (typeof displayUserRoleManagement === 'function') displayUserRoleManagement(); else console.error("displayUserRoleManagement is not defined");
           }
       } else {
           if (container.id === 'quickStockUpdateContainer') {
@@ -95,7 +135,8 @@ function showView(viewIdToShow, clickedMenuId) {
           document.getElementById('menuSuppliers'),
           document.getElementById('menuOrders'),
           document.getElementById('menuReports'),
-          document.getElementById('menuQuickStockUpdate')
+          document.getElementById('menuQuickStockUpdate'),
+          document.getElementById('menuUserManagement') // Added User Management
       ].filter(item => item !== null);
       const activeMenuClasses = ['bg-gray-300', 'dark:bg-slate-700', 'font-semibold', 'text-gray-900', 'dark:text-white'];
       const inactiveMenuClasses = ['text-gray-700', 'dark:text-gray-300', 'hover:bg-gray-300', 'dark:hover:bg-slate-700'];
@@ -240,6 +281,76 @@ async function displayBarcodeModeActionQRCodes() {
 
 // END OF FUNCTIONS TO ADD
 
+async function displayUserRoleManagement() {
+  const tableBody = document.getElementById('userRolesTableBody');
+  if (!tableBody) return;
+
+  tableBody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Loading users...</td></tr>';
+
+  try {
+    // IMPORTANT: This will call a Cloud Function that needs to be created in a later step.
+    // For now, we define the call. The Cloud Function will be named 'listUsersAndRoles'.
+    const listUsersAndRolesCallable = firebase.functions().httpsCallable('listUsersAndRoles');
+    const result = await listUsersAndRolesCallable(); // Call the function
+    const users = result.data.users; // Assuming CF returns { users: [...] }
+
+    tableBody.innerHTML = ''; // Clear loading message
+
+    if (!users || users.length === 0) {
+      tableBody.innerHTML = '<tr><td colspan="5" class="text-center p-4">No users found.</td></tr>';
+      return;
+    }
+
+    users.forEach(user => {
+      const row = tableBody.insertRow();
+      row.innerHTML = `
+        <td class="px-6 py-4 whitespace-nowrap">${user.email || 'N/A'}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-xs">${user.uid}</td>
+        <td class="px-6 py-4 whitespace-nowrap">${user.currentRole || 'No Role Assigned'}</td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <select id="roleSelect-${user.uid}" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200">
+            <option value="staff" ${(user.currentRole === 'staff' || !user.currentRole) ? 'selected' : ''}>Staff</option>
+            <option value="admin" ${user.currentRole === 'admin' ? 'selected' : ''}>Admin</option>
+          </select>
+        </td>
+        <td class="px-6 py-4 text-center">
+          <button data-uid="${user.uid}" class="save-role-btn bg-blue-500 hover:bg-blue-600 text-white p-2 rounded text-xs">Save Role</button>
+        </td>
+      `;
+    });
+
+    // Add event listeners to new "Save Role" buttons
+    document.querySelectorAll('.save-role-btn').forEach(button => {
+      button.addEventListener('click', async (event) => {
+        const userId = event.target.dataset.uid;
+        const newRole = document.getElementById(`roleSelect-${userId}`).value;
+        await handleSaveUserRole(userId, newRole);
+      });
+    });
+
+  } catch (error) {
+    console.error("Error fetching or displaying users for role management:", error);
+    tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-red-500">Error loading users: ${error.message}</td></tr>`;
+  }
+}
+
+async function handleSaveUserRole(userId, newRole) {
+  if (!userId || !newRole) {
+    alert('User ID or new role is missing.');
+    return;
+  }
+  console.log(`Attempting to set role for ${userId} to ${newRole}`);
+  try {
+    await db.collection('user_roles').doc(userId).set({ role: newRole });
+    alert(`Role for user ${userId} successfully updated to ${newRole}.`);
+    // Refresh the user list to show updated role
+    displayUserRoleManagement();
+  } catch (error) {
+    console.error("Error saving user role:", error);
+    alert(`Failed to save role for user ${userId}: ${error.message}`);
+  }
+}
+
 function debounce(func, delay) {
   let timeout;
   return function(...args) {
@@ -309,34 +420,68 @@ try {
 
     // Listen for auth state changes
     auth.onAuthStateChanged((user) => {
+      const logoutBtn = document.getElementById('logoutButton'); // Get it here as it's part of appNavbar
+      const authContainer = document.getElementById('authContainer');
+      const appNavbar = document.getElementById('appNavbar');
+      const appMainContainer = document.getElementById('appMainContainer');
+
       if (user) {
-        // User is signed in anonymously.
-        console.log("User signed in anonymously:", user.uid);
-        // You can access user.uid here.
-        // Potentially, re-load data or enable UI elements that depend on auth.
-        if (typeof loadInventory === 'function') {
-          console.log("Auth state changed: User signed in. Reloading inventory.");
-          // loadInventory(); // Temporarily commenting out to avoid potential loadInventory issues before it's fully defined or if it has side effects not desired on initial auth.
-        } else {
-          console.log("Auth state changed: User signed in. loadInventory function not found globally, or not yet defined.");
-        }
+        console.log('Auth state changed: User is signed in', user.email || user.uid);
+        if (authContainer) authContainer.classList.add('hidden');
+        if (appNavbar) appNavbar.classList.remove('hidden');
+        if (appMainContainer) appMainContainer.classList.remove('hidden');
+        if (logoutBtn) logoutBtn.classList.remove('hidden');
+
+        loadInventory();
+        loadSuppliers();
+        loadLocations();
+
+        const userRoleRef = db.collection('user_roles').doc(user.uid);
+        userRoleRef.get().then(docSnapshot => {
+          if (docSnapshot.exists) {
+            currentUserRole = docSnapshot.data().role;
+            console.log('User role loaded:', currentUserRole);
+          } else {
+            // If it's a new user (e.g., via Google Sign-In and no role doc yet), default to 'staff'.
+            // The Google Sign-In logic should ideally create this doc.
+            currentUserRole = 'staff';
+            console.log('No specific role found for user, defaulting to:', currentUserRole);
+          }
+          updateUserInterfaceForRole(currentUserRole);
+
+          const menuInventoryEl = document.getElementById('menuInventory');
+          if (menuInventoryEl) {
+              showView('inventoryViewContainer', menuInventoryEl.id);
+          } else {
+              console.warn("Default menu item 'menuInventory' not found after login.");
+          }
+        }).catch(error => {
+          console.error("Error fetching user role:", error);
+          currentUserRole = 'staff'; // Fallback
+          updateUserInterfaceForRole(currentUserRole);
+          const menuInventoryEl = document.getElementById('menuInventory');
+          if (menuInventoryEl) {
+              showView('inventoryViewContainer', menuInventoryEl.id);
+          }
+        });
+
       } else {
         // User is signed out.
-        console.log("User is signed out. Attempting anonymous sign-in.");
-        auth.signInAnonymously()
-          .then(() => {
-            console.log("Anonymous sign-in successful after detecting user was out.");
-            // User is now signed in. onAuthStateChanged will be called again.
-          })
-          .catch((error) => {
-            console.error("Anonymous sign-in error:", error.code, error.message);
-            // Handle sign-in errors here (e.g., display a message to the user)
-            alert("Authentication failed: " + error.message + "\nPlease ensure Anonymous sign-in is enabled in your Firebase project's Authentication settings and that your Firebase configuration is correct, and that the domains are correctly whitelisted if running locally for testing.");
-          });
+        console.log('Auth state changed: User is signed out');
+        if (authContainer) authContainer.classList.remove('hidden');
+        if (appNavbar) appNavbar.classList.add('hidden');
+        if (appMainContainer) appMainContainer.classList.add('hidden');
+        if (logoutBtn) logoutBtn.classList.add('hidden');
+        currentUserRole = null;
+        updateUserInterfaceForRole(null);
       }
     });
 
-    // Attempt initial anonymous sign-in if no user is initially detected by onAuthStateChanged
+    // Initial check if a user is already signed in (e.g. page refresh)
+    // If not, Firebase will handle anonymous sign-in if configured, or user needs to log in.
+    // The onAuthStateChanged listener will manage UI updates based on the auth state.
+    // No explicit signInAnonymously call here unless onAuthStateChanged logic is insufficient.
+    // The existing onAuthStateChanged handles the anonymous sign-in if user is null.
     if (!auth.currentUser) {
         console.log("No current user on app load, attempting initial anonymous sign-in.");
         auth.signInAnonymously()
@@ -3211,21 +3356,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   const menuOrders = document.getElementById('menuOrders');
   const menuReports = document.getElementById('menuReports');
   const menuQuickStockUpdate = document.getElementById('menuQuickStockUpdate');
+  const menuUserManagement = document.getElementById('menuUserManagement'); // Added
 
-  const menuItems = [menuInventory, menuSuppliers, menuOrders, menuReports, menuQuickStockUpdate].filter(item => item !== null);
+  const menuItems = [menuInventory, menuSuppliers, menuOrders, menuReports, menuQuickStockUpdate, menuUserManagement].filter(item => item !== null); // Added menuUserManagement
 
   const inventoryViewContainer = document.getElementById('inventoryViewContainer');
   const suppliersSectionContainer = document.getElementById('suppliersSectionContainer');
   const ordersSectionContainer = document.getElementById('ordersSectionContainer');
   const reportsSectionContainer = document.getElementById('reportsSectionContainer');
   const quickStockUpdateContainer = document.getElementById('quickStockUpdateContainer');
+  const userManagementSectionContainer = document.getElementById('userManagementSectionContainer'); // Added
 
   const allViewContainers = [
       inventoryViewContainer,
       suppliersSectionContainer,
       ordersSectionContainer,
       reportsSectionContainer,
-      quickStockUpdateContainer
+      quickStockUpdateContainer,
+      userManagementSectionContainer // Added
   ].filter(container => container !== null);
 
   const activeMenuClasses = ['bg-gray-300', 'dark:bg-slate-700', 'font-semibold', 'text-gray-900', 'dark:text-white'];
@@ -3297,6 +3445,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             const container = document.getElementById('barcodeModeActionQRCodesContainer');
             if(container) container.innerHTML = "<p class='text-red-500 col-span-full'>Error: QR Code library failed to load. Cannot display action QR codes.</p>";
         });
+    });
+  }
+
+  if (menuUserManagement) {
+    menuUserManagement.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (typeof showView === 'function') {
+        showView('userManagementSectionContainer', 'menuUserManagement');
+      } else {
+        console.error('showView function is not defined when trying to open User Management.');
+      }
     });
   }
   
