@@ -208,11 +208,13 @@ const authContainer = document.getElementById('authContainer');
 const appNavbar = document.getElementById('appNavbar');
 const appMainContainer = document.getElementById('appMainContainer');
 const loginForm = document.getElementById('loginForm');
-const emailInput = document.getElementById('email');
+const emailInput = document.getElementById('email'); // Used by login, signup, and forgot password
 const passwordInput = document.getElementById('password');
+const confirmPasswordInput = document.getElementById('confirmPassword');
 // loginButton is implicitly handled by form submit
 const signUpButton = document.getElementById('signUpButton');
 const authErrorMessage = document.getElementById('authErrorMessage');
+// Forgot Password button will be fetched in DOMContentLoaded
 
 
 try {
@@ -283,18 +285,59 @@ try {
   }
 }
 
+// Password Visibility Toggle Function
+function setupPasswordVisibilityToggle(inputId, toggleButtonId, eyeIconId, eyeSlashIconId) {
+  const passwordInput = document.getElementById(inputId);
+  const toggleButton = document.getElementById(toggleButtonId);
+  const eyeIcon = document.getElementById(eyeIconId);
+  const eyeSlashIcon = document.getElementById(eyeSlashIconId);
 
-// Auth UI Helper Functions
-function displayAuthError(message) {
-  if (authErrorMessage) {
-    authErrorMessage.textContent = message;
-    authErrorMessage.classList.remove('hidden');
+  if (passwordInput && toggleButton && eyeIcon && eyeSlashIcon) {
+    toggleButton.addEventListener('click', () => {
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        eyeIcon.classList.add('hidden');
+        eyeSlashIcon.classList.remove('hidden');
+      } else {
+        passwordInput.type = 'password';
+        eyeSlashIcon.classList.add('hidden');
+        eyeIcon.classList.remove('hidden');
+      }
+    });
+  } else {
+    console.warn(`Password visibility toggle elements not found for input: ${inputId}`);
   }
 }
-function clearAuthError() {
+
+
+// Auth UI Helper Functions
+function displayAuthMessage(message, type = 'error') {
+    if (authErrorMessage) {
+        authErrorMessage.textContent = message;
+        authErrorMessage.classList.remove('hidden');
+        // Clear previous type classes
+        authErrorMessage.classList.remove(
+            'text-red-700', 'bg-red-100', 'dark:bg-red-200', 'dark:text-red-800',
+            'text-green-700', 'bg-green-100', 'dark:bg-green-200', 'dark:text-green-800'
+        );
+
+        if (type === 'error') {
+            authErrorMessage.classList.add('text-red-700', 'bg-red-100', 'dark:bg-red-200', 'dark:text-red-800');
+        } else if (type === 'success') {
+            authErrorMessage.classList.add('text-green-700', 'bg-green-100', 'dark:bg-green-200', 'dark:text-green-800');
+        }
+    }
+}
+
+function clearAuthError() { // Renamed to clearAuthMessage for consistency, or keep as is if only for errors
   if (authErrorMessage) {
     authErrorMessage.textContent = '';
     authErrorMessage.classList.add('hidden');
+    // Ensure all type-specific classes are removed when clearing
+    authErrorMessage.classList.remove(
+        'text-red-700', 'bg-red-100', 'dark:bg-red-200', 'dark:text-red-800',
+        'text-green-700', 'bg-green-100', 'dark:bg-green-200', 'dark:text-green-800'
+    );
   }
 }
 
@@ -304,13 +347,18 @@ async function handleSignUp(event) {
   clearAuthError();
   const email = emailInput.value;
   const password = passwordInput.value;
+  const confirmPassword = confirmPasswordInput.value;
 
-  if (!email || !password) {
-    displayAuthError('Email and password are required.');
+  if (!email || !password || !confirmPassword) {
+    displayAuthMessage('Email, password, and confirm password are required.', 'error');
     return;
   }
   if (password.length < 6) {
-    displayAuthError('Password should be at least 6 characters.');
+    displayAuthMessage('Password should be at least 6 characters.', 'error');
+    return;
+  }
+  if (password !== confirmPassword) {
+    displayAuthMessage('Passwords do not match.', 'error');
     return;
   }
 
@@ -320,7 +368,7 @@ async function handleSignUp(event) {
     if(loginForm) loginForm.reset();
     // onAuthStateChanged will handle UI update
   } catch (error) {
-    displayAuthError(error.message);
+    displayAuthMessage(error.message, 'error');
     console.error('Sign up error:', error);
   }
 }
@@ -332,7 +380,7 @@ async function handleLogin(event) {
   const password = passwordInput.value;
 
   if (!email || !password) {
-    displayAuthError('Email and password are required.');
+    displayAuthMessage('Email and password are required.', 'error');
     return;
   }
 
@@ -342,9 +390,31 @@ async function handleLogin(event) {
     if(loginForm) loginForm.reset();
     // onAuthStateChanged will handle UI update
   } catch (error) {
-    displayAuthError(error.message);
+    displayAuthMessage(error.message, 'error');
     console.error('Login error:', error);
   }
+}
+
+async function handleForgotPassword() {
+    clearAuthError();
+    const email = emailInput.value;
+
+    if (!email) {
+        displayAuthMessage('Please enter your email address to reset your password.', 'error');
+        return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(email)) { // Basic email format check
+        displayAuthMessage('Please enter a valid email address.', 'error');
+        return;
+    }
+
+    try {
+        await auth.sendPasswordResetEmail(email);
+        displayAuthMessage(`Password reset email sent to ${email}. Please check your inbox (and spam folder).`, 'success');
+    } catch (error) {
+        console.error('Forgot password error:', error);
+        displayAuthMessage(error.message, 'error');
+    }
 }
 
 function handleLogout() {
@@ -3194,9 +3264,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         signUpButton.addEventListener('click', handleSignUp);
     }
     const logoutButton = document.getElementById('logoutButton');
+    const logoutButton = document.getElementById('logoutButton');
     if (logoutButton) {
         logoutButton.addEventListener('click', handleLogout);
     }
+    const forgotPasswordButton = document.getElementById('forgotPasswordButton');
+    if (forgotPasswordButton) {
+        forgotPasswordButton.addEventListener('click', handleForgotPassword);
+    }
+
+    // Setup password visibility toggles
+    setupPasswordVisibilityToggle('password', 'togglePasswordVisibility', 'eyeIconPassword', 'eyeSlashIconPassword');
+    setupPasswordVisibilityToggle('confirmPassword', 'toggleConfirmPasswordVisibility', 'eyeIconConfirmPassword', 'eyeSlashIconConfirmPassword');
 
     initializeImageObserver();
     await ensureQRCodeIsAvailable();
