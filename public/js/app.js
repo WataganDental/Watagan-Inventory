@@ -475,17 +475,34 @@ try {
 
     // Listen for auth state changes
     auth.onAuthStateChanged((user) => {
-      const logoutBtn = document.getElementById('logoutButton'); // Get it here as it's part of appNavbar
+      const logoutBtn = document.getElementById('logoutButton');
       const authContainer = document.getElementById('authContainer');
       const appNavbar = document.getElementById('appNavbar');
       const appMainContainer = document.getElementById('appMainContainer');
+      const userProfileImage = document.getElementById('userProfileImage'); // Get profile image element
 
       if (user) {
-        console.log('Auth state changed: User is signed in', user.email || user.uid);
+        console.log('Auth state changed: User is signed in', user.email || user.uid, 'Photo URL:', user.photoURL);
         if (authContainer) authContainer.classList.add('hidden');
         if (appNavbar) appNavbar.classList.remove('hidden');
         if (appMainContainer) appMainContainer.classList.remove('hidden');
         if (logoutBtn) logoutBtn.classList.remove('hidden');
+
+        if (userProfileImage) {
+          if (user.photoURL) {
+            userProfileImage.src = user.photoURL;
+            userProfileImage.alt = user.displayName || user.email || 'User profile';
+            userProfileImage.src = user.photoURL;
+            userProfileImage.alt = user.displayName || user.email || 'User profile';
+            userProfileImage.classList.remove('hidden');
+          } else {
+            // Use a generic SVG icon as a data URI if no photoURL
+            const defaultUserIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M18.685 19.097A9.723 9.723 0 0021.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 003.065 7.097A9.716 9.716 0 0012 21.75a9.716 9.716 0 006.685-2.653zm-12.54-1.285A7.486 7.486 0 0112 15a7.486 7.486 0 015.855 2.812A8.224 8.224 0 0112 20.25a8.224 8.224 0 01-5.855-2.438zM15.75 9a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" clip-rule="evenodd" /></svg>';
+            userProfileImage.src = `data:image/svg+xml;base64,${btoa(defaultUserIconSvg)}`;
+            userProfileImage.alt = user.displayName || user.email || 'User profile (default icon)';
+            userProfileImage.classList.remove('hidden'); // Ensure it's visible
+          }
+        }
 
         loadInventory();
         loadSuppliers();
@@ -529,6 +546,11 @@ try {
         if (logoutBtn) logoutBtn.classList.add('hidden');
         currentUserRole = null;
         updateUserInterfaceForRole(null);
+        if (userProfileImage) { // Hide and reset profile image on logout
+          userProfileImage.classList.add('hidden');
+          userProfileImage.src = '#';
+          userProfileImage.alt = 'User';
+        }
         // auth.signInAnonymously() // Commented out as per requirement
         //   .then(() => {
         //     console.log("Anonymous sign-in successful after detecting user was out.");
