@@ -315,6 +315,17 @@ async function populateProductsDropdown() {
 
 async function loadAndDisplayOrders() {
   try {
+    const user = firebase.auth().currentUser; // Get current user
+    if (!user) {
+      console.error('Error loading orders: No authenticated user found.');
+      // Display some error to the user in the UI
+      if (document.getElementById('ordersContainer')) {
+        document.getElementById('ordersContainer').innerHTML = '<p class="text-red-500 dark:text-red-400">Error: You must be logged in to view orders.</p>';
+      }
+      return;
+    }
+    console.log(`[loadAndDisplayOrders] Current user UID: ${user.uid}, Role: ${currentUserRole}`); // Log UID and role
+
     const db = firebase.firestore(); // Ensures db is from the correct Firebase instance
     const snapshot = await db.collection('orders').get(); // Consider adding .orderBy() if needed
     const ordersContainer = document.getElementById('ordersContainer'); // Adjust ID to match your HTML
