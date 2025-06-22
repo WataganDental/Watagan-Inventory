@@ -1,47 +1,49 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Rules for 'locations' collection
-    match /locations/{locationId} { // Changed {document} to {locationId} for clarity
-      // Admins can write (create, update, delete)
-      allow write: if request.auth != null && request.auth.token.admin == true;
-      // Any authenticated user (including admins) can read
-      allow read: if request.auth != null;
+    // Helper function to check authentication
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    // Rules for 'suppliers' collection
-    match /suppliers/{supplierId} { // Changed {document} to {supplierId} for clarity
-      // Admins can write (create, update, delete)
-      allow write: if request.auth != null && request.auth.token.admin == true;
-      // Any authenticated user (including admins) can read
-      allow read: if request.auth != null;
+    // Helper function to check admin role
+    function isUserAdmin() {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/user_roles/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Rules for 'inventory' collection
-    // TODO: Define specific rules for the 'inventory' collection based on application needs.
-    // Example: Allow authenticated users to read, and admins to write.
-    match /inventory/{itemId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.token.admin == true; // Example: Admins can write
+    // Helper function to check staff role
+    function isUserStaff() {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/user_roles/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.role == 'staff';
     }
 
-    // Rules for 'user_roles' collection
-    // TODO: Define specific rules for the 'user_roles' collection.
-    // This is critical for security and functionality of user role management.
+    // Rules for user_roles collection
     match /user_roles/{userId} {
-      // Example: Only the user themselves or an admin can read their roles
-      allow read: if request.auth != null && (request.auth.uid == userId || request.auth.token.admin == true);
-      // Example: Only admins can write/modify roles
-      allow write: if request.auth != null && request.auth.token.admin == true;
+      // Allow authenticated users to read their own role
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      // Allow admins to read/write any role
+      allow read, write: if isUserAdmin();
     }
 
-    // Add rules for any other collections your app uses (e.g., 'orders')
-    // match /orders/{orderId} {
-    //   // Example: Authenticated users can create orders
-    //   allow create: if request.auth != null;
-    //   // Example: Users can read/update/delete their own orders, admins can manage all orders
-    //   allow read, update, delete: if request.auth != null && (resource.data.userId == request.auth.uid || request.auth.token.admin == true);
-    // }
+    // Rules for inventory collection
+    match /inventory/{document} {
+      allow read: if isUserAdmin() || isUserStaff(); // Admins and staff can read
+      allow write: if isUserAdmin(); // Only admins can write
+    }
+
+    // Rules for suppliers collection (working as per logs)
+    match /suppliers/{document} {
+      allow read: if isUserAdmin() || isUserStaff();
+      allow write: if isUserAdmin();
+    }
+
+    // Rules for locations collection (working as per logs)
+    match /locations/{document} {
+      allow read: if isUserAdmin() || isUserStaff();
+      allow write: if isUserAdmin();
+    }
   }
 }
