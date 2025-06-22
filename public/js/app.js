@@ -314,51 +314,92 @@ async function populateProductsDropdown() {
 }
 
 async function loadAndDisplayOrders() {
-  try {
-    const user = firebase.auth().currentUser; // Get current user
-    if (!user) {
-      console.error('Error loading orders: No authenticated user found.');
-      // Display some error to the user in the UI
-      if (document.getElementById('ordersContainer')) {
-        document.getElementById('ordersContainer').innerHTML = '<p class="text-red-500 dark:text-red-400">Error: You must be logged in to view orders.</p>';
-      }
-      return;
-    }
-    console.log(`[loadAndDisplayOrders] Current user UID: ${user.uid}, Role: ${currentUserRole}`); // Log UID and role
+  console.log('[loadAndDisplayOrders] Attempting to load and display orders.');
+  const ordersTableBody = document.getElementById('ordersTableBody');
+  const ordersContainerFallback = document.getElementById('ordersContainer'); // Fallback if table body not found or for general messages
 
-    const db = firebase.firestore(); // Ensures db is from the correct Firebase instance
-    const snapshot = await db.collection('orders').get(); // Consider adding .orderBy() if needed
-    const ordersContainer = document.getElementById('ordersContainer'); // Adjust ID to match your HTML
-    if (!ordersContainer) {
-      console.error('Orders container element with ID "ordersContainer" not found');
+  if (!ordersTableBody) {
+    console.error('[loadAndDisplayOrders] Critical: HTML element with ID "ordersTableBody" not found.');
+    if (ordersContainerFallback) {
+        ordersContainerFallback.innerHTML = '<p class="text-red-500 dark:text-red-400">Error: UI element for orders missing (ordersTableBody). Cannot display orders.</p>';
+    }
+    return;
+  }
+
+  try {
+    const user = firebase.auth().currentUser;
+    console.log('[loadAndDisplayOrders] Current user:', user ? { uid: user.uid, email: user.email, role: currentUserRole } : 'No user logged in');
+
+    if (!user) {
+      console.error('[loadAndDisplayOrders] No authenticated user found.');
+      ordersTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-red-500 dark:text-red-400">Error: You must be logged in to view orders.</td></tr>';
       return;
     }
-    ordersContainer.innerHTML = ''; // Clear existing content
+
+    console.log(`[loadAndDisplayOrders] Current user UID: ${user.uid}, Role: ${currentUserRole}`);
+
+    const db = firebase.firestore();
+    console.log('[loadAndDisplayOrders] Fetching orders from Firestore collection "orders".');
+    const ordersQuery = db.collection('orders'); // Define query for logging
+    // Example: const ordersQuery = db.collection('orders').orderBy('createdAt', 'desc');
+    const snapshot = await ordersQuery.get();
+
+    console.log(`[loadAndDisplayOrders] Snapshot received. Empty: ${snapshot.empty}, Size: ${snapshot.size}`);
+
+    ordersTableBody.innerHTML = ''; // Clear existing content (like "Loading orders...")
 
     if (snapshot.empty) {
-      ordersContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400">No orders found.</p>';
-      console.log('No orders found in the database.');
+      ordersTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-gray-500 dark:text-gray-400">No orders found in the database.</td></tr>';
+      console.log('[loadAndDisplayOrders] No orders found in the database.');
       return;
     }
 
     snapshot.forEach(doc => {
       const orderData = doc.data();
-      const div = document.createElement('div');
-      div.className = 'p-2 border-b dark:border-slate-700'; // Basic styling
-      // Adjust fields based on your actual 'orders' document structure
-      div.textContent = `Order ID: ${doc.id}, Product ID: ${orderData.productId || 'N/A'}, Quantity: ${orderData.quantity || 'N/A'}`;
-      // Example of adding more details:
-      // if (orderData.customerName) div.textContent += `, Customer: ${orderData.customerName}`;
-      // if (orderData.createdAt && orderData.createdAt.toDate) {
-      //   div.textContent += `, Date: ${orderData.createdAt.toDate().toLocaleDateString()}`;
-      // }
-      ordersContainer.appendChild(div);
+      console.log(`[loadAndDisplayOrders] Processing order doc ID: ${doc.id}, Data:`, JSON.stringify(orderData));
+
+      const row = ordersTableBody.insertRow();
+      row.className = 'border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-750'; // Added hover effect
+
+      // Matching the table structure in public/index.html for orders
+      // Order ID, Product Name, Quantity, Status, Order Date, Actions
+      const cellOrderId = row.insertCell();
+      cellOrderId.className = 'px-4 py-2 whitespace-nowrap';
+      cellOrderId.textContent = doc.id;
+
+      const cellProductName = row.insertCell();
+      cellProductName.className = 'px-4 py-2';
+      // Assuming product name needs to be fetched or is stored with the order.
+      // For now, using productId, will need adjustment if product name is expected.
+      cellProductName.textContent = orderData.productName || orderData.productId || 'N/A'; // Prefer productName if available
+
+      const cellQuantity = row.insertCell();
+      cellQuantity.className = 'px-4 py-2 text-center';
+      cellQuantity.textContent = orderData.quantity || 'N/A';
+
+      const cellStatus = row.insertCell();
+      cellStatus.className = 'px-4 py-2';
+      cellStatus.textContent = orderData.status || 'Pending'; // Default to 'Pending' if no status
+
+      const cellOrderDate = row.insertCell();
+      cellOrderDate.className = 'px-4 py-2 whitespace-nowrap';
+      cellOrderDate.textContent = orderData.createdAt && orderData.createdAt.toDate
+                                  ? orderData.createdAt.toDate().toLocaleDateString()
+                                  : 'N/A';
+
+      const cellActions = row.insertCell();
+      cellActions.className = 'px-4 py-2 text-center whitespace-nowrap';
+      // Add action buttons if needed, e.g., view details, update status
+      cellActions.innerHTML = `<button class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-xs" onclick="viewOrderDetails('${doc.id}')">View</button>`;
+      // Note: viewOrderDetails function would need to be implemented.
     });
-    console.log('Orders loaded and displayed successfully');
+    console.log('[loadAndDisplayOrders] Orders loaded and displayed successfully into ordersTableBody.');
+
   } catch (error) {
-    console.error('Error loading and displaying orders:', error);
-    if (document.getElementById('ordersContainer')) {
-        document.getElementById('ordersContainer').innerHTML = '<p class="text-red-500 dark:text-red-400">Error loading orders. Please check console.</p>';
+    console.error('[loadAndDisplayOrders] Error loading and displaying orders:', error.message, error.stack ? error.stack : '');
+    ordersTableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-red-500 dark:text-red-400">Error loading orders. Details: ${error.message}. Check console.</td></tr>`;
+    if (ordersContainerFallback && ordersTableBody !== ordersContainerFallback) { // If using a different general container for high-level errors
+        ordersContainerFallback.innerHTML = `<p class="text-red-500 dark:text-red-400">Error loading orders. Please check console.</p>`;
     }
   }
 }
