@@ -1,5 +1,5 @@
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
-const { onCall } = require("firebase-functions/v2/https");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getAuth } = require("firebase-admin/auth");
@@ -46,7 +46,7 @@ exports.listUsersAndRoles = onCall(
   { region: "us-central1" },
   async (context) => {
     if (!context.auth) {
-      throw new Error("The function must be called while authenticated.");
+      throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
 
     const callerUid = context.auth.uid;
@@ -56,7 +56,7 @@ exports.listUsersAndRoles = onCall(
       userRoleDoc = await getFirestore().collection("user_roles").doc(callerUid).get();
     } catch (error) {
       console.error("Firestore error when checking admin role for caller:", callerUid, error);
-      throw new Error(`Failed to retrieve user role information: ${error.message}`);
+      throw new HttpsError("internal", `Failed to retrieve user role information: ${error.message}`);
     }
 
     if (!userRoleDoc.exists || userRoleDoc.data().role !== "admin") {
@@ -65,7 +65,7 @@ exports.listUsersAndRoles = onCall(
           userRoleDoc.exists ? userRoleDoc.data().role : "document_does_not_exist"
         }`
       );
-      throw new Error("Caller is not an admin.");
+      throw new HttpsError("permission-denied", "Caller is not an admin.");
     }
 
     try {
@@ -102,11 +102,10 @@ exports.listUsersAndRoles = onCall(
           (error.message && error.message.toLowerCase().includes('permission denied')) ||
           (error.errorInfo && error.errorInfo.code && error.errorInfo.code.includes('auth/'))) { // Broader check for auth related errors
         console.error("Detailed error from Firebase Admin SDK (likely IAM):", JSON.stringify(error, null, 2));
-        // For onCall functions, we should throw an HttpsError
-        throw new functions.https.HttpsError('permission-denied', `The function's service account has insufficient permission to list users. Please ensure it has a role like 'Firebase Authentication Admin' or specifically the 'firebaseauth.users.list' permission. Original error: ${error.message}`);
+        throw new HttpsError('permission-denied', `The function's service account has insufficient permission to list users. Please ensure it has a role like 'Firebase Authentication Admin' or specifically the 'firebaseauth.users.list' permission. Original error: ${error.message}`);
       }
       // Fallback for other types of errors
-      throw new functions.https.HttpsError('internal', `Unable to list users and their roles. Original error: ${error.message}`);
+      throw new HttpsError('internal', `Unable to list users and their roles. Original error: ${error.message}`);
     }
   }
 );
