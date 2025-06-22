@@ -95,7 +95,18 @@ exports.listUsersAndRoles = onCall(
       return { users: usersWithRoles };
     } catch (error) {
       console.error("Error listing users or their roles:", error);
-      throw new Error("Unable to list users and their roles.");
+      // Check for common permission-denied error codes/messages from Firebase Admin SDK
+      // Firebase Admin SDK often uses error.code like 'auth/insufficient-permission'
+      // or sometimes a generic 'permission-denied' might appear in the message or code.
+      if (error.code === 'auth/insufficient-permission' ||
+          (error.message && error.message.toLowerCase().includes('permission denied')) ||
+          (error.errorInfo && error.errorInfo.code && error.errorInfo.code.includes('auth/'))) { // Broader check for auth related errors
+        console.error("Detailed error from Firebase Admin SDK (likely IAM):", JSON.stringify(error, null, 2));
+        // For onCall functions, we should throw an HttpsError
+        throw new functions.https.HttpsError('permission-denied', `The function's service account has insufficient permission to list users. Please ensure it has a role like 'Firebase Authentication Admin' or specifically the 'firebaseauth.users.list' permission. Original error: ${error.message}`);
+      }
+      // Fallback for other types of errors
+      throw new functions.https.HttpsError('internal', `Unable to list users and their roles. Original error: ${error.message}`);
     }
   }
 );
