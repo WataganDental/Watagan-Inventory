@@ -3258,11 +3258,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     initializeImageObserver();
     await ensureQRCodeIsAvailable();
-    loadInventory();
-
-    await loadSuppliers();
-    await loadLocations();
-    addBatchEntry();
+    // loadInventory(); // Moved to onAuthStateChanged to prevent premature calls
+    // await loadSuppliers(); // Moved to onAuthStateChanged to prevent premature calls
+    // await loadLocations(); // Moved to onAuthStateChanged to prevent premature calls
+    addBatchEntry(); // This might be okay here if it doesn't require auth, or it might need to move too. Assuming it's for UI setup.
 
     console.log('DOMContentLoaded: About to schedule collapsible section initialization.');
     setTimeout(() => {
