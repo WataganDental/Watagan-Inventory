@@ -136,3 +136,14 @@ body {
   max-height: 100%;
   object-fit: contain; /* Ensures the canvas scales down to fit, preserving aspect ratio */
 }
+
+/* Background color for inventory rows with pending orders */
+.inventory-row-pending-order {
+  background-color: #FEF3C7; /* Amber-100 for light mode */
+}
+
+.dark .inventory-row-pending-order {
+  background-color: #B45309; /* Amber-700 for dark mode (Tailwind: #b45309) */
+  /* If you want text color to adapt in dark mode for these rows, add: */
+  /* color: #FDE68A; */ /* Example: Amber-200 for lighter text on dark amber */
+}

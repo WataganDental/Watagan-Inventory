@@ -1461,18 +1461,29 @@ async function moveProduct() {
 }
 
 // Inventory Management
+let productIdsWithPendingOrders = []; // Global or module-scoped variable
+
 async function loadInventory() {
   try {
     console.log('Fetching inventory from Firestore...');
-    const snapshot = await db.collection('inventory').get();
-    console.log('Inventory snapshot:', snapshot.size, 'documents');
-    inventory = snapshot.docs.map(doc => doc.data());
+    const inventorySnapshot = await db.collection('inventory').get();
+    console.log('Inventory snapshot:', inventorySnapshot.size, 'documents');
+    inventory = inventorySnapshot.docs.map(doc => doc.data());
     console.log('Inventory loaded:', inventory);
+
+    // Fetch pending orders to identify products
+    console.log('Fetching pending orders...');
+    const ordersSnapshot = await db.collection('orders').where('status', '==', 'Pending').get();
+    productIdsWithPendingOrders = ordersSnapshot.docs.map(doc => doc.data().productId);
+    // Remove duplicates, if any product has multiple pending orders
+    productIdsWithPendingOrders = [...new Set(productIdsWithPendingOrders)];
+    console.log('Product IDs with pending orders:', productIdsWithPendingOrders);
+
     currentPage = 1; // Reset to page 1 on initial load
-    applyAndRenderInventoryFilters();
+    applyAndRenderInventoryFilters(); // This will call updateInventoryTable, which now needs access to productIdsWithPendingOrders
     await updateToOrderTable();
   } catch (error) {
-    console.error('Error loading inventory:', error);
+    console.error('Error loading inventory or pending orders:', error);
     alert('Failed to load inventory: ' + error.message);
   }
 }
@@ -1558,7 +1569,15 @@ function updateInventoryTable(itemsToDisplay) {
 
   itemsToDisplay.forEach(item => {
     const row = document.createElement('tr');
-    row.className = item.quantity <= item.minQuantity ? 'bg-red-100 dark:bg-red-800/60' : '';
+    const isLowStock = item.quantity <= item.minQuantity;
+    const hasPendingOrder = productIdsWithPendingOrders.includes(item.id);
+
+    if (isLowStock) {
+      row.className = 'bg-red-100 dark:bg-red-800/60';
+    } else if (hasPendingOrder) {
+      row.className = 'inventory-row-pending-order'; // New class for pending order background
+    }
+
     // NOTE: Images are displayed as w-16 h-16 thumbnails via CSS.
     // However, the item.photo URL likely points to the original uploaded image.
     // For optimal performance and reduced data usage, it is highly recommended
