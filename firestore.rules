@@ -2,56 +2,71 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions to get user's role and check authentication state
-    function getUserRole() {
-      return get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.role;
-    }
-    function isAdmin() {
-      return request.auth != null && getUserRole() == 'admin';
-    }
-    function isStaff() {
-      return request.auth != null && getUserRole() == 'staff';
-    }
+    // Function to check if the requesting user is authenticated.
     function isAuthenticated() {
       return request.auth != null;
     }
 
+    // Function to check if the *currently authenticated user* is an admin.
+    // This relies on the read rule for /user_roles/$(request.auth.uid) allowing this user to read their own role.
+    function isUserAdmin() {
+      // Check authentication first to prevent errors if request.auth is null.
+      // Then, attempt to get the user's role document and check the 'role' field.
+      return isAuthenticated() &&
+             get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Function to check if the *currently authenticated user* is staff.
+    function isUserStaff() {
+      return isAuthenticated() &&
+             get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.role == 'staff';
+    }
+
     // user_roles/{userId} collection
     match /user_roles/{userId} {
-      // Admins can read any user's role document.
-      // Authenticated users can only read their own role document.
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      // Allow read if:
+      // 1. The authenticated user is trying to read their OWN role document.
+      // OR
+      // 2. The authenticated user IS an admin (checked by reading THEIR OWN role, which is permitted by condition 1 for themselves).
+      allow read: if isAuthenticated() &&
+                    ( (request.auth.uid == userId) ||
+                      (get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.role == 'admin')
+                    );
 
-      // Only admins can create, update, or delete role documents.
-      allow create, update, delete: if isAdmin();
+      // Only users identified as admin (by isUserAdmin function) can create, update, or delete role documents.
+      allow create, update, delete: if isUserAdmin();
     }
 
     // inventory/{productId} collection
     match /inventory/{productId} {
       allow read: if isAuthenticated();
-      allow create: if isAdmin() || isStaff();
-      allow update: if isAdmin() || isStaff();
-      allow delete: if isAdmin();
+      allow create: if isUserAdmin() || isUserStaff();
+      allow update: if isUserAdmin() || isUserStaff();
+      allow delete: if isUserAdmin();
     }
 
     // orders/{orderId} collection
     match /orders/{orderId} {
       allow read: if isAuthenticated();
-      allow create: if isAdmin() || isStaff();
-      allow update: if isAdmin() || isStaff(); // Staff can update status
-      allow delete: if isAdmin(); // Admin can delete directly
+      allow create: if isUserAdmin() || isUserStaff();
+      allow update: if isUserAdmin() || isUserStaff();
+      allow delete: if isUserAdmin();
     }
 
     // suppliers/{supplierId} collection
     match /suppliers/{supplierId} {
+      // Any authenticated user can read supplier information.
       allow read: if isAuthenticated();
-      allow create, update, delete: if isAdmin();
+      // Only admins can create, update, or delete suppliers.
+      allow create, update, delete: if isUserAdmin();
     }
 
     // locations/{locationId} collection
     match /locations/{locationId} {
+      // Any authenticated user can read location information.
       allow read: if isAuthenticated();
-      allow create, update, delete: if isAdmin();
+      // Only admins can create, update, or delete locations.
+      allow create, update, delete: if isUserAdmin();
     }
 
     // Default deny-all rule for any path not explicitly matched
