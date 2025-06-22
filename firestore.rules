@@ -46,9 +46,9 @@ service cloud.firestore {
       allow write: if isUserAdmin();
     }
 
-    // Rules for orders collection
+    // Rules for orders collection (temporarily modified)
     match /orders/{orderId} {
-      allow read: if isUserAdmin() || isUserStaff();
+      allow read: if isAuthenticated(); // Temporarily allow any authenticated user to read
       allow write: if isUserAdmin(); // Only admins can create, update, delete
     }
   }
