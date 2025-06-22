@@ -3768,6 +3768,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   // and the functions they called (like handleProductSearch, handleSubmitQuickScanUpdate, processQuickStockScan etc.) have also been deleted.
   // The DOMContentLoaded listener no longer attempts to attach listeners to these non-existent elements.
 
+    // Logout Button Functionality
+    const logoutButton = document.getElementById('logoutButton');
+    if (logoutButton) {
+      logoutButton.addEventListener('click', () => {
+        if (firebase && firebase.auth) {
+          firebase.auth().signOut().then(() => {
+            console.log('User signed out successfully.');
+            // UI updates are handled by onAuthStateChanged
+          }).catch((error) => {
+            console.error('Sign out error:', error);
+            alert('Error signing out: ' + error.message);
+          });
+        } else {
+          console.error('Firebase auth instance not available for sign out.');
+          alert('Critical error: Firebase not correctly initialized. Cannot sign out.');
+        }
+      });
+    } else {
+      console.warn('Logout button (logoutButton) not found in DOM.');
+    }
+
     initializeImageObserver();
 
     // Test PDFLib functionality
