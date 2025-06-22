@@ -11,6 +11,8 @@
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-functions-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/ui/6.0.1/firebase-ui-auth.js"></script>
+  <link type="text/css" rel="stylesheet" href="https://www.gstatic.com/firebasejs/ui/6.0.1/firebase-ui-auth.css" />
   <script defer src="/__/firebase/init.js?useEmulator=true"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
@@ -23,12 +25,16 @@
     <div class="p-8 bg-white dark:bg-slate-800 shadow-xl rounded-lg w-full max-w-md">
       <h2 class="text-2xl font-bold text-center text-gray-900 dark:text-gray-100 mb-6">Inventory Login</h2>
 
-      <!-- Error Message Area -->
+      <!-- FirebaseUI Auth Container -->
+      <div id="firebaseui-auth-container"></div>
+
+      <!-- Error Message Area (can be used by FirebaseUI or custom logic if needed) -->
       <div id="authErrorMessage" class="hidden p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800" role="alert">
         <!-- Error messages will be inserted here by JavaScript -->
       </div>
 
-      <form id="loginForm">
+      <!-- Custom Login Form (now hidden, to be replaced by FirebaseUI) -->
+      <form id="loginForm" class="hidden">
         <div class="mb-4">
           <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email Address</label>
           <input type="email" id="email" name="email" required class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-slate-700 dark:text-gray-200">
@@ -78,8 +84,8 @@
         </div>
       </form>
 
-      <!-- "Or continue with" Divider and Google Sign-In Button -->
-      <div class="mt-6">
+      <!-- "Or continue with" Divider and Google Sign-In Button (also hidden, FirebaseUI provides its own) -->
+      <div class="mt-6 hidden" id="customGoogleSignInSection">
         <div class="relative">
           <div class="absolute inset-0 flex items-center">
             <div class="w-full border-t border-gray-300 dark:border-slate-600"></div>
