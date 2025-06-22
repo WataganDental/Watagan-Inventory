@@ -288,9 +288,9 @@ async function populateProductsDropdown() {
   try {
     const db = firebase.firestore(); // Ensures db is from the correct Firebase instance
     const snapshot = await db.collection('inventory').get();
-    const dropdown = document.getElementById('productDropdown'); // Adjust ID to match your HTML
+    const dropdown = document.getElementById('orderProductId'); // Adjusted ID to match HTML for orders section
     if (!dropdown) {
-      console.error('Dropdown element with ID "productDropdown" not found');
+      console.error('Dropdown element with ID "orderProductId" not found in orders section'); // Updated error message
       return;
     }
     dropdown.innerHTML = ''; // Clear existing options

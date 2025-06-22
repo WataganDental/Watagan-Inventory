@@ -45,5 +45,11 @@ service cloud.firestore {
       allow read: if isUserAdmin() || isUserStaff();
       allow write: if isUserAdmin();
     }
+
+    // Rules for orders collection
+    match /orders/{orderId} {
+      allow read: if isUserAdmin() || isUserStaff();
+      allow write: if isUserAdmin(); // Only admins can create, update, delete
+    }
   }
 }
