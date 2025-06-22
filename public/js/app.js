@@ -1631,7 +1631,7 @@ function updateInventoryTable(itemsToDisplay) {
 
 async function updateToOrderTable() {
   const snapshot = await db.collection('inventory').get();
-  let toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity);
+  let toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => (item.quantity + (item.quantityOrdered || 0)) <= item.minQuantity);
   const toOrderTable = document.getElementById('toOrderTable');
   toOrderTable.innerHTML = '';
 
