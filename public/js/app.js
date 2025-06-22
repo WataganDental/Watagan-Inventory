@@ -379,7 +379,19 @@ async function loadAndDisplayOrders() {
 
       const cellStatus = row.insertCell();
       cellStatus.className = 'px-4 py-2';
-      cellStatus.textContent = orderData.status || 'Pending'; // Default to 'Pending' if no status
+      const status = orderData.status || 'Pending'; // Default to 'Pending' if no status
+      cellStatus.textContent = status;
+
+      // Apply styling based on status
+      if (status === 'Pending') {
+        cellStatus.classList.add('status-pending');
+      } else if (status === 'Fulfilled' || status === 'fulfilled') { // Handle potential case variations
+        cellStatus.classList.add('status-fulfilled');
+      } else if (status === 'Cancelled' || status === 'cancelled') {
+        cellStatus.classList.add('status-cancelled');
+      } else {
+        cellStatus.classList.add('status-other');
+      }
 
       const cellOrderDate = row.insertCell();
       cellOrderDate.className = 'px-4 py-2 whitespace-nowrap';
@@ -3570,6 +3582,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const menuItems = [menuInventory, menuSuppliers, menuOrders, menuReports, menuQuickStockUpdate, menuUserManagement].filter(item => item !== null); // Added menuUserManagement
 
+  // Attach event listener for creating orders
+  const createOrderForm = document.getElementById('createOrderForm');
+  if (createOrderForm) {
+    createOrderForm.addEventListener('submit', handleCreateOrder);
+  } else {
+    console.warn('Create Order Form (createOrderForm) not found. Order creation will not work.');
+  }
+
+  // Event listeners for order status update modal
+  const confirmUpdateStatusBtn = document.getElementById('confirmUpdateStatusBtn');
+  if (confirmUpdateStatusBtn) {
+    confirmUpdateStatusBtn.addEventListener('click', handleUpdateOrderStatus);
+  } else {
+    console.warn('Confirm Update Status Button (confirmUpdateStatusBtn) not found.');
+  }
+
+  const cancelUpdateStatusModalBtn = document.getElementById('cancelUpdateStatusModalBtn');
+  if (cancelUpdateStatusModalBtn) {
+    cancelUpdateStatusModalBtn.addEventListener('click', handleCancelUpdateStatusModal);
+  } else {
+    console.warn('Cancel Update Status Modal Button (cancelUpdateStatusModalBtn) not found.');
+  }
+
   const inventoryViewContainer = document.getElementById('inventoryViewContainer');
   const suppliersSectionContainer = document.getElementById('suppliersSectionContainer');
   const ordersSectionContainer = document.getElementById('ordersSectionContainer');
@@ -3612,6 +3647,203 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // The original showView function definition has been cut from here and moved to the top of the file.
+
+  // START: Order Creation Logic
+  async function handleCreateOrder(event) {
+    event.preventDefault();
+    console.log('[handleCreateOrder] Attempting to create new order.');
+
+    const productId = document.getElementById('orderProductId').value;
+    const quantityInput = document.getElementById('orderQuantity');
+    const quantity = parseInt(quantityInput.value);
+
+    if (!productId) {
+      alert('Please select a product.');
+      return;
+    }
+    if (isNaN(quantity) || quantity <= 0) {
+      alert('Please enter a valid quantity.');
+      return;
+    }
+
+    const submitOrderBtn = document.getElementById('submitOrderBtn');
+    submitOrderBtn.disabled = true;
+    submitOrderBtn.textContent = 'Submitting...';
+
+    try {
+      // Fetch product name for denormalization (optional, but good for display)
+      let productName = productId; // Default to ID if name not found
+      const productDoc = await db.collection('inventory').doc(productId).get();
+      if (productDoc.exists) {
+        productName = productDoc.data().name || productId;
+      } else {
+        console.warn(`[handleCreateOrder] Product document not found for ID: ${productId} when fetching name.`);
+      }
+
+      // 1. Create the order document
+      const newOrderRef = await db.collection('orders').add({
+        productId: productId,
+        productName: productName, // Store product name
+        quantity: quantity,
+        status: 'Pending', // Initial status
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        userId: firebase.auth().currentUser ? firebase.auth().currentUser.uid : null // Track who created it
+      });
+      console.log('[handleCreateOrder] New order created with ID:', newOrderRef.id);
+
+      // 2. Update inventory: increment quantityOrdered
+      const inventoryRef = db.collection('inventory').doc(productId);
+      await db.runTransaction(async (transaction) => {
+        const productSnapshot = await transaction.get(inventoryRef);
+        if (!productSnapshot.exists) {
+          throw new Error(`Product with ID ${productId} not found in inventory for updating quantityOrdered.`);
+        }
+        const currentQuantityOrdered = productSnapshot.data().quantityOrdered || 0;
+        transaction.update(inventoryRef, {
+          quantityOrdered: currentQuantityOrdered + quantity
+        });
+      });
+      console.log(`[handleCreateOrder] Incremented quantityOrdered for product ${productId} by ${quantity}.`);
+
+      alert('Order created successfully!');
+      document.getElementById('createOrderForm').reset(); // Reset form
+
+      // 3. Refresh displays
+      if (typeof loadAndDisplayOrders === 'function') loadAndDisplayOrders();
+      if (typeof updateToOrderTable === 'function') updateToOrderTable(); // This lists items needing reorder
+
+    } catch (error) {
+      console.error('[handleCreateOrder] Error creating order or updating inventory:', error);
+      alert(`Failed to create order: ${error.message}`);
+    } finally {
+      submitOrderBtn.disabled = false;
+      submitOrderBtn.textContent = 'Submit Order';
+    }
+  }
+  // END: Order Creation Logic
+
+  // START: Order Status Update Logic
+  let currentEditingOrderId = null; // To store the ID of the order being edited via modal
+
+  // Function to be called by the "View" button on each order row
+  // Declared globally so inline onclick attribute can find it
+  window.viewOrderDetails = async (orderId) => {
+    console.log(`[viewOrderDetails] Editing order: ${orderId}`);
+    currentEditingOrderId = orderId;
+    const modal = document.getElementById('updateOrderStatusModal');
+    const statusDropdown = document.getElementById('modalNewOrderStatus');
+
+    if (!modal || !statusDropdown) {
+      console.error('[viewOrderDetails] Modal or status dropdown not found.');
+      alert('Error: Could not open order status modal.');
+      return;
+    }
+
+    try {
+      const orderDoc = await db.collection('orders').doc(orderId).get();
+      if (orderDoc.exists) {
+        const orderData = orderDoc.data();
+        statusDropdown.value = orderData.status || 'Pending'; // Set current status in dropdown
+      } else {
+        console.error(`[viewOrderDetails] Order ${orderId} not found.`);
+        alert('Error: Order not found.');
+        return;
+      }
+    } catch (error) {
+      console.error(`[viewOrderDetails] Error fetching order ${orderId}:`, error);
+      alert(`Error fetching order details: ${error.message}`);
+      return;
+    }
+
+    modal.classList.remove('hidden');
+  };
+
+  async function handleUpdateOrderStatus() {
+    console.log('[handleUpdateOrderStatus] Attempting to update order status.');
+    if (!currentEditingOrderId) {
+      alert('Error: No order selected for update.');
+      return;
+    }
+
+    const newStatus = document.getElementById('modalNewOrderStatus').value;
+    const modal = document.getElementById('updateOrderStatusModal');
+    const confirmBtn = document.getElementById('confirmUpdateStatusBtn');
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Updating...';
+
+    try {
+      const orderRef = db.collection('orders').doc(currentEditingOrderId);
+      const orderDoc = await orderRef.get();
+
+      if (!orderDoc.exists) {
+        throw new Error(`Order ${currentEditingOrderId} not found.`);
+      }
+      const orderData = orderDoc.data();
+      const productId = orderData.productId;
+      const orderQuantity = orderData.quantity;
+
+      // Update order status in Firestore
+      await orderRef.update({ status: newStatus });
+      console.log(`[handleUpdateOrderStatus] Order ${currentEditingOrderId} status updated to ${newStatus}.`);
+
+      // If status is 'Fulfilled', adjust inventory
+      if (newStatus === 'Fulfilled' || newStatus === 'fulfilled') {
+        console.log(`[handleUpdateOrderStatus] Order ${currentEditingOrderId} is Fulfilled. Adjusting inventory for product ${productId}.`);
+        const inventoryRef = db.collection('inventory').doc(productId);
+
+        await db.runTransaction(async (transaction) => {
+          const productSnapshot = await transaction.get(inventoryRef);
+          if (!productSnapshot.exists) {
+            throw new Error(`Product with ID ${productId} not found in inventory for final stock adjustment.`);
+          }
+
+          const currentInventoryQuantity = productSnapshot.data().quantity || 0;
+          const currentQuantityOrdered = productSnapshot.data().quantityOrdered || 0;
+
+          let newInventoryQuantity = currentInventoryQuantity + orderQuantity;
+          let newQuantityOrdered = currentQuantityOrdered - orderQuantity;
+          if (newQuantityOrdered < 0) {
+            console.warn(`[handleUpdateOrderStatus] quantityOrdered for product ${productId} would go below zero. Setting to 0. Was: ${currentQuantityOrdered}, Subtracting: ${orderQuantity}`);
+            newQuantityOrdered = 0;
+          }
+
+          transaction.update(inventoryRef, {
+            quantity: newInventoryQuantity,
+            quantityOrdered: newQuantityOrdered
+          });
+        });
+        console.log(`[handleUpdateOrderStatus] Inventory for product ${productId} updated: quantity increased by ${orderQuantity}, quantityOrdered decreased by ${orderQuantity}.`);
+      }
+
+      alert('Order status updated successfully!');
+      if (modal) modal.classList.add('hidden');
+      currentEditingOrderId = null;
+
+      // Refresh displays
+      if (typeof loadAndDisplayOrders === 'function') loadAndDisplayOrders();
+      if (typeof updateToOrderTable === 'function') updateToOrderTable();
+
+    } catch (error) {
+      console.error('[handleUpdateOrderStatus] Error updating order status or inventory:', error);
+      alert(`Failed to update order status: ${error.message}`);
+    } finally {
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Update Status';
+      }
+    }
+  }
+
+  function handleCancelUpdateStatusModal() {
+    const modal = document.getElementById('updateOrderStatusModal');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
+    currentEditingOrderId = null;
+    console.log('[handleCancelUpdateStatusModal] Order status update cancelled, modal closed.');
+  }
+  // END: Order Status Update Logic
+
 
   if (menuInventory) {
       menuInventory.addEventListener('click', (e) => {
