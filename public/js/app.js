@@ -108,6 +108,8 @@ function showView(viewIdToShow, clickedMenuId) {
             if (typeof generateSupplierOrderSummaries === 'function') generateSupplierOrderSummaries(); else console.error("generateSupplierOrderSummaries is not defined");
             if (typeof populateTrendProductSelect === 'function') populateTrendProductSelect(); else console.error("populateTrendProductSelect is not defined");
             if (typeof generateProductUsageChart === 'function') generateProductUsageChart(''); else console.error("generateProductUsageChart is not defined");
+            // Also load orders when reports view is shown, as per instructions
+            if (typeof loadAndDisplayOrders === 'function') loadAndDisplayOrders(); else console.error("loadAndDisplayOrders is not defined for reports view");
           } else if (container.id === 'userManagementSectionContainer') {
             if (typeof displayUserRoleManagement === 'function') displayUserRoleManagement(); else console.error("displayUserRoleManagement is not defined");
           }
@@ -283,56 +285,71 @@ async function displayBarcodeModeActionQRCodes() {
 
 // START - Placeholder functions for Orders section
 async function populateProductsDropdown() {
-  console.warn("populateProductsDropdown function is not yet implemented.");
-  // Placeholder for populating a products dropdown, likely for creating new orders.
-  // Example:
-  // const productSelect = document.getElementById('orderProductSelect'); // Assuming an ID for the select element
-  // if (!productSelect) return;
-  // productSelect.innerHTML = '<option value="">Loading products...</option>';
-  // try {
-  //   const snapshot = await db.collection('inventory').orderBy('name').get();
-  //   productSelect.innerHTML = '<option value="">Select a Product</option>';
-  //   snapshot.forEach(doc => {
-  //     const product = doc.data();
-  //     const option = document.createElement('option');
-  //     option.value = doc.id;
-  //     option.textContent = `${product.name} (ID: ${doc.id})`;
-  //     productSelect.appendChild(option);
-  //   });
-  // } catch (error) {
-  //   console.error("Error populating products dropdown for orders:", error);
-  //   productSelect.innerHTML = '<option value="">Error loading products</option>';
-  // }
+  try {
+    const db = firebase.firestore(); // Ensures db is from the correct Firebase instance
+    const snapshot = await db.collection('inventory').get();
+    const dropdown = document.getElementById('productDropdown'); // Adjust ID to match your HTML
+    if (!dropdown) {
+      console.error('Dropdown element with ID "productDropdown" not found');
+      return;
+    }
+    dropdown.innerHTML = ''; // Clear existing options
+    const defaultOption = document.createElement('option');
+    defaultOption.value = "";
+    defaultOption.text = "Select a Product";
+    defaultOption.disabled = true;
+    defaultOption.selected = true;
+    dropdown.appendChild(defaultOption);
+
+    snapshot.forEach(doc => {
+      const option = document.createElement('option');
+      option.value = doc.id; // Use document ID as value
+      option.text = doc.data().name || doc.id; // Use 'name' field or ID as display text
+      dropdown.appendChild(option);
+    });
+    console.log('Products dropdown populated successfully');
+  } catch (error) {
+    console.error('Error populating products dropdown:', error);
+  }
 }
 
 async function loadAndDisplayOrders() {
-  console.warn("loadAndDisplayOrders function is not yet implemented.");
-  // Placeholder for loading and displaying existing orders.
-  // Example:
-  // const ordersTableBody = document.getElementById('ordersTableBody'); // Assuming an ID for the orders table
-  // if (!ordersTableBody) return;
-  // ordersTableBody.innerHTML = '<tr><td colspan="5">Loading orders...</td></tr>'; // Adjust colspan as needed
-  // try {
-  //   const snapshot = await db.collection('orders').orderBy('createdAt', 'desc').get(); // Assuming 'orders' collection
-  //   ordersTableBody.innerHTML = '';
-  //   if (snapshot.empty) {
-  //     ordersTableBody.innerHTML = '<tr><td colspan="5">No orders found.</td></tr>';
-  //     return;
-  //   }
-  //   snapshot.forEach(doc => {
-  //     const order = doc.data();
-  //     const row = ordersTableBody.insertRow();
-  //     // Populate row with order data, e.g.:
-  //     // row.insertCell().textContent = doc.id;
-  //     // row.insertCell().textContent = new Date(order.createdAt.seconds * 1000).toLocaleDateString();
-  //     // row.insertCell().textContent = order.customerName || 'N/A';
-  //     // row.insertCell().textContent = order.status || 'Pending';
-  //     // ... other order details ...
-  //   });
-  // } catch (error) {
-  //   console.error("Error loading and displaying orders:", error);
-  //   ordersTableBody.innerHTML = '<tr><td colspan="5">Error loading orders.</td></tr>';
-  // }
+  try {
+    const db = firebase.firestore(); // Ensures db is from the correct Firebase instance
+    const snapshot = await db.collection('orders').get(); // Consider adding .orderBy() if needed
+    const ordersContainer = document.getElementById('ordersContainer'); // Adjust ID to match your HTML
+    if (!ordersContainer) {
+      console.error('Orders container element with ID "ordersContainer" not found');
+      return;
+    }
+    ordersContainer.innerHTML = ''; // Clear existing content
+
+    if (snapshot.empty) {
+      ordersContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400">No orders found.</p>';
+      console.log('No orders found in the database.');
+      return;
+    }
+
+    snapshot.forEach(doc => {
+      const orderData = doc.data();
+      const div = document.createElement('div');
+      div.className = 'p-2 border-b dark:border-slate-700'; // Basic styling
+      // Adjust fields based on your actual 'orders' document structure
+      div.textContent = `Order ID: ${doc.id}, Product ID: ${orderData.productId || 'N/A'}, Quantity: ${orderData.quantity || 'N/A'}`;
+      // Example of adding more details:
+      // if (orderData.customerName) div.textContent += `, Customer: ${orderData.customerName}`;
+      // if (orderData.createdAt && orderData.createdAt.toDate) {
+      //   div.textContent += `, Date: ${orderData.createdAt.toDate().toLocaleDateString()}`;
+      // }
+      ordersContainer.appendChild(div);
+    });
+    console.log('Orders loaded and displayed successfully');
+  } catch (error) {
+    console.error('Error loading and displaying orders:', error);
+    if (document.getElementById('ordersContainer')) {
+        document.getElementById('ordersContainer').innerHTML = '<p class="text-red-500 dark:text-red-400">Error loading orders. Please check console.</p>';
+    }
+  }
 }
 // END - Placeholder functions for Orders section
 
