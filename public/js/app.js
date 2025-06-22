@@ -486,21 +486,25 @@ try {
   db = firebase.firestore();
   storage = firebase.storage();
   const auth = firebase.auth(); // Added Firebase Auth
+  const ui = new firebaseui.auth.AuthUI(auth); // FirebaseUI instance
   console.log('Firestore instance created:', !!db);
   console.log('Storage instance created:', !!storage);
   console.log('Auth instance created:', !!auth);
+  console.log('FirebaseUI instance created:', !!ui);
 
     // Listen for auth state changes
     auth.onAuthStateChanged((user) => {
       const logoutBtn = document.getElementById('logoutButton');
-      const authContainer = document.getElementById('authContainer');
+      const authContainer = document.getElementById('authContainer'); // This is the main container for login screen
       const appNavbar = document.getElementById('appNavbar');
       const appMainContainer = document.getElementById('appMainContainer');
       const userProfileImage = document.getElementById('userProfileImage'); // Get profile image element
+      const customLoginForm = document.getElementById('loginForm'); // The old custom form
+      const customGoogleSignInSection = document.getElementById('customGoogleSignInSection'); // The old Google Sign In button section
 
       if (user) {
         console.log('Auth state changed: User is signed in', user.email || user.uid, 'Photo URL:', user.photoURL);
-        if (authContainer) authContainer.classList.add('hidden');
+        if (authContainer) authContainer.classList.add('hidden'); // Hide the entire login screen
         if (appNavbar) appNavbar.classList.remove('hidden');
         if (appMainContainer) appMainContainer.classList.remove('hidden');
         if (logoutBtn) logoutBtn.classList.remove('hidden');
@@ -557,10 +561,19 @@ try {
       } else {
         // User is signed out.
         console.log('Auth state changed: User is signed out');
-        if (authContainer) authContainer.classList.remove('hidden');
         if (appNavbar) appNavbar.classList.add('hidden');
         if (appMainContainer) appMainContainer.classList.add('hidden');
         if (logoutBtn) logoutBtn.classList.add('hidden');
+        if (authContainer) authContainer.classList.remove('hidden'); // Show the login screen container
+
+        // Hide custom form elements if they were not already hidden via HTML
+        if (customLoginForm && !customLoginForm.classList.contains('hidden')) {
+            customLoginForm.classList.add('hidden');
+        }
+        if (customGoogleSignInSection && !customGoogleSignInSection.classList.contains('hidden')) {
+            customGoogleSignInSection.classList.add('hidden');
+        }
+
         currentUserRole = null;
         updateUserInterfaceForRole(null);
         if (userProfileImage) { // Hide and reset profile image on logout
@@ -568,14 +581,58 @@ try {
           userProfileImage.src = '#';
           userProfileImage.alt = 'User';
         }
-        // auth.signInAnonymously() // Commented out as per requirement
-        //   .then(() => {
-        //     console.log("Anonymous sign-in successful after detecting user was out.");
-        //   })
-        //   .catch((error) => {
-        //     console.error("Anonymous sign-in error:", error.code, error.message);
-        //     alert("Authentication failed: " + error.message + "\nPlease ensure Anonymous sign-in is enabled in your Firebase project's Authentication settings and that your Firebase configuration is correct, and that the domains are correctly whitelisted if running locally for testing.");
-        //   });
+
+        const uiConfig = {
+          callbacks: {
+            signInSuccessWithAuthResult: function(authResult, redirectUrl) {
+              // User successfully signed in.
+              // Return true to automatically redirect (if signInSuccessUrl is set)
+              // Return false to handle manually (e.g. if you want to stay on the page or do something else)
+              console.log('FirebaseUI: signInSuccessWithAuthResult', authResult);
+              // The onAuthStateChanged listener will handle UI changes, so we don't need to do much here.
+              // If a role needs to be set for new users immediately, this might be a place.
+              // For now, just let onAuthStateChanged handle it.
+              return false; // Let onAuthStateChanged handle UI changes
+            },
+            uiShown: function() {
+              // The widget is rendered.
+              // Maybe hide a loader if you have one.
+              console.log('FirebaseUI: uiShown');
+              document.getElementById('authErrorMessage').classList.add('hidden'); // Hide any previous custom error
+            },
+            signInFailure: function(error) {
+                // Handle sign-in errors (e.g., account_exists_with_different_credential).
+                console.error('FirebaseUI: signInFailure', error);
+                const authErrorMessage = document.getElementById('authErrorMessage');
+                if (authErrorMessage) {
+                    authErrorMessage.textContent = `Login Error: ${error.message} (Code: ${error.code})`;
+                    authErrorMessage.classList.remove('hidden');
+                }
+                // You might want to return a promise that resolves to false to prevent redirect on error.
+                return Promise.resolve();
+            }
+          },
+          signInFlow: 'popup', // Use 'popup' for Google, Facebook, etc. 'redirect' is another option.
+          signInSuccessUrl: null, // Disable automatic redirect, handled by onAuthStateChanged
+          signInOptions: [
+            firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+            firebase.auth.EmailAuthProvider.PROVIDER_ID,
+            // Add other providers like:
+            // firebase.auth.FacebookAuthProvider.PROVIDER_ID,
+            // firebase.auth.TwitterAuthProvider.PROVIDER_ID,
+            // firebase.auth.GithubAuthProvider.PROVIDER_ID,
+            // firebase.auth.PhoneAuthProvider.PROVIDER_ID,
+          ],
+          // Terms of service url.
+          tosUrl: '<your-tos-url>', // Replace with your TOS URL or remove if not needed
+          // Privacy policy url.
+          privacyPolicyUrl: '<your-privacy-policy-url>' // Replace with your Privacy Policy URL or remove
+        };
+
+        // Start the FirebaseUI Auth interface.
+        // It will listen for user input and display the appropriate UI.
+        // The #firebaseui-auth-container element must be present in your HTML.
+        ui.start('#firebaseui-auth-container', uiConfig);
       }
     });
 
