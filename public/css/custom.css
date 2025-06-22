@@ -39,6 +39,42 @@ body {
     margin-left: 4.5rem; /* Should match the minimized sidebar width */
 }
 
+/* Order Status Styles */
+.status-pending {
+    color: #D97706; /* Amber-600 */
+    font-weight: bold;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    background-color: #FEF3C7; /* Amber-100 */
+    display: inline-block; /* To make background color wrap content */
+}
+
+.status-fulfilled {
+    color: #059669; /* Green-600 */
+    font-weight: bold;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    background-color: #D1FAE5; /* Green-100 */
+    display: inline-block;
+}
+
+.status-cancelled {
+    color: #DC2626; /* Red-600 */
+    font-weight: bold;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    background-color: #FEE2E2; /* Red-100 */
+    display: inline-block;
+}
+
+.status-other {
+    color: #4B5563; /* Gray-600 */
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    background-color: #F3F4F6; /* Gray-100 */
+    display: inline-block;
+}
+
 /* Hide menu text when sidebar is minimized */
 #sidebar.sidebar-minimized .menu-text {
     display: none;
