@@ -286,30 +286,55 @@ async function displayBarcodeModeActionQRCodes() {
 // START - Placeholder functions for Orders section
 async function populateProductsDropdown() {
   try {
-    const db = firebase.firestore(); // Ensures db is from the correct Firebase instance
-    const snapshot = await db.collection('inventory').get();
-    const dropdown = document.getElementById('orderProductId'); // Adjusted ID to match HTML for orders section
+    const db = firebase.firestore();
+    const inventorySnapshot = await db.collection('inventory').get();
+    const dropdown = document.getElementById('orderProductId');
+
     if (!dropdown) {
-      console.error('Dropdown element with ID "orderProductId" not found in orders section'); // Updated error message
+      console.error('Dropdown element with ID "orderProductId" not found in orders section');
       return;
     }
     dropdown.innerHTML = ''; // Clear existing options
-    const defaultOption = document.createElement('option');
-    defaultOption.value = "";
-    defaultOption.text = "Select a Product";
-    defaultOption.disabled = true;
-    defaultOption.selected = true;
-    dropdown.appendChild(defaultOption);
 
-    snapshot.forEach(doc => {
-      const option = document.createElement('option');
-      option.value = doc.id; // Use document ID as value
-      option.text = doc.data().name || doc.id; // Use 'name' field or ID as display text
-      dropdown.appendChild(option);
-    });
-    console.log('Products dropdown populated successfully');
+    const products = inventorySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    const productsToOrder = products.filter(item =>
+      (item.quantity + (item.quantityOrdered || 0) + (item.productQuantityBackordered || 0)) <= item.minQuantity && item.minQuantity > 0
+      // Added item.minQuantity > 0 to ensure items with no min quantity set (or set to 0) aren't accidentally included if their stock is 0.
+    );
+
+    if (productsToOrder.length === 0) {
+      const noProductsOption = document.createElement('option');
+      noProductsOption.value = "";
+      noProductsOption.text = "No products currently need reordering";
+      noProductsOption.disabled = true;
+      noProductsOption.selected = true;
+      dropdown.appendChild(noProductsOption);
+      console.log('Products dropdown: No products need reordering.');
+    } else {
+      const defaultOption = document.createElement('option');
+      defaultOption.value = "";
+      defaultOption.text = "Select a Product to Order";
+      defaultOption.disabled = true;
+      defaultOption.selected = true;
+      dropdown.appendChild(defaultOption);
+
+      productsToOrder.sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id)); // Sort for better UX
+
+      productsToOrder.forEach(product => {
+        const option = document.createElement('option');
+        option.value = product.id;
+        option.text = product.name || product.id;
+        dropdown.appendChild(option);
+      });
+      console.log(`Products dropdown populated with ${productsToOrder.length} items needing reorder.`);
+    }
   } catch (error) {
     console.error('Error populating products dropdown:', error);
+    const dropdown = document.getElementById('orderProductId');
+    if (dropdown) {
+        dropdown.innerHTML = '<option value="" disabled selected>Error loading products</option>';
+    }
   }
 }
 
