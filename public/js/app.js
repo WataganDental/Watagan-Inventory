@@ -1512,7 +1512,7 @@ async function loadInventory() {
 
     // Fetch pending orders to identify products
     console.log('Fetching pending orders...');
-    const ordersSnapshot = await db.collection('orders').where('status', '==', 'Pending').get();
+    const ordersSnapshot = await db.collection('orders').where('status', '==', 'pending').get(); // CHANGED TO LOWERCASE
     productIdsWithPendingOrders = ordersSnapshot.docs.map(doc => doc.data().productId);
     // Remove duplicates, if any product has multiple pending orders
     productIdsWithPendingOrders = [...new Set(productIdsWithPendingOrders)];
@@ -3825,7 +3825,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         productId: productId,
         productName: productName, // Store product name
         quantity: quantity,
-        status: 'Pending', // Initial status
+        status: 'pending', // Initial status - CHANGED TO LOWERCASE
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         userId: firebase.auth().currentUser ? firebase.auth().currentUser.uid : null // Track who created it
       });
