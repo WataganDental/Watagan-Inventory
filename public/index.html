@@ -438,6 +438,48 @@
 
             <hr class="my-6 border-gray-300 dark:border-slate-700">
 
+            <!-- Products to Order Section (Moved Up) -->
+            <div id="toOrderContentMoved" class="mb-8"> <!-- Changed mt-4 to mb-8 for spacing -->
+                <div class="flex items-center gap-2 mb-4">
+                   <select id="filterOrderSupplierDropdown" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200">
+                       <option value="">Filter by Supplier (All)</option>
+                   </select>
+                   <button id="generateSupplierOrderQRCodePDFBtn" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded dark:bg-blue-700 dark:hover:bg-blue-600">Generate QR PDF (filtered supplier)</button>
+                   <button id="emailSupplierOrderBtn" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded dark:bg-green-700 dark:hover:bg-green-600">Email Supplier Order</button>
+                </div>
+                <h3 id="toggleToOrderTableBtn" class="text-xl font-semibold mb-4 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-md p-2">Products to Order</h3>
+                <div class="mb-4 flex flex-wrap gap-2 items-center">
+                   <select id="filterToOrderSupplier" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 sm:col-span-1">
+                       <option value="">Filter by Supplier (All)</option>
+                   </select>
+                   <button id="clearToOrderFilterBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded dark:bg-gray-700 dark:hover:bg-gray-600 h-10 sm:col-span-1">Clear Supplier Filter</button>
+                </div>
+                <div id="toOrderTableContainer" class="hidden">
+                   <div class="mb-4 flex flex-wrap gap-2">
+                       <button id="toggleToOrderIDColumnBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded dark:bg-gray-700 dark:hover:bg-gray-600">Show IDs</button>
+                   </div>
+                   <div class="overflow-x-auto shadow-md rounded-lg">
+                       <table class="min-w-full w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                           <thead class="text-xs text-gray-700 uppercase bg-red-200 dark:bg-red-800/75 dark:text-red-100">
+                               <tr>
+                                   <th scope="col" class="px-4 py-3 to-order-id-column hidden">ID</th>
+                                   <th scope="col" class="px-4 py-3">Name</th>
+                                   <th scope="col" class="px-4 py-3 text-center">Qty</th>
+                                   <th scope="col" class="px-4 py-3 text-center">Min.Qty</th>
+                                   <th scope="col" class="px-4 py-3 text-center">Reorder Qty</th>
+                                   <th scope="col" class="px-4 py-3">Supplier</th>
+                                   <th scope="col" class="px-4 py-3 text-center">Qty Ordered</th>
+                                   <th scope="col" class="px-4 py-3 text-center">Qty Backordered</th>
+                               </tr>
+                           </thead>
+                           <tbody id="toOrderTable"></tbody>
+                       </table>
+                   </div>
+                </div>
+            </div>
+
+            <hr class="my-6 border-gray-300 dark:border-slate-700"> <!-- Separator -->
+
             <!-- Order Management Dashboard -->
             <div id="orderManagementContainer" class="mb-8">
                 <h3 class="text-xl font-semibold mb-4">Manage Orders</h3>
@@ -445,7 +487,7 @@
                     <label for="filterOrderStatus" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Filter by Status</label>
                     <select id="filterOrderStatus" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 mb-4">
                         <option value="">All Statuses</option>
-                        <option value="pending">Pending</option>
+                        <option value="pending" selected>Pending</option>
                         <option value="fulfilled">Fulfilled</option>
                         <option value="cancelled">Cancelled</option>
                     </select>
@@ -484,45 +526,6 @@
                     <div class="flex justify-end">
                         <button id="confirmUpdateStatusBtn" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded mr-2">Update Status</button>
                         <button id="cancelUpdateStatusModalBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded">Cancel</button>
-                    </div>
-                </div>
-            </div>
-
-            <div id="toOrderContentMoved" class="mt-4">
-                 <div class="flex items-center gap-2 mb-4">
-                    <select id="filterOrderSupplierDropdown" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200">
-                        <option value="">Filter by Supplier (All)</option>
-                    </select>
-                    <button id="generateSupplierOrderQRCodePDFBtn" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded dark:bg-blue-700 dark:hover:bg-blue-600">Generate QR PDF (filtered supplier)</button>
-                    <button id="emailSupplierOrderBtn" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded dark:bg-green-700 dark:hover:bg-green-600">Email Supplier Order</button>
-                 </div>
-                 <h3 id="toggleToOrderTableBtn" class="text-xl font-semibold mb-4 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-md p-2">Products to Order</h3>
-                 <div class="mb-4 flex flex-wrap gap-2 items-center">
-                    <select id="filterToOrderSupplier" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 sm:col-span-1">
-                        <option value="">Filter by Supplier (All)</option>
-                    </select>
-                    <button id="clearToOrderFilterBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded dark:bg-gray-700 dark:hover:bg-gray-600 h-10 sm:col-span-1">Clear Supplier Filter</button>
-                 </div>
-                 <div id="toOrderTableContainer" class="hidden"> 
-                    <div class="mb-4 flex flex-wrap gap-2">
-                        <button id="toggleToOrderIDColumnBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded dark:bg-gray-700 dark:hover:bg-gray-600">Show IDs</button>
-                    </div>
-                    <div class="overflow-x-auto shadow-md rounded-lg">
-                        <table class="min-w-full w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                            <thead class="text-xs text-gray-700 uppercase bg-red-200 dark:bg-red-800/75 dark:text-red-100">
-                                <tr>
-                                    <th scope="col" class="px-4 py-3 to-order-id-column hidden">ID</th>
-                                    <th scope="col" class="px-4 py-3">Name</th>
-                                    <th scope="col" class="px-4 py-3 text-center">Qty</th>
-                                    <th scope="col" class="px-4 py-3 text-center">Min.Qty</th>
-                                    <th scope="col" class="px-4 py-3 text-center">Reorder Qty</th>
-                                    <th scope="col" class="px-4 py-3">Supplier</th>
-                                    <th scope="col" class="px-4 py-3 text-center">Qty Ordered</th>
-                                    <th scope="col" class="px-4 py-3 text-center">Qty Backordered</th>
-                                </tr>
-                            </thead>
-                            <tbody id="toOrderTable"></tbody>
-                        </table>
                     </div>
                 </div>
             </div>
