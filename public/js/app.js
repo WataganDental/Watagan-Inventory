@@ -339,9 +339,18 @@ async function loadAndDisplayOrders() {
     console.log(`[loadAndDisplayOrders] Current user UID: ${user.uid}, Role: ${currentUserRole}`);
 
     const db = firebase.firestore();
-    console.log('[loadAndDisplayOrders] Fetching orders from Firestore collection "orders".');
-    const ordersQuery = db.collection('orders'); // Define query for logging
-    // Example: const ordersQuery = db.collection('orders').orderBy('createdAt', 'desc');
+    const filterStatusDropdown = document.getElementById('filterOrderStatus');
+    const selectedStatus = filterStatusDropdown ? filterStatusDropdown.value : '';
+
+    console.log(`[loadAndDisplayOrders] Fetching orders from Firestore collection "orders". Selected status: '${selectedStatus}'`);
+
+    let ordersQuery = db.collection('orders');
+
+    if (selectedStatus) {
+      ordersQuery = ordersQuery.where('status', '==', selectedStatus);
+    }
+    // Example: ordersQuery = ordersQuery.orderBy('createdAt', 'desc'); // You might want to add ordering
+
     const snapshot = await ordersQuery.get();
 
     console.log(`[loadAndDisplayOrders] Snapshot received. Empty: ${snapshot.empty}, Size: ${snapshot.size}`);
@@ -3639,6 +3648,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       quickStockUpdateContainer,
       userManagementSectionContainer // Added
   ].filter(container => container !== null);
+
+  // Add event listener for the order status filter
+  const filterOrderStatusDropdown = document.getElementById('filterOrderStatus');
+  if (filterOrderStatusDropdown) {
+    filterOrderStatusDropdown.addEventListener('change', () => {
+      console.log('Order status filter changed to:', filterOrderStatusDropdown.value);
+      if (typeof loadAndDisplayOrders === 'function') {
+        loadAndDisplayOrders();
+      } else {
+        console.error('loadAndDisplayOrders function not available when trying to filter orders.');
+      }
+    });
+  } else {
+    console.warn('Order status filter dropdown (filterOrderStatus) not found in DOM.');
+  }
 
   const activeMenuClasses = ['bg-gray-300', 'dark:bg-slate-700', 'font-semibold', 'text-gray-900', 'dark:text-white'];
   const inactiveMenuClasses = ['text-gray-700', 'dark:text-gray-300', 'hover:bg-gray-300', 'dark:hover:bg-slate-700'];
