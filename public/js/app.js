@@ -347,6 +347,7 @@ async function loadAndDisplayOrders() {
     let ordersQuery = db.collection('orders');
 
     if (selectedStatus) {
+      // Ensure 'Backordered' status uses the correct value 'backordered' if that's what's stored in Firestore
       ordersQuery = ordersQuery.where('status', '==', selectedStatus);
     }
     // Example: ordersQuery = ordersQuery.orderBy('createdAt', 'desc'); // You might want to add ordering
@@ -1659,7 +1660,9 @@ function updateInventoryTable(itemsToDisplay) {
 
 async function updateToOrderTable() {
   const snapshot = await db.collection('inventory').get();
-  let toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => (item.quantity + (item.quantityOrdered || 0)) <= item.minQuantity);
+  let toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item =>
+    (item.quantity + (item.quantityOrdered || 0) + (item.productQuantityBackordered || 0)) <= item.minQuantity
+  );
   const toOrderTable = document.getElementById('toOrderTable');
   toOrderTable.innerHTML = '';
 
@@ -3582,24 +3585,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  const toggleToOrderIDBtn = document.getElementById('toggleToOrderIDColumnBtn');
-  if (toggleToOrderIDBtn) {
-    toggleToOrderIDBtn.addEventListener('click', () => {
-      const idCells = document.querySelectorAll('#toOrderTableContent .to-order-id-column');
-      let isHiddenAfterToggle = false;
-      idCells.forEach(cell => {
-        cell.classList.toggle('hidden');
-        if (cell.classList.contains('hidden')) {
-          isHiddenAfterToggle = true;
-        }
-      });
-      if (isHiddenAfterToggle) {
-        toggleToOrderIDBtn.textContent = 'Show IDs';
-      } else {
-        toggleToOrderIDBtn.textContent = 'Hide IDs';
-      }
-    });
-  }
+  // const toggleToOrderIDBtn = document.getElementById('toggleToOrderIDColumnBtn'); // Button removed from HTML
+  // if (toggleToOrderIDBtn) {
+  //   toggleToOrderIDBtn.addEventListener('click', () => {
+  //     const idCells = document.querySelectorAll('#toOrderTableContainer .to-order-id-column'); // Corrected selector
+  //     let isHiddenAfterToggle = false;
+  //     idCells.forEach(cell => {
+  //       cell.classList.toggle('hidden');
+  //       if (cell.classList.contains('hidden')) {
+  //         isHiddenAfterToggle = true;
+  //       }
+  //     });
+  //     if (isHiddenAfterToggle) {
+  //       toggleToOrderIDBtn.textContent = 'Show IDs';
+  //     } else {
+  //       toggleToOrderIDBtn.textContent = 'Hide IDs';
+  //     }
+  //   });
+  // }
+  // Ensure the .to-order-id-column is hidden by default as the button is removed.
+  // This is handled by the 'hidden' class in the HTML table structure for these columns.
 
   const menuInventory = document.getElementById('menuInventory');
   const menuSuppliers = document.getElementById('menuSuppliers');
@@ -3632,6 +3637,47 @@ document.addEventListener('DOMContentLoaded', async () => {
   } else {
     console.warn('Cancel Update Status Modal Button (cancelUpdateStatusModalBtn) not found.');
   }
+
+  // Event listeners for the new Partial Receipt Modal
+  const partialReceiptModal = document.getElementById('partialReceiptModal');
+  const confirmPartialReceiptBtn = document.getElementById('confirmPartialReceiptBtn');
+  const cancelPartialReceiptModalBtn = document.getElementById('cancelPartialReceiptModalBtn');
+  const quantityReceivedInput = document.getElementById('quantityReceivedInput');
+  const quantityRemainingOnBackorderDisplay = document.getElementById('quantityRemainingOnBackorderDisplay');
+  let originalOrderDetailsForPartialReceipt = {}; // To store details for the modal
+
+  if (quantityReceivedInput && quantityRemainingOnBackorderDisplay) {
+    quantityReceivedInput.addEventListener('input', () => {
+      const originalQty = parseInt(originalOrderDetailsForPartialReceipt.quantity || 0);
+      const receivedQty = parseInt(quantityReceivedInput.value || 0);
+      if (receivedQty > originalQty) {
+        quantityReceivedInput.value = originalQty; // Cap at original quantity
+      }
+      const remainingQty = Math.max(0, originalQty - (parseInt(quantityReceivedInput.value || 0)));
+      quantityRemainingOnBackorderDisplay.textContent = remainingQty;
+    });
+  }
+
+  if (confirmPartialReceiptBtn) {
+    confirmPartialReceiptBtn.addEventListener('click', () => {
+      // Call handleConfirmPartialReceipt, ensuring currentEditingOrderId is available
+      if (typeof handleConfirmPartialReceipt === 'function') {
+        handleConfirmPartialReceipt(currentEditingOrderId);
+      } else {
+        console.error('handleConfirmPartialReceipt function is not defined.');
+        alert('Error: Confirmation function not found.');
+      }
+    });
+  }
+
+  if (cancelPartialReceiptModalBtn && partialReceiptModal) {
+    cancelPartialReceiptModalBtn.addEventListener('click', () => {
+      partialReceiptModal.classList.add('hidden');
+      currentEditingOrderId = null; // Clear if cancel
+      originalOrderDetailsForPartialReceipt = {}; // Clear details
+    });
+  }
+
 
   const inventoryViewContainer = document.getElementById('inventoryViewContainer');
   const suppliersSectionContainer = document.getElementById('suppliersSectionContainer');
@@ -3772,12 +3818,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Declared globally so inline onclick attribute can find it
   window.viewOrderDetails = async (orderId) => {
     console.log(`[viewOrderDetails] Editing order: ${orderId}`);
-    currentEditingOrderId = orderId;
-    const modal = document.getElementById('updateOrderStatusModal');
+    currentEditingOrderId = orderId; // Set the global variable for other functions to use
+    const updateModal = document.getElementById('updateOrderStatusModal');
     const statusDropdown = document.getElementById('modalNewOrderStatus');
 
-    if (!modal || !statusDropdown) {
-      console.error('[viewOrderDetails] Modal or status dropdown not found.');
+    if (!updateModal || !statusDropdown) {
+      console.error('[viewOrderDetails] Update Order Status Modal or status dropdown not found.');
       alert('Error: Could not open order status modal.');
       return;
     }
@@ -3785,20 +3831,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const orderDoc = await db.collection('orders').doc(orderId).get();
       if (orderDoc.exists) {
-        const orderData = orderDoc.data();
-        statusDropdown.value = orderData.status || 'Pending'; // Set current status in dropdown
+        originalOrderDetailsForPartialReceipt = { id: orderDoc.id, ...orderDoc.data() }; // Store for partial receipt modal
+        statusDropdown.value = originalOrderDetailsForPartialReceipt.status || 'Pending'; // Set current status
       } else {
         console.error(`[viewOrderDetails] Order ${orderId} not found.`);
         alert('Error: Order not found.');
+        originalOrderDetailsForPartialReceipt = {}; // Clear if not found
         return;
       }
     } catch (error) {
       console.error(`[viewOrderDetails] Error fetching order ${orderId}:`, error);
       alert(`Error fetching order details: ${error.message}`);
+      originalOrderDetailsForPartialReceipt = {}; // Clear on error
       return;
     }
 
-    modal.classList.remove('hidden');
+    updateModal.classList.remove('hidden');
   };
 
   async function handleUpdateOrderStatus() {
@@ -3808,9 +3856,34 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    const newStatus = document.getElementById('modalNewOrderStatus').value;
-    const modal = document.getElementById('updateOrderStatusModal');
+    const newStatusSelected = document.getElementById('modalNewOrderStatus').value;
+    const updateModal = document.getElementById('updateOrderStatusModal');
     const confirmBtn = document.getElementById('confirmUpdateStatusBtn');
+
+    if (newStatusSelected === 'partiallyReceived') {
+      // Open the partial receipt modal instead of directly updating
+      console.log('[handleUpdateOrderStatus] "Partially Received" selected. Opening partial receipt modal.');
+      updateModal.classList.add('hidden'); // Hide the current status update modal
+
+      const partialReceiptM = document.getElementById('partialReceiptModal');
+      document.getElementById('partialReceiptOrderId').value = currentEditingOrderId; // Though currentEditingOrderId is global
+      document.getElementById('partialReceiptOriginalOrderIdDisplay').textContent = originalOrderDetailsForPartialReceipt.id;
+      document.getElementById('partialReceiptProductNameDisplay').textContent = originalOrderDetailsForPartialReceipt.productName || 'N/A';
+      document.getElementById('partialReceiptOriginalQuantityDisplay').textContent = originalOrderDetailsForPartialReceipt.quantity;
+
+      const qtyReceivedInput = document.getElementById('quantityReceivedInput');
+      qtyReceivedInput.value = '0'; // Default to 0
+      qtyReceivedInput.max = originalOrderDetailsForPartialReceipt.quantity; // Set max based on original order
+
+      // Trigger input event to calculate remaining quantity
+      qtyReceivedInput.dispatchEvent(new Event('input'));
+
+      if (partialReceiptM) partialReceiptM.classList.remove('hidden');
+      // No change to confirmBtn (of updateOrderStatusModal) here as it's not submitted yet.
+      return; // Stop further execution in this function
+    }
+
+    // Proceed with standard status update if not "partiallyReceived"
     confirmBtn.disabled = true;
     confirmBtn.textContent = 'Updating...';
 
@@ -3824,47 +3897,70 @@ document.addEventListener('DOMContentLoaded', async () => {
       const orderData = orderDoc.data();
       const productId = orderData.productId;
       const orderQuantity = orderData.quantity;
+      const currentStatus = orderData.status; // Get current status before update
 
-      // Update order status in Firestore
-      await orderRef.update({ status: newStatus });
-      console.log(`[handleUpdateOrderStatus] Order ${currentEditingOrderId} status updated to ${newStatus}.`);
+      await orderRef.update({ status: newStatusSelected });
+      console.log(`[handleUpdateOrderStatus] Order ${currentEditingOrderId} status updated to ${newStatusSelected}.`);
 
-      // If status is 'Fulfilled', adjust inventory
-      if (newStatus === 'Fulfilled' || newStatus === 'fulfilled') {
-        console.log(`[handleUpdateOrderStatus] Order ${currentEditingOrderId} is Fulfilled. Adjusting inventory for product ${productId}.`);
-        const inventoryRef = db.collection('inventory').doc(productId);
+      // Inventory adjustments based on status changes
+      const inventoryRef = db.collection('inventory').doc(productId);
+      await db.runTransaction(async (transaction) => {
+        const productSnapshot = await transaction.get(inventoryRef);
+        if (!productSnapshot.exists) {
+          throw new Error(`Product with ID ${productId} not found in inventory.`);
+        }
+        let { quantity: invQty, quantityOrdered: invQtyOrdered, productQuantityBackordered: invQtyBackordered = 0 } = productSnapshot.data();
 
-        await db.runTransaction(async (transaction) => {
-          const productSnapshot = await transaction.get(inventoryRef);
-          if (!productSnapshot.exists) {
-            throw new Error(`Product with ID ${productId} not found in inventory for final stock adjustment.`);
+        // Logic for inventory adjustment based on status transitions
+        if (newStatusSelected === 'Fulfilled' || newStatusSelected === 'fulfilled') {
+          if (currentStatus === 'Pending' || currentStatus === 'pending') {
+            // Standard fulfillment of a pending order
+            invQty += orderQuantity;
+            invQtyOrdered -= orderQuantity;
+          } else if (currentStatus === 'Backordered' || currentStatus === 'backordered') {
+            // Fulfilling an order that was previously backordered
+            invQty += orderQuantity;
+            // productQuantityBackordered on the inventory item is decreased because this specific backorder is now fulfilled.
+            invQtyBackordered -= orderQuantity;
           }
-
-          const currentInventoryQuantity = productSnapshot.data().quantity || 0;
-          const currentQuantityOrdered = productSnapshot.data().quantityOrdered || 0;
-
-          let newInventoryQuantity = currentInventoryQuantity + orderQuantity;
-          let newQuantityOrdered = currentQuantityOrdered - orderQuantity;
-          if (newQuantityOrdered < 0) {
-            console.warn(`[handleUpdateOrderStatus] quantityOrdered for product ${productId} would go below zero. Setting to 0. Was: ${currentQuantityOrdered}, Subtracting: ${orderQuantity}`);
-            newQuantityOrdered = 0;
+        } else if (newStatusSelected === 'Cancelled' || newStatusSelected === 'cancelled') {
+          if (currentStatus === 'Pending' || currentStatus === 'pending') {
+            // Cancelling a pending order
+            invQtyOrdered -= orderQuantity;
+          } else if (currentStatus === 'Backordered' || currentStatus === 'backordered') {
+            // Cancelling an order that was previously backordered
+            // productQuantityBackordered on the inventory item is decreased because this specific backorder is now cancelled.
+            invQtyBackordered -= orderQuantity;
           }
+        }
+        // Note: If an order is manually set to 'Backordered' (e.g. "Backordered (Manual)" option),
+        // this function currently doesn't create a new backorder or adjust inventory in the same way as partial receipt.
+        // It would just change the status. If manual "Backordered" status implies inventory changes,
+        // that would need specific logic here. For now, assuming "Backordered (Manual)" is just a status tag
+        // and actual inventory/backorder quantity management happens via the "Partially Received" flow.
 
-          transaction.update(inventoryRef, {
-            quantity: newInventoryQuantity,
-            quantityOrdered: newQuantityOrdered
-          });
+        // Ensure quantities don't go negative
+        invQtyOrdered = Math.max(0, invQtyOrdered);
+        invQtyBackordered = Math.max(0, invQtyBackordered);
+
+        transaction.update(inventoryRef, {
+          quantity: invQty,
+          quantityOrdered: invQtyOrdered,
+          productQuantityBackordered: invQtyBackordered
         });
-        console.log(`[handleUpdateOrderStatus] Inventory for product ${productId} updated: quantity increased by ${orderQuantity}, quantityOrdered decreased by ${orderQuantity}.`);
-      }
+      });
+      console.log(`[handleUpdateOrderStatus] Inventory for product ${productId} adjusted based on status change from ${currentStatus} to ${newStatusSelected}.`);
 
       alert('Order status updated successfully!');
-      if (modal) modal.classList.add('hidden');
+      if (updateModal) updateModal.classList.add('hidden');
       currentEditingOrderId = null;
+      originalOrderDetailsForPartialReceipt = {};
 
-      // Refresh displays
+
       if (typeof loadAndDisplayOrders === 'function') loadAndDisplayOrders();
       if (typeof updateToOrderTable === 'function') updateToOrderTable();
+      if (typeof updateInventoryDashboard === 'function') updateInventoryDashboard();
+
 
     } catch (error) {
       console.error('[handleUpdateOrderStatus] Error updating order status or inventory:', error);
@@ -3883,9 +3979,108 @@ document.addEventListener('DOMContentLoaded', async () => {
       modal.classList.add('hidden');
     }
     currentEditingOrderId = null;
+    originalOrderDetailsForPartialReceipt = {}; // Clear details on cancel
     console.log('[handleCancelUpdateStatusModal] Order status update cancelled, modal closed.');
   }
   // END: Order Status Update Logic
+
+  // START: Partial Receipt and Backorder Logic
+  async function handleConfirmPartialReceipt() {
+    if (!currentEditingOrderId || !originalOrderDetailsForPartialReceipt.id) {
+      alert('Error: Original order details are missing. Cannot process partial receipt.');
+      return;
+    }
+
+    const quantityReceivedInput = document.getElementById('quantityReceivedInput');
+    const receivedQty = parseInt(quantityReceivedInput.value);
+    const originalQty = parseInt(originalOrderDetailsForPartialReceipt.quantity);
+
+    if (isNaN(receivedQty) || receivedQty < 0) {
+      alert('Please enter a valid non-negative number for quantity received.');
+      return;
+    }
+    if (receivedQty > originalQty) {
+      alert('Quantity received cannot exceed the original quantity ordered.');
+      return;
+    }
+
+    const remainingQtyOnBackorder = originalQty - receivedQty;
+    const productId = originalOrderDetailsForPartialReceipt.productId;
+
+    const confirmBtn = document.getElementById('confirmPartialReceiptBtn');
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Processing...';
+
+    try {
+      const orderRef = db.collection('orders').doc(currentEditingOrderId);
+      const inventoryRef = db.collection('inventory').doc(productId);
+
+      // Firestore Transaction
+      await db.runTransaction(async (transaction) => {
+        const productSnapshot = await transaction.get(inventoryRef);
+        if (!productSnapshot.exists) {
+          throw new Error(`Product with ID ${productId} not found in inventory.`);
+        }
+        let { quantity: invQty, quantityOrdered: invQtyOrdered, productQuantityBackordered: invQtyBackordered = 0 } = productSnapshot.data();
+
+        // 1. Update Original Order
+        transaction.update(orderRef, {
+          status: 'Fulfilled', // Original order is now considered fulfilled for the received amount
+          quantity: receivedQty, // Update quantity to what was received
+          // Optionally add a note about partial receipt if needed: e.g., notes: `Partially received. ${remainingQtyOnBackorder} backordered.`
+        });
+        console.log(`[PartialReceipt] Original order ${currentEditingOrderId} updated to Fulfilled with quantity ${receivedQty}.`);
+
+        // 2. Adjust Inventory for received items and original pending order resolution
+        invQty += receivedQty; // Add received items to stock
+        invQtyOrdered -= originalQty; // Reduce overall quantityOrdered by the full original amount
+        invQtyOrdered = Math.max(0, invQtyOrdered); // Ensure it doesn't go negative
+
+        // 3. Create New Backorder if necessary
+        if (remainingQtyOnBackorder > 0) {
+          const newBackorderRef = db.collection('orders').doc(); // Auto-generate ID
+          transaction.set(newBackorderRef, {
+            productId: productId,
+            productName: originalOrderDetailsForPartialReceipt.productName,
+            quantity: remainingQtyOnBackorder,
+            status: 'Backordered',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            userId: originalOrderDetailsForPartialReceipt.userId || (firebase.auth().currentUser ? firebase.auth().currentUser.uid : null),
+            originalOrderId: currentEditingOrderId, // Link to original order
+          });
+          invQtyBackordered += remainingQtyOnBackorder; // Increment product's total backordered quantity
+          console.log(`[PartialReceipt] New backorder ${newBackorderRef.id} created for ${remainingQtyOnBackorder} units.`);
+        }
+
+        invQtyBackordered = Math.max(0, invQtyBackordered); // Ensure not negative
+
+        transaction.update(inventoryRef, {
+          quantity: invQty,
+          quantityOrdered: invQtyOrdered,
+          productQuantityBackordered: invQtyBackordered,
+        });
+        console.log(`[PartialReceipt] Inventory for ${productId} updated: OnHand=${invQty}, Ordered=${invQtyOrdered}, ProductBackordered=${invQtyBackordered}.`);
+      });
+
+      alert('Partial receipt processed successfully. Original order updated and backorder created if necessary.');
+
+    } catch (error) {
+      console.error('[handleConfirmPartialReceipt] Error processing partial receipt:', error);
+      alert(`Failed to process partial receipt: ${error.message}`);
+    } finally {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Confirm Partial Receipt';
+      document.getElementById('partialReceiptModal').classList.add('hidden');
+      currentEditingOrderId = null;
+      originalOrderDetailsForPartialReceipt = {};
+
+      // Refresh relevant UI parts
+      if (typeof loadAndDisplayOrders === 'function') loadAndDisplayOrders();
+      if (typeof updateToOrderTable === 'function') updateToOrderTable();
+      if (typeof updateInventoryDashboard === 'function') updateInventoryDashboard();
+    }
+  }
+  // END: Partial Receipt and Backorder Logic
 
 
   if (menuInventory) {
