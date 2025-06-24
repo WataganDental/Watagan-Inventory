@@ -1239,7 +1239,7 @@ async function submitProduct() {
         cost,
         minQuantity,
         quantityOrdered,
-        quantityBackordered,
+        productQuantityBackordered: quantityBackordered, // Ensure field name consistency
         reorderQuantity,
         supplier,
         location,
@@ -1633,7 +1633,7 @@ function updateInventoryTable(itemsToDisplay) {
       <td class="border dark:border-slate-600 p-2">${item.supplier}</td>
       <td class="border dark:border-slate-600 p-2">${item.location}</td>
       <td class="border dark:border-slate-600 p-2">${item.quantityOrdered || 0}</td>
-      <td class="border dark:border-slate-600 p-2">${item.quantityBackordered || 0}</td>
+      <td class="border dark:border-slate-600 p-2">${item.productQuantityBackordered || 0}</td>
       <td class="border dark:border-slate-600 p-2">${item.photo ? `<img data-src="${item.photo}" src="${placeholderSrc}" alt="Product Photo: ${item.name}" class="w-16 h-16 object-cover mx-auto cursor-pointer inventory-photo-thumbnail lazy-load-image">` : 'No Photo'}</td>
       <td class="border dark:border-slate-600 p-2"><div id="qrcode-${item.id}" class="mx-auto w-24 h-24"></div></td>
       <td class="border dark:border-slate-600 p-2">
@@ -3988,7 +3988,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (typeof loadAndDisplayOrders === 'function') loadAndDisplayOrders();
       if (typeof updateToOrderTable === 'function') updateToOrderTable();
       if (typeof updateInventoryDashboard === 'function') updateInventoryDashboard();
-
+      if (typeof loadInventory === 'function') loadInventory(); // Refresh inventory table
 
     } catch (error) {
       console.error('[handleUpdateOrderStatus] Error updating order status or inventory:', error);
@@ -4106,6 +4106,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (typeof loadAndDisplayOrders === 'function') loadAndDisplayOrders();
       if (typeof updateToOrderTable === 'function') updateToOrderTable();
       if (typeof updateInventoryDashboard === 'function') updateInventoryDashboard();
+      if (typeof loadInventory === 'function') loadInventory(); // Refresh inventory table
     }
   }
   // END: Partial Receipt and Backorder Logic
