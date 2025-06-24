@@ -67,6 +67,15 @@ body {
     display: inline-block;
 }
 
+.status-backordered {
+    color: #F97316; /* Orange-600 */
+    font-weight: bold;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    background-color: #FFEDD5; /* Orange-100 */
+    display: inline-block;
+}
+
 .status-other {
     color: #4B5563; /* Gray-600 */
     padding: 0.25rem 0.5rem;

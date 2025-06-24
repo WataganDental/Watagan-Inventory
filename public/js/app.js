@@ -424,7 +424,10 @@ async function loadAndDisplayOrders() {
         cellStatus.classList.add('status-fulfilled');
       } else if (status === 'Cancelled' || status === 'cancelled') {
         cellStatus.classList.add('status-cancelled');
-      } else {
+      } else if (status === 'Backordered' || status === 'backordered') { // New condition for backordered
+        cellStatus.classList.add('status-backordered');
+      }
+      else {
         cellStatus.classList.add('status-other');
       }
 
