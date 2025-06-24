@@ -28,6 +28,7 @@ let totalFilteredItems = 0;
 
 // Lazy Loading Global Variable
 let imageObserver = null;
+let productIdsWithClientBackorders = []; // Added for new highlighting logic
 
 let currentUserRole = null; // Ensure this is global for access by updateUserInterfaceForRole and auth changes
 
@@ -1517,11 +1518,19 @@ async function loadInventory() {
     productIdsWithPendingOrders = [...new Set(productIdsWithPendingOrders)];
     console.log('Product IDs with pending orders:', productIdsWithPendingOrders);
 
+    // Fetch backordered orders to identify products
+    console.log('Fetching client backorders...');
+    const backordersSnapshot = await db.collection('orders').where('status', '==', 'backordered').get(); // lowercase 'b'
+    productIdsWithClientBackorders = backordersSnapshot.docs.map(doc => doc.data().productId);
+    productIdsWithClientBackorders = [...new Set(productIdsWithClientBackorders)];
+    console.log('Product IDs with client backorders:', productIdsWithClientBackorders);
+
+
     currentPage = 1; // Reset to page 1 on initial load
-    applyAndRenderInventoryFilters(); // This will call updateInventoryTable, which now needs access to productIdsWithPendingOrders
+    applyAndRenderInventoryFilters(); // This will call updateInventoryTable, which now needs access to productIdsWithPendingOrders & productIdsWithClientBackorders
     await updateToOrderTable();
   } catch (error) {
-    console.error('Error loading inventory or pending orders:', error);
+    console.error('Error loading inventory, pending orders, or client backorders:', error);
     alert('Failed to load inventory: ' + error.message);
   }
 }
@@ -1607,13 +1616,27 @@ function updateInventoryTable(itemsToDisplay) {
 
   itemsToDisplay.forEach(item => {
     const row = document.createElement('tr');
-    const isLowStock = item.quantity <= item.minQuantity;
-    const hasPendingOrder = productIdsWithPendingOrders.includes(item.id);
 
-    if (isLowStock) {
-      row.className = 'bg-red-100 dark:bg-red-800/60';
-    } else if (hasPendingOrder) {
-      row.className = 'inventory-row-pending-order'; // New class for pending order background
+    // Clear existing background classes first
+    row.classList.remove(
+      'inventory-row-needs-reordering',
+      'inventory-row-client-backordered',
+      'inventory-row-pending-order',
+      'bg-red-100', // Old direct red class for low stock
+      'dark:bg-red-800/60' // Old direct dark red class for low stock
+    );
+
+    // Apply new background logic with precedence
+    const needsReordering = (item.quantity + (item.quantityOrdered || 0) + (item.productQuantityBackordered || 0)) <= item.minQuantity && item.minQuantity > 0;
+    const hasClientBackorders = productIdsWithClientBackorders.includes(item.id);
+    const hasPendingOrders = productIdsWithPendingOrders.includes(item.id);
+
+    if (needsReordering) {
+      row.classList.add('inventory-row-needs-reordering');
+    } else if (hasClientBackorders) {
+      row.classList.add('inventory-row-client-backordered');
+    } else if (hasPendingOrders) {
+      row.classList.add('inventory-row-pending-order');
     }
 
     // NOTE: Images are displayed as w-16 h-16 thumbnails via CSS.
