@@ -455,9 +455,6 @@
                    <button id="clearToOrderFilterBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded dark:bg-gray-700 dark:hover:bg-gray-600 h-10 sm:col-span-1">Clear Supplier Filter</button>
                 </div>
                 <div id="toOrderTableContainer" class="hidden">
-                   <div class="mb-4 flex flex-wrap gap-2">
-                       <button id="toggleToOrderIDColumnBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded dark:bg-gray-700 dark:hover:bg-gray-600">Show IDs</button>
-                   </div>
                    <div class="overflow-x-auto shadow-md rounded-lg">
                        <table class="min-w-full w-full text-sm text-left text-gray-500 dark:text-gray-400">
                            <thead class="text-xs text-gray-700 uppercase bg-red-200 dark:bg-red-800/75 dark:text-red-100">
@@ -490,6 +487,7 @@
                         <option value="pending" selected>Pending</option>
                         <option value="fulfilled">Fulfilled</option>
                         <option value="cancelled">Cancelled</option>
+                        <option value="backordered">Backordered</option>
                     </select>
                 </div>
 
@@ -522,6 +520,8 @@
                         <option value="pending">Pending</option>
                         <option value="fulfilled">Fulfilled</option>
                         <option value="cancelled">Cancelled</option>
+                        <option value="backordered">Backordered (Manual)</option>
+                        <option value="partiallyReceived">Partially Received / Create Backorder</option>
                     </select>
                     <div class="flex justify-end">
                         <button id="confirmUpdateStatusBtn" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded mr-2">Update Status</button>
@@ -529,6 +529,35 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Partial Receipt Modal (Hidden by default) -->
+            <div id="partialReceiptModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-xl w-full max-w-lg">
+                    <h4 class="text-lg font-semibold mb-4">Process Partial Receipt</h4>
+                    <input type="hidden" id="partialReceiptOrderId">
+
+                    <div class="mb-3">
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Original Order ID: <span id="partialReceiptOriginalOrderIdDisplay" class="font-medium text-gray-800 dark:text-gray-200"></span></p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Product: <span id="partialReceiptProductNameDisplay" class="font-medium text-gray-800 dark:text-gray-200"></span></p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Originally Ordered: <span id="partialReceiptOriginalQuantityDisplay" class="font-medium text-gray-800 dark:text-gray-200"></span></p>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="quantityReceivedInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quantity Received</label>
+                        <input type="number" id="quantityReceivedInput" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 w-full" min="0">
+                    </div>
+
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-700 dark:text-gray-300">Quantity Remaining on Backorder: <span id="quantityRemainingOnBackorderDisplay" class="font-semibold dark:text-white"></span></p>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button id="confirmPartialReceiptBtn" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded mr-2">Confirm Partial Receipt</button>
+                        <button id="cancelPartialReceiptModalBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
         </section>
 
         <section id="reportsSectionContainer" class="hidden mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
