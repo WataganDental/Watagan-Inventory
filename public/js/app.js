@@ -4071,7 +4071,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             productId: productId,
             productName: originalOrderDetailsForPartialReceipt.productName,
             quantity: remainingQtyOnBackorder,
-            status: 'Backordered',
+            status: 'backordered', // Changed to lowercase
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             userId: originalOrderDetailsForPartialReceipt.userId || (firebase.auth().currentUser ? firebase.auth().currentUser.uid : null),
             originalOrderId: currentEditingOrderId, // Link to original order
