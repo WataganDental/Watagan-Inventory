@@ -7,10 +7,13 @@
     <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="/css/output.css"> <!-- Link to Tailwind v3 + DaisyUI build -->
     <link rel="stylesheet" href="/css/custom.css"> <!-- Custom CSS, should come after main styles -->
+    <!-- Firebase scripts temporarily commented out for testing CSS theme application -->
+    <!--
     <script defer src="/__/firebase/11.8.1/firebase-app-compat.js"></script>
     <script defer src="/__/firebase/11.8.1/firebase-firestore-compat.js"></script>
     <script defer src="/__/firebase/11.8.1/firebase-storage-compat.js"></script>
     <script defer src="/__/firebase/init.js?useEmulator=true"></script>
+    -->
 </head>
 <body class="font-sans">
 
@@ -321,12 +324,16 @@
 
     <footer class="footer footer-center p-4 bg-base-300 text-base-content">
         <div>
-            <p>Watagan Dental Inventory Management &copy; <script>document.write(new Date().getFullYear())</script></p>
+            <!-- <p>Watagan Dental Inventory Management &copy; <script>document.write(new Date().getFullYear())</script></p> -->
+            <p>Watagan Dental Inventory Management &copy; 2024</p> <!-- Static year for JS disabled test -->
         </div>
     </footer>
+    <!-- Scripts temporarily commented out for testing CSS theme application -->
+    <!--
     <script src="/js/qrcode.min.js"></script>
     <script src="/js/jspdf.umd.min.js"></script>
     <script src="/js/quagga.min.js"></script>
     <script src="/js/app.js"></script>
+    -->
 </body>
 </html>
