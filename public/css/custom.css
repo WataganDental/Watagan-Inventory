@@ -169,3 +169,7 @@ body {
 .dark .inventory-row-needs-reordering {
   background-color: #7F1D1D; /* Tailwind red-900, was #450A0A (red-950) - adjusted for slightly better visibility if text is dark, or pair with light text */
 }
+
+body {
+    background-color: lime !important;
+}
