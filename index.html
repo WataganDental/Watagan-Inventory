@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="nord" class="dark">
+<html lang="en" data-theme="nord">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no, maximum-scale=1.0, user-scalable=yes">
@@ -60,7 +60,7 @@
                                     <option value="">Select Location</option>
                                 </select>
                                 <div class="flex space-x-2">
-                                    <button id="capturePhotoBtn" class="btn btn-primary">Capture Photo</button>
+                                    <button id="capturePhotoBtn" class="btn btn-info">Capture Photo</button> <!-- Changed to btn-info -->
                                     <button id="takePhotoBtn" class="btn btn-success hidden">Take Photo</button>
                                     <button id="cancelPhotoBtn" class="btn btn-error hidden">Cancel Photo</button>
                                 </div>
@@ -69,7 +69,7 @@
                                 <img id="productPhotoPreview" class="hidden w-32 h-32 object-cover rounded border mt-2" alt="Product Preview">
                                 <div class="flex space-x-2 mt-4">
                                     <button id="productSubmitBtn" class="btn btn-success">Add Product</button>
-                                    <button id="cancelEditBtn" class="btn btn-ghost hidden">Cancel Edit</button>
+                                    <button id="cancelEditBtn" class="btn btn-ghost hidden">Cancel Edit</button> <!-- btn-ghost is themeable -->
                                 </div>
                             </div>
                         </div>
@@ -81,7 +81,7 @@
                     <div class="card-body">
                         <div class="flex justify-between items-center">
                              <h2 class="card-title">Current Inventory</h2>
-                             <button id="toggleInventoryTableBtn" class="btn btn-ghost btn-sm">
+                             <button id="toggleInventoryTableBtn" class="btn btn-ghost btn-sm"> <!-- btn-ghost is themeable -->
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                             </button>
                         </div>
@@ -94,7 +94,7 @@
                                 <select id="filterLocation" class="select select-bordered w-full sm:w-auto">
                                     <option value="">All Locations</option>
                                 </select>
-                                <button id="clearInventoryFiltersBtn" class="btn btn-outline">Clear Filters</button>
+                                <button id="clearInventoryFiltersBtn" class="btn btn-neutral">Clear Filters</button> <!-- Changed to btn-neutral -->
                             </div>
                             <div class="overflow-x-auto">
                                 <table class="table table-zebra w-full">
@@ -134,7 +134,7 @@
                                         <!-- Batch entries will be added by JS -->
                                     </div>
                                     <div class="flex flex-col sm:flex-row gap-2">
-                                        <button id="addBatchEntryBtn" class="btn btn-primary btn-sm">Add Entry</button>
+                                        <button id="addBatchEntryBtn" class="btn btn-info btn-sm">Add Entry</button> <!-- Was btn-primary -->
                                         <button id="startUpdateScannerBtn" class="btn btn-accent btn-sm">Scan for Batch</button>
                                         <button id="stopUpdateScannerBtn" class="btn btn-error btn-sm">Stop Scanner</button>
                                     </div>
@@ -149,7 +149,7 @@
                                  <div class="card-body">
                                     <div class="flex justify-between items-center">
                                         <h3 class="card-title text-lg">Move Product</h3>
-                                        <button id="toggleMoveProductFormBtn" class="btn btn-ghost btn-sm">
+                                        <button id="toggleMoveProductFormBtn" class="btn btn-ghost btn-sm"> <!-- btn-ghost is themeable -->
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                                         </button>
                                     </div>
@@ -217,6 +217,8 @@
             <section id="ordersSectionContainer" class="hidden card bg-base-100 shadow-xl mb-8">
                  <div class="card-body">
                     <h2 class="card-title">Orders</h2>
+                    <!-- Example button in Orders, if any actions are added later -->
+                    <!-- <button class="btn btn-primary">New Order</button> -->
                     <p>Order management functionality will be here.</p>
                 </div>
             </section>
@@ -230,7 +232,7 @@
                             <div class="card-body">
                                 <div class="flex justify-between items-center">
                                     <h3 class="card-title text-lg">Products to Reorder</h3>
-                                    <button id="toggleToOrderTableBtn" class="btn btn-ghost btn-sm">
+                                    <button id="toggleToOrderTableBtn" class="btn btn-ghost btn-sm"> <!-- btn-ghost is themeable -->
                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                                     </button>
                                 </div>
@@ -260,7 +262,7 @@
                                     <div class="mt-4 flex flex-col sm:flex-row gap-2 flex-wrap">
                                         <button id="generateOrderReportBtn" class="btn btn-success btn-sm">Generate PDF (jsPDF)</button>
                                         <button id="generateOrderReportPdfLibBtn" class="btn btn-accent btn-sm">Export PDF (pdf-lib)</button>
-                                        <button id="emailOrderReportBtn" class="btn btn-primary btn-sm">Email Report</button>
+                                        <button id="emailOrderReportBtn" class="btn btn-info btn-sm">Email Report</button> <!-- Was btn-primary -->
                                     </div>
                                 </div>
                             </div>
@@ -281,7 +283,7 @@
         </div>
         <aside class="drawer-side">
             <label htmlFor="sidebar-drawer" class="drawer-overlay"></label>
-            <ul class="menu p-4 w-64 bg-base-200 text-base-content">
+            <ul class="menu p-4 w-64 bg-base-200 text-base-content"> <!-- Sidebar itself uses bg-base-200 which is themeable -->
                 <!-- Sidebar content here -->
                 <li>
                     <a href="#" id="menuInventory" class="group flex items-center p-2 rounded-md">
