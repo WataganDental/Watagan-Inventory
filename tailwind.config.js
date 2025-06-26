@@ -17,4 +17,10 @@ module.exports = {
     extend: {},
   },
   plugins: [require('daisyui'),],
+  daisyui: {
+    themes: ["nord", "sunset"], // Specify 'nord' as the first (light) theme and 'sunset' as a theme.
+    darkTheme: "sunset", // Explicitly set 'sunset' as the dark theme.
+    // The default light theme will be 'nord' because it's the first in the themes array
+    // and no specific lightTheme is set.
+  },
 };
