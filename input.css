@@ -1,3 +1,56 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@plugin "daisyui" {
+  themes: [
+    {
+      nord: {
+        "primary": "#88C0D0",
+        "primary-content": "#2E3440",
+        "secondary": "#81A1C1",
+        "secondary-content": "#2E3440",
+        "accent": "#8FBCBB",
+        "accent-content": "#2E3440",
+        "neutral": "#4C566A",
+        "neutral-content": "#ECEFF4",
+        "base-100": "#ECEFF4",
+        "base-200": "#E5E9F0",
+        "base-300": "#D8DEE9",
+        "base-content": "#2E3440",
+        "info": "#5E81AC",
+        "info-content": "#ECEFF4",
+        "success": "#A3BE8C",
+        "success-content": "#2E3440",
+        "warning": "#EBCB8B",
+        "warning-content": "#2E3440",
+        "error": "#BF616A",
+        "error-content": "#ECEFF4",
+      },
+    },
+    {
+      sunset: {
+        "primary": "#F67280",
+        "primary-content": "#FFFFFF",
+        "secondary": "#C06C84",
+        "secondary-content": "#FFFFFF",
+        "accent": "#F8B195",
+        "accent-content": "#2A363B",
+        "neutral": "#355C7D",
+        "neutral-content": "#FAD0C9",
+        "base-100": "#2A363B",
+        "base-200": "#1F2A2E",
+        "base-300": "#151D21",
+        "base-content": "#FAD0C9",
+        "info": "#6C5B7B",
+        "info-content": "#FFFFFF",
+        "success": "#A7D26F",
+        "success-content": "#2A363B",
+        "warning": "#FCB97D",
+        "warning-content": "#2A363B",
+        "error": "#E94560",
+        "error-content": "#FFFFFF",
+      },
+    },
+  ];
+  darkTheme: "sunset";
+  logs: true;
+}

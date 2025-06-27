@@ -4,17 +4,17 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "./node_modules/.bin/tailwindcss -i ./input.css -o ./public/css/output.css --minify",
-    "build:css": "./node_modules/.bin/tailwindcss -i ./input.css -o ./public/css/output.css --watch"
+    "build": "tailwindcss -i ./input.css -o ./public/css/output.css --minify",
+    "build:css": "tailwindcss -i ./input.css -o ./public/css/output.css --watch"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "daisyui": "^5.0.43",
+    "daisyui": "latest",
     "puppeteer": "^24.9.0",
-    "tailwindcss": "^3.4.14"
+    "tailwindcss": "^4.1.11"
   },
   "dependencies": {
     "http-server": "^14.1.1"
