@@ -20,6 +20,25 @@ service cloud.firestore {
              get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.role == 'staff';
     }
 
+    // Helper function to validate data types and required fields
+    function isValidProductData(data) {
+      return data.keys().hasAll(['name', 'quantity', 'cost', 'minQuantity', 'supplier', 'location']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.quantity is number && data.quantity >= 0 &&
+             data.cost is number && data.cost >= 0 &&
+             data.minQuantity is number && data.minQuantity >= 0 &&
+             data.supplier is string && data.supplier.size() > 0 && data.supplier.size() <= 100 &&
+             data.location is string && data.location.size() > 0 && data.location.size() <= 100;
+    }
+
+    // Helper function to validate order data
+    function isValidOrderData(data) {
+      return data.keys().hasAll(['productId', 'quantity', 'status']) &&
+             data.productId is string && data.productId.size() > 0 &&
+             data.quantity is number && data.quantity > 0 &&
+             data.status in ['pending', 'fulfilled', 'cancelled', 'backordered'];
+    }
+
     // Rules for user_roles collection
     match /user_roles/{userId} {
       // Allow authenticated users to read their own role
@@ -30,26 +49,46 @@ service cloud.firestore {
 
     // Rules for inventory collection
     match /inventory/{document} {
-      allow read: if isUserAdmin() || isUserStaff(); // Admins and staff can read
-      allow write: if isUserAdmin(); // Only admins can write
+      allow read: if isUserAdmin() || isUserStaff();
+      allow create: if isUserAdmin() && isValidProductData(request.resource.data);
+      allow update: if isUserAdmin() && isValidProductData(request.resource.data);
+      allow delete: if isUserAdmin();
     }
 
-    // Rules for suppliers collection (working as per logs)
+    // Rules for suppliers collection
     match /suppliers/{document} {
       allow read: if isUserAdmin() || isUserStaff();
-      allow write: if isUserAdmin();
+      allow write: if isUserAdmin() && 
+                     resource.data.keys().hasAll(['name']) &&
+                     resource.data.name is string && 
+                     resource.data.name.size() > 0 && 
+                     resource.data.name.size() <= 100;
     }
 
-    // Rules for locations collection (working as per logs)
+    // Rules for locations collection
     match /locations/{document} {
       allow read: if isUserAdmin() || isUserStaff();
-      allow write: if isUserAdmin();
+      allow write: if isUserAdmin() && 
+                     resource.data.keys().hasAll(['name']) &&
+                     resource.data.name is string && 
+                     resource.data.name.size() > 0 && 
+                     resource.data.name.size() <= 100;
     }
 
     // Rules for orders collection
     match /orders/{orderId} {
-      allow read: if isUserAdmin() || isUserStaff(); // Admins and staff can read
-      allow write: if isUserAdmin(); // Only admins can create, update, delete
+      allow read: if isUserAdmin() || isUserStaff();
+      allow create: if isUserAdmin() && isValidOrderData(request.resource.data);
+      allow update: if isUserAdmin() && 
+                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'quantity']) ||
+                       isValidOrderData(request.resource.data));
+      allow delete: if isUserAdmin();
+    }
+
+    // Rules for audit logs (optional - for tracking changes)
+    match /audit_logs/{logId} {
+      allow read: if isUserAdmin();
+      allow write: if false; // Only server-side functions should write audit logs
     }
   }
 }

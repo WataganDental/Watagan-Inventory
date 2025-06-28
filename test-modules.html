@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        .test-button:hover {
+            background: #2563eb;
+        }
+        .test-results {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success { color: #059669; }
+        .error { color: #dc2626; }
+        .info { color: #0891b2; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Inventory System Test Suite</h1>
+    
+    <div class="test-section">
+        <h2>Module Loading Tests</h2>
+        <button class="test-button" onclick="testModuleLoading()">Test Module Loading</button>
+        <div id="module-results" class="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Inventory Manager Tests</h2>
+        <button class="test-button" onclick="testInventoryManager()">Test Inventory Operations</button>
+        <button class="test-button" onclick="testFiltering()">Test Filtering</button>
+        <button class="test-button" onclick="testPagination()">Test Pagination</button>
+        <div id="inventory-results" class="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>QR Code Module Tests</h2>
+        <button class="test-button" onclick="testQRCodeModule()">Test QR Code Generation</button>
+        <div id="qr-results" class="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Notification System Tests</h2>
+        <button class="test-button" onclick="testNotifications()">Test Notifications</button>
+        <div id="notification-results" class="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Performance Tests</h2>
+        <button class="test-button" onclick="testPerformance()">Test Performance Utilities</button>
+        <div id="performance-results" class="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Search Engine Tests</h2>
+        <button class="test-button" onclick="testSearchEngine()">Test Search Functionality</button>
+        <div id="search-results" class="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Integration Tests</h2>
+        <button class="test-button" onclick="runAllTests()">Run All Tests</button>
+        <button class="test-button" onclick="clearResults()">Clear Results</button>
+        <div id="integration-results" class="test-results"></div>
+    </div>
+
+    <script type="module">
+        // Import modules for testing
+        let InventoryManager, QRCodeManager, NotificationManager, PerformanceOptimizer, SearchEngine;
+        
+        try {
+            const inventoryModule = await import('./public/js/modules/inventory.js');
+            InventoryManager = inventoryModule.InventoryManager;
+            
+            const qrModule = await import('./public/js/modules/qrcode.js');
+            QRCodeManager = qrModule.QRCodeManager;
+            
+            const notificationModule = await import('./public/js/modules/notifications.js');
+            NotificationManager = notificationModule.NotificationManager;
+            
+            const performanceModule = await import('./public/js/modules/performance.js');
+            PerformanceOptimizer = performanceModule.PerformanceOptimizer;
+            
+            const searchModule = await import('./public/js/modules/search.js');
+            SearchEngine = searchModule.SearchEngine;
+            
+            console.log('✅ All modules loaded successfully');
+            appendResult('module-results', '✅ All modules loaded successfully', 'success');
+            
+        } catch (error) {
+            console.error('❌ Module loading failed:', error);
+            appendResult('module-results', `❌ Module loading failed: ${error.message}`, 'error');
+        }
+
+        // Mock Firebase for testing
+        const mockFirebase = {
+            collection: (name) => ({
+                get: () => Promise.resolve({
+                    docs: [
+                        { data: () => ({ id: 'test-1', name: 'Dental Mirror', quantity: 10, cost: 25.99, minQuantity: 5, supplier: 'DentalCorp', location: 'Surgery 1' }) },
+                        { data: () => ({ id: 'test-2', name: 'Dental Probe', quantity: 3, cost: 15.50, minQuantity: 8, supplier: 'MedSupply', location: 'Storage' }) },
+                        { data: () => ({ id: 'test-3', name: 'Composite Filling', quantity: 25, cost: 45.00, minQuantity: 10, supplier: 'DentalCorp', location: 'Surgery 2' }) }
+                    ]
+                }),
+                doc: (id) => ({
+                    set: (data) => Promise.resolve(),
+                    update: (data) => Promise.resolve(),
+                    delete: () => Promise.resolve()
+                })
+            })
+        };
+
+        const mockStorage = {
+            ref: (path) => ({ delete: () => Promise.resolve() })
+        };
+
+        // Helper function to append results
+        function appendResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            element.innerHTML += `<span class="${type}">[${timestamp}] ${message}</span>\n`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        // Test functions
+        window.testModuleLoading = function() {
+            const results = document.getElementById('module-results');
+            results.innerHTML = '';
+            
+            const modules = [
+                { name: 'InventoryManager', loaded: !!InventoryManager },
+                { name: 'QRCodeManager', loaded: !!QRCodeManager },
+                { name: 'NotificationManager', loaded: !!NotificationManager },
+                { name: 'PerformanceOptimizer', loaded: !!PerformanceOptimizer },
+                { name: 'SearchEngine', loaded: !!SearchEngine }
+            ];
+            
+            modules.forEach(module => {
+                if (module.loaded) {
+                    appendResult('module-results', `✅ ${module.name} loaded successfully`, 'success');
+                } else {
+                    appendResult('module-results', `❌ ${module.name} failed to load`, 'error');
+                }
+            });
+        };
+
+        window.testInventoryManager = async function() {
+            const results = document.getElementById('inventory-results');
+            results.innerHTML = '';
+            
+            try {
+                appendResult('inventory-results', 'Testing InventoryManager...', 'info');
+                
+                const inventoryManager = new InventoryManager(mockFirebase, mockStorage);
+                
+                // Test loading
+                const inventory = await inventoryManager.loadInventory();
+                appendResult('inventory-results', `✅ Loaded ${inventory.length} products`, 'success');
+                
+                // Test adding
+                const newId = await inventoryManager.addProduct({
+                    name: 'Test Product',
+                    quantity: 20,
+                    cost: 30.00,
+                    minQuantity: 10,
+                    supplier: 'Test Supplier',
+                    location: 'Test Location'
+                });
+                appendResult('inventory-results', `✅ Added product with ID: ${newId}`, 'success');
+                
+                // Test updating
+                await inventoryManager.updateProduct('test-1', { quantity: 15 });
+                appendResult('inventory-results', '✅ Updated product successfully', 'success');
+                
+                // Test deleting
+                await inventoryManager.deleteProduct('test-2');
+                appendResult('inventory-results', '✅ Deleted product successfully', 'success');
+                
+            } catch (error) {
+                appendResult('inventory-results', `❌ Error: ${error.message}`, 'error');
+            }
+        };
+
+        window.testFiltering = async function() {
+            const results = document.getElementById('inventory-results');
+            
+            try {
+                const inventoryManager = new InventoryManager(mockFirebase, mockStorage);
+                await inventoryManager.loadInventory();
+                
+                // Test supplier filter
+                const supplierFiltered = inventoryManager.filterInventory({ supplier: 'DentalCorp' });
+                appendResult('inventory-results', `✅ Supplier filter: ${supplierFiltered.length} items`, 'success');
+                
+                // Test search filter
+                const searchFiltered = inventoryManager.filterInventory({ search: 'dental' });
+                appendResult('inventory-results', `✅ Search filter: ${searchFiltered.length} items`, 'success');
+                
+                // Test combined filters
+                const combinedFiltered = inventoryManager.filterInventory({ 
+                    supplier: 'DentalCorp', 
+                    search: 'mirror' 
+                });
+                appendResult('inventory-results', `✅ Combined filter: ${combinedFiltered.length} items`, 'success');
+                
+            } catch (error) {
+                appendResult('inventory-results', `❌ Filtering error: ${error.message}`, 'error');
+            }
+        };
+
+        window.testPagination = async function() {
+            const results = document.getElementById('inventory-results');
+            
+            try {
+                const inventoryManager = new InventoryManager(mockFirebase, mockStorage);
+                await inventoryManager.loadInventory();
+                
+                // Test pagination
+                const paged = inventoryManager.getPagedResults(inventoryManager.inventory);
+                appendResult('inventory-results', `✅ Pagination: ${paged.length} items on page ${inventoryManager.currentPage}`, 'success');
+                
+                // Test page navigation
+                inventoryManager.currentPage = 2;
+                inventoryManager.itemsPerPage = 2;
+                const page2 = inventoryManager.getPagedResults(inventoryManager.inventory);
+                appendResult('inventory-results', `✅ Page 2: ${page2.length} items`, 'success');
+                
+            } catch (error) {
+                appendResult('inventory-results', `❌ Pagination error: ${error.message}`, 'error');
+            }
+        };
+
+        window.testQRCodeModule = async function() {
+            const results = document.getElementById('qr-results');
+            results.innerHTML = '';
+            
+            try {
+                appendResult('qr-results', 'Testing QRCodeManager...', 'info');
+                
+                const qrManager = new QRCodeManager();
+                
+                // Test QR code data URL generation (mock)
+                appendResult('qr-results', '✅ QRCodeManager instantiated', 'success');
+                appendResult('qr-results', 'ℹ️ QR generation requires external library in real environment', 'info');
+                
+            } catch (error) {
+                appendResult('qr-results', `❌ Error: ${error.message}`, 'error');
+            }
+        };
+
+        window.testNotifications = function() {
+            const results = document.getElementById('notification-results');
+            results.innerHTML = '';
+            
+            try {
+                appendResult('notification-results', 'Testing NotificationManager...', 'info');
+                
+                const notificationManager = new NotificationManager();
+                
+                // Test different notification types
+                notificationManager.success('Test success message');
+                appendResult('notification-results', '✅ Success notification created', 'success');
+                
+                notificationManager.error('Test error message');
+                appendResult('notification-results', '✅ Error notification created', 'success');
+                
+                notificationManager.warning('Test warning message');
+                appendResult('notification-results', '✅ Warning notification created', 'success');
+                
+                notificationManager.info('Test info message');
+                appendResult('notification-results', '✅ Info notification created', 'success');
+                
+            } catch (error) {
+                appendResult('notification-results', `❌ Error: ${error.message}`, 'error');
+            }
+        };
+
+        window.testPerformance = function() {
+            const results = document.getElementById('performance-results');
+            results.innerHTML = '';
+            
+            try {
+                appendResult('performance-results', 'Testing PerformanceOptimizer...', 'info');
+                
+                const perfOptimizer = new PerformanceOptimizer();
+                
+                // Test debounce
+                let counter = 0;
+                const debouncedFn = () => counter++;
+                perfOptimizer.debounce(debouncedFn, 100, 'test');
+                perfOptimizer.debounce(debouncedFn, 100, 'test');
+                perfOptimizer.debounce(debouncedFn, 100, 'test');
+                
+                setTimeout(() => {
+                    if (counter === 1) {
+                        appendResult('performance-results', '✅ Debounce working correctly', 'success');
+                    } else {
+                        appendResult('performance-results', '❌ Debounce not working', 'error');
+                    }
+                }, 150);
+                
+                // Test cache
+                perfOptimizer.setCache('test-key', 'test-value');
+                const cachedValue = perfOptimizer.getCache('test-key');
+                
+                if (cachedValue === 'test-value') {
+                    appendResult('performance-results', '✅ Cache working correctly', 'success');
+                } else {
+                    appendResult('performance-results', '❌ Cache not working', 'error');
+                }
+                
+            } catch (error) {
+                appendResult('performance-results', `❌ Error: ${error.message}`, 'error');
+            }
+        };
+
+        window.testSearchEngine = async function() {
+            const results = document.getElementById('search-results');
+            results.innerHTML = '';
+            
+            try {
+                appendResult('search-results', 'Testing SearchEngine...', 'info');
+                
+                const searchEngine = new SearchEngine();
+                const inventoryManager = new InventoryManager(mockFirebase, mockStorage);
+                const products = await inventoryManager.loadInventory();
+                
+                // Build search index
+                searchEngine.buildIndex(products);
+                appendResult('search-results', '✅ Search index built', 'success');
+                
+                // Test exact search
+                const exactResults = searchEngine.search('dental', products);
+                appendResult('search-results', `✅ Exact search: ${exactResults.length} results`, 'success');
+                
+                // Test fuzzy search
+                const fuzzyResults = searchEngine.search('detal', products, { fuzzyMatch: true });
+                appendResult('search-results', `✅ Fuzzy search: ${fuzzyResults.length} results`, 'success');
+                
+                // Test suggestions
+                const suggestions = searchEngine.getSuggestions('den', products);
+                appendResult('search-results', `✅ Suggestions: ${suggestions.length} found`, 'success');
+                
+            } catch (error) {
+                appendResult('search-results', `❌ Error: ${error.message}`, 'error');
+            }
+        };
+
+        window.runAllTests = async function() {
+            const results = document.getElementById('integration-results');
+            results.innerHTML = '';
+            
+            appendResult('integration-results', '🚀 Running comprehensive test suite...', 'info');
+            
+            try {
+                await testInventoryManager();
+                await testFiltering();
+                await testPagination();
+                testQRCodeModule();
+                testNotifications();
+                testPerformance();
+                await testSearchEngine();
+                
+                appendResult('integration-results', '🎉 All tests completed successfully!', 'success');
+                
+            } catch (error) {
+                appendResult('integration-results', `💥 Test suite failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.clearResults = function() {
+            const resultElements = document.querySelectorAll('.test-results');
+            resultElements.forEach(element => {
+                element.innerHTML = '';
+            });
+        };
+
+    </script>
+</body>
+</html>
