@@ -141,6 +141,22 @@ function showView(viewIdToShow, clickedMenuId) {
           container.classList.remove('hidden');
           viewFound = true;
           console.log(`Showing: ${container.id}`);
+          // VIEW SPECIFIC INITIALIZATIONS
+          if (container.id === 'inventoryViewContainer') {
+              console.log('[showView] inventoryViewContainer selected. Refreshing inventory display and dashboard.');
+              console.log('[showView] Calling displayInventory() for inventoryViewContainer.');
+              if (typeof displayInventory === 'function') displayInventory(); else console.error("[showView] displayInventory is not defined");
+              console.log('[showView] Calling updateInventoryDashboard() for inventoryViewContainer.');
+              if (typeof updateInventoryDashboard === 'function') updateInventoryDashboard(); else console.error("[showView] updateInventoryDashboard is not defined");
+              console.log('[showView] Calling updateToOrderTable() for inventoryViewContainer.');
+              if (typeof updateToOrderTable === 'function') updateToOrderTable(); else console.error("[showView] updateToOrderTable is not defined");
+          } else if (container.id === 'dashboardViewContainer') {
+              console.log('[showView] dashboardViewContainer selected. Calling updateEnhancedDashboard.');
+              if (typeof updateEnhancedDashboard === 'function') updateEnhancedDashboard(); else console.error("[showView] updateEnhancedDashboard is not defined");
+          }
+          // END VIEW SPECIFIC INITIALIZATIONS
+          // Original if-else chain continues below for other views, slightly refactored to include the above specific initializations first.
+
           if (container.id === 'quickStockUpdateContainer') {
             const initialTabToSelect = document.getElementById('barcodeScannerModeTab') ? 'barcodeScannerModeTab' : 'manualBatchModeTab';
             if (typeof switchQuickUpdateTab === 'function') { // Defensive check
@@ -157,12 +173,14 @@ function showView(viewIdToShow, clickedMenuId) {
             // Call report functions with defensive checks
             console.log('Reports section is being shown - calling report functions');
             
-            // Update inventory dashboard (low stock alerts)
+            // Update inventory dashboard (low stock alerts) - Note: This is already called when inventoryViewContainer is shown if that's part of reports
+            // This might be redundant or specific to a part of the reports view
             setTimeout(() => {
               try {
-                updateInventoryDashboard();
+                // Check if updateInventoryDashboard is truly needed here or if it's covered by inventory view logic
+                // updateInventoryDashboard();
               } catch (error) {
-                console.error('Error calling updateInventoryDashboard:', error);
+                console.error('Error calling updateInventoryDashboard from reports section:', error);
               }
             }, 100);
             
