@@ -371,6 +371,32 @@ export class UIEnhancementManager {
             totalValueEl.textContent = `$${stats.totalValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         }
     }
+
+    /**
+     * Update the inventory table with modern rows
+     * @param {string} tableBodyId - The ID of the table body element
+     * @param {Array} items - Array of inventory items to display
+     */
+    updateTable(tableBodyId, items) {
+        const tableBody = document.getElementById(tableBodyId);
+        const loadingState = document.getElementById('inventoryLoadingState');
+        const emptyState = document.getElementById('inventoryEmptyState');
+        if (!tableBody) return;
+        // Hide loading state
+        if (loadingState) loadingState.classList.add('hidden');
+        // Show or hide empty state
+        if (emptyState) {
+            if (!items || items.length === 0) {
+                emptyState.classList.remove('hidden');
+                tableBody.innerHTML = '';
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+        }
+        // Render table rows
+        tableBody.innerHTML = items.map((item, idx) => this.generateModernTableRow(item, idx)).join('');
+    }
 }
 
 // Export for use in other modules
