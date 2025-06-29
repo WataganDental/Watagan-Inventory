@@ -1681,6 +1681,58 @@ function displayInventory() {
   console.log('QR code generation skipped for performance - use QR Code action in dropdown');
 }
 
+// Attach event listeners to table action buttons after table update
+function attachTableEventListeners() {
+    // Edit product
+    document.querySelectorAll('.edit-product-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            const productId = button.getAttribute('data-product-id');
+            if (typeof editProduct === 'function') {
+                editProduct(productId);
+            } else {
+                uiEnhancementManager.showToast(`Edit product: ${productId}`, 'info');
+            }
+        });
+    });
+    // Move product
+    document.querySelectorAll('.move-product-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            const productId = button.getAttribute('data-product-id');
+            if (typeof openMoveProductForm === 'function') {
+                openMoveProductForm(productId);
+            } else {
+                uiEnhancementManager.showToast(`Move product: ${productId}`, 'info');
+            }
+        });
+    });
+    // Delete product
+    document.querySelectorAll('.delete-product-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            const productId = button.getAttribute('data-product-id');
+            if (typeof deleteProduct === 'function') {
+                deleteProduct(productId);
+            } else {
+                uiEnhancementManager.showToast(`Delete product: ${productId}`, 'warning');
+            }
+        });
+    });
+    // View QR code
+    document.querySelectorAll('.view-qr-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            const productId = button.getAttribute('data-product-id');
+            if (typeof viewQRCode === 'function') {
+                viewQRCode(productId);
+            } else {
+                uiEnhancementManager.showToast(`View QR for: ${productId}`, 'info');
+            }
+        });
+    });
+}
+
 // Add the missing main initialization
 document.addEventListener('DOMContentLoaded', function() {
   console.log('DOMContentLoaded fired');
