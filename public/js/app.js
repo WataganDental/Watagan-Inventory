@@ -128,7 +128,11 @@ function showView(viewIdToShow, clickedMenuId) {
     document.getElementById('ordersSectionContainer'),
     document.getElementById('reportsSectionContainer'),
     document.getElementById('quickStockUpdateContainer'),
-    document.getElementById('userManagementSectionContainer') // Added User Management
+    document.getElementById('suppliersAndLocationsContainer'), // Corrected ID to match HTML
+    document.getElementById('ordersSectionContainer'),
+    document.getElementById('reportsSectionContainer'),
+    document.getElementById('quickStockUpdateContainer'),
+    document.getElementById('userManagementSectionContainer')
   ].filter(container => container !== null);
 
   let viewFound = false;
@@ -1930,40 +1934,74 @@ async function viewQRCode(productId) {
     }
 }
 
-// Missing updateInventoryDashboard function
+// Strengthened updateInventoryDashboard function
 function updateInventoryDashboard() {
-    console.log('updateInventoryDashboard called');
+    console.log('[updateInventoryDashboard] Called.'); // Log entry
     try {
+        const totalProductsCountEl = document.getElementById('totalProductsCount');
+        const lowStockCountEl = document.getElementById('lowStockCount');
+        const outOfStockCountEl = document.getElementById('outOfStockCount');
+
+        if (!totalProductsCountEl || !lowStockCountEl || !outOfStockCountEl) {
+            console.error('[updateInventoryDashboard] One or more dashboard stat elements not found in the DOM.');
+            // Attempt to set to 0 anyway if some exist, or just return.
+            if (totalProductsCountEl) totalProductsCountEl.textContent = '0';
+            if (lowStockCountEl) lowStockCountEl.textContent = '0';
+            if (outOfStockCountEl) outOfStockCountEl.textContent = '0';
+            return; // Exit if essential elements are missing
+        }
+
         if (!inventory || inventory.length === 0) {
-            console.log('No inventory data available for dashboard update');
+            console.log('[updateInventoryDashboard] No inventory data available or inventory is empty.');
+            totalProductsCountEl.textContent = '0';
+            lowStockCountEl.textContent = '0';
+            outOfStockCountEl.textContent = '0';
+            // updateLowStockAlerts(); // Call this to clear or show "no alerts" message
+            // Ensure updateLowStockAlerts is defined and handles this case or check its existence before calling
+            if (typeof updateLowStockAlerts === 'function') {
+                 updateLowStockAlerts();
+            } else {
+                console.warn('[updateInventoryDashboard] updateLowStockAlerts function not found, cannot update alerts for empty inventory.');
+            }
             return;
         }
 
-        // Calculate metrics
         const totalProducts = inventory.length;
         const lowStockItems = inventory.filter(item => item.quantity <= item.minQuantity && item.minQuantity > 0);
         const outOfStockItems = inventory.filter(item => item.quantity === 0);
-        const totalValue = inventory.reduce((sum, item) => sum + (item.quantity * item.cost || 0), 0);
+        // const totalValue = inventory.reduce((sum, item) => sum + (item.quantity * item.cost || 0), 0); // This was for the enhanced dashboard
 
-        // Update inventory view stats
-        const totalProductsCount = document.getElementById('totalProductsCount');
-        const lowStockCount = document.getElementById('lowStockCount');
-        const outOfStockCount = document.getElementById('outOfStockCount');
+        console.log(`[updateInventoryDashboard] Calculated stats: Total=${totalProducts}, Low=${lowStockItems.length}, Out=${outOfStockItems.length}`);
 
-        if (totalProductsCount) totalProductsCount.textContent = totalProducts;
-        if (lowStockCount) lowStockCount.textContent = lowStockItems.length;
-        if (outOfStockCount) outOfStockCount.textContent = outOfStockItems.length;
+        totalProductsCountEl.textContent = totalProducts;
+        lowStockCountEl.textContent = lowStockItems.length;
+        outOfStockCountEl.textContent = outOfStockItems.length;
 
-        // Update low stock alerts
-        updateLowStockAlerts();
+        if (typeof updateLowStockAlerts === 'function') {
+            updateLowStockAlerts(); // This updates another part of the UI
+        } else {
+            console.warn('[updateInventoryDashboard] updateLowStockAlerts function not found.');
+        }
 
-        console.log(`Inventory dashboard updated: ${totalProducts} products, ${lowStockItems.length} low stock, ${outOfStockItems.length} out of stock`);
+        console.log(`[updateInventoryDashboard] Successfully updated inventory stats in UI.`); // Final success log
     } catch (error) {
-        console.error('Error in updateInventoryDashboard:', error);
+        console.error('[updateInventoryDashboard] Error caught:', error);
+        // Fallback: try to set stats to 0 or placeholder if an error occurs
+        try {
+            const tpc = document.getElementById('totalProductsCount');
+            if (tpc) tpc.textContent = '0 (err)';
+            const lsc = document.getElementById('lowStockCount');
+            if (lsc) lsc.textContent = '0 (err)';
+            const oosc = document.getElementById('outOfStockCount');
+            if (oosc) oosc.textContent = '0 (err)';
+        } catch (e) {
+            console.error('[updateInventoryDashboard] Error during fallback UI update:', e);
+        }
     }
 }
 
-// Missing updateLowStockAlerts function
+// Missing updateLowStockAlerts function (ensure it's defined elsewhere or handle its absence)
+// Assuming updateLowStockAlerts is defined as it was in previous steps.
 function updateLowStockAlerts() {
     console.log('updateLowStockAlerts called');
     try {
@@ -2249,10 +2287,384 @@ function initializeAllEnhancements() {
 
 // Call initialization on DOM ready
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded - initializing enhancements');
-    
-    // Wait a bit for other initialization to complete
-    setTimeout(() => {
-        initializeAllEnhancements();
-    }, 500);
+    console.log('[DOMContentLoaded] Starting setup...');
+    try {
+        // Block 1: Navigation, Core UI, and Firebase Auth Listeners
+        try {
+            const logoutBtn = document.getElementById('logoutButton');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    firebase.auth().signOut().then(() => {
+                        console.log('User signed out successfully.');
+                    }).catch(error => {
+                        console.error('Sign out error:', error);
+                        alert('Error signing out: ' + error.message);
+                    });
+                });
+            } else { console.warn('[DOMContentLoaded] logoutButton not found'); }
+
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            if (darkModeToggle) {
+                // Logic from setupEnhancedDarkMode integrated here or ensure setupEnhancedDarkMode is called
+                function updateDarkModeButtonText() {
+                    const isDark = document.documentElement.classList.contains('dark');
+                    darkModeToggle.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+                    darkModeToggle.setAttribute('title', isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode');
+                }
+                updateDarkModeButtonText(); // Initial text
+                darkModeToggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const isDark = document.documentElement.classList.contains('dark');
+                    if (isDark) removeDarkMode(); else applyDarkMode();
+                    updateDarkModeButtonText(); // Update text after change
+                });
+            } else { console.warn('[DOMContentLoaded] darkModeToggle not found'); }
+
+            const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+            if (sidebarToggleBtn) {
+                sidebarToggleBtn.addEventListener('click', toggleSidebar);
+            } else { console.warn('[DOMContentLoaded] sidebarToggleBtn not found'); }
+
+            // Navigation Menu Items
+            const menuItemsToSetup = [
+                'menuDashboard', 'menuInventory', 'menuSuppliers', 'menuOrders',
+                'menuReports', 'menuQuickStockUpdate', 'menuUserManagement'
+            ];
+            const viewMappings = {
+                'menuDashboard': 'dashboardViewContainer',
+                'menuInventory': 'inventoryViewContainer',
+                'menuSuppliers': 'suppliersAndLocationsContainer', // Corrected view ID
+                'menuOrders': 'ordersSectionContainer',
+                'menuReports': 'reportsSectionContainer',
+                'menuQuickStockUpdate': 'quickStockUpdateContainer',
+                'menuUserManagement': 'userManagementSectionContainer'
+            };
+
+            menuItemsToSetup.forEach(menuId => {
+                const menuItemEl = document.getElementById(menuId);
+                if (menuItemEl) {
+                    menuItemEl.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const viewId = viewMappings[menuId];
+                        if (viewId) {
+                            showView(viewId, menuId);
+                        } else {
+                            console.warn(`[DOMContentLoaded] No view mapping for menu ID: ${menuId}`);
+                        }
+                    });
+                } else {
+                    console.warn(`[DOMContentLoaded] Menu item element not found: ${menuId}`);
+                }
+            });
+            console.log('[DOMContentLoaded] Core UI, Auth, and Navigation listeners attached.');
+        } catch (e) {
+            console.error('[DOMContentLoaded] Error attaching core UI/Auth/Nav listeners:', e);
+        }
+
+        // Block 2: Product Form & Management Listeners
+        try {
+            const productSubmitBtn = document.getElementById('productSubmitBtn');
+            if (productSubmitBtn) productSubmitBtn.addEventListener('click', submitProduct);
+            else console.warn("[DOMContentLoaded] productSubmitBtn not found");
+
+            const cancelEditBtn = document.getElementById('cancelEditBtn');
+            if (cancelEditBtn) cancelEditBtn.addEventListener('click', resetProductForm);
+            else console.warn("[DOMContentLoaded] cancelEditBtn not found");
+
+            // Photo related buttons
+            const capturePhotoBtn = document.getElementById('capturePhotoBtn');
+            if (capturePhotoBtn) capturePhotoBtn.addEventListener('click', startPhotoCapture);
+            else console.warn("[DOMContentLoaded] capturePhotoBtn not found");
+
+            const takePhotoBtn = document.getElementById('takePhotoBtn');
+            if (takePhotoBtn) takePhotoBtn.addEventListener('click', takePhoto);
+            else console.warn("[DOMContentLoaded] takePhotoBtn not found");
+
+            const cancelPhotoBtn = document.getElementById('cancelPhotoBtn');
+            if (cancelPhotoBtn) cancelPhotoBtn.addEventListener('click', cancelPhoto);
+            else console.warn("[DOMContentLoaded] cancelPhotoBtn not found");
+
+            // QR Scan to Edit
+            const scanToEditBtn = document.getElementById('scanToEditBtn');
+            if (scanToEditBtn) scanToEditBtn.addEventListener('click', startEditScanner);
+            else console.warn("[DOMContentLoaded] scanToEditBtn not found");
+
+            const stopEditScannerBtn = document.getElementById('stopEditScannerBtn');
+            if (stopEditScannerBtn) stopEditScannerBtn.addEventListener('click', stopEditScanner);
+            else console.warn("[DOMContentLoaded] stopEditScannerBtn not found");
+
+            console.log('[DOMContentLoaded] Product form listeners attached.');
+        } catch (e) {
+            console.error('[DOMContentLoaded] Error attaching product form listeners:', e);
+        }
+
+        // Block 3: Supplier & Location Management
+        try {
+            const addSupplierBtn = document.getElementById('addSupplierBtn');
+            if (addSupplierBtn) addSupplierBtn.addEventListener('click', addSupplier);
+            else console.warn("[DOMContentLoaded] addSupplierBtn not found");
+
+            const addLocationBtn = document.getElementById('addLocationBtn');
+            if (addLocationBtn) addLocationBtn.addEventListener('click', addLocation);
+            else console.warn("[DOMContentLoaded] addLocationBtn not found");
+            console.log('[DOMContentLoaded] Supplier/Location listeners attached.');
+        } catch (e) {
+            console.error('[DOMContentLoaded] Error attaching supplier/location listeners:', e);
+        }
+
+        // Block 4: Inventory Table Filters & Actions
+        try {
+            const filterSupplier = document.getElementById('filterSupplier');
+            if (filterSupplier) filterSupplier.addEventListener('change', () => displayInventory());
+            else console.warn("[DOMContentLoaded] filterSupplier dropdown not found");
+
+            const filterLocation = document.getElementById('filterLocation');
+            if (filterLocation) filterLocation.addEventListener('change', () => displayInventory());
+            else console.warn("[DOMContentLoaded] filterLocation dropdown not found");
+
+            const clearInventoryFiltersBtn = document.getElementById('clearInventoryFiltersBtn');
+            if (clearInventoryFiltersBtn) {
+                clearInventoryFiltersBtn.addEventListener('click', () => {
+                    if(document.getElementById('filterSupplier')) document.getElementById('filterSupplier').value = '';
+                    if(document.getElementById('filterLocation')) document.getElementById('filterLocation').value = '';
+                    if(document.getElementById('inventorySearchInput')) document.getElementById('inventorySearchInput').value = '';
+                    currentPage = 1; // Reset to first page
+                    displayInventory();
+                });
+            } else { console.warn("[DOMContentLoaded] clearInventoryFiltersBtn not found"); }
+
+            // Search input for inventory
+            const inventorySearchInput = document.getElementById('inventorySearchInput');
+            if (inventorySearchInput) {
+                inventorySearchInput.addEventListener('input', debounce(() => {
+                    currentPage = 1; // Reset to first page on new search
+                    displayInventory(inventorySearchInput.value, document.getElementById('filterSupplier').value, document.getElementById('filterLocation').value);
+                }, 300));
+            } else { console.warn("[DOMContentLoaded] inventorySearchInput not found"); }
+
+            // Pagination controls
+            const prevPageBtn = document.getElementById('prevPageBtn');
+            if (prevPageBtn) prevPageBtn.addEventListener('click', () => { if (currentPage > 1) { currentPage--; displayInventory(); } });
+            else console.warn("[DOMContentLoaded] prevPageBtn not found");
+
+            const nextPageBtn = document.getElementById('nextPageBtn');
+            if (nextPageBtn) nextPageBtn.addEventListener('click', () => {
+                const totalPages = Math.ceil(totalFilteredItems / ITEMS_PER_PAGE);
+                if (currentPage < totalPages) { currentPage++; displayInventory(); }
+            });
+            else console.warn("[DOMContentLoaded] nextPageBtn not found");
+
+            console.log('[DOMContentLoaded] Inventory filter/search/pagination listeners attached.');
+        } catch (e) {
+            console.error('[DOMContentLoaded] Error attaching inventory filter/search/pagination listeners:', e);
+        }
+
+        // Block 5: Batch Actions & Move Product
+        try {
+            // Batch Updates
+            const addBatchEntryBtn = document.getElementById('addBatchEntryBtn');
+            if (addBatchEntryBtn) addBatchEntryBtn.addEventListener('click', addBatchEntry);
+            else console.warn("[DOMContentLoaded] addBatchEntryBtn not found");
+
+            const startUpdateScannerBtn = document.getElementById('startUpdateScannerBtn');
+            if (startUpdateScannerBtn) startUpdateScannerBtn.addEventListener('click', startUpdateScanner);
+            else console.warn("[DOMContentLoaded] startUpdateScannerBtn not found");
+
+            const stopUpdateScannerBtn = document.getElementById('stopUpdateScannerBtn');
+            if (stopUpdateScannerBtn) stopUpdateScannerBtn.addEventListener('click', stopUpdateScanner);
+            else console.warn("[DOMContentLoaded] stopUpdateScannerBtn not found");
+
+            const submitBatchUpdatesBtn = document.getElementById('submitBatchUpdatesBtn');
+            if (submitBatchUpdatesBtn) submitBatchUpdatesBtn.addEventListener('click', submitBatchUpdates);
+            else console.warn("[DOMContentLoaded] submitBatchUpdatesBtn not found");
+
+            // Move Product
+            const toggleMoveProductFormBtn = document.getElementById('toggleMoveProductFormBtn'); // This might be an old ID or part of a different structure
+            if (toggleMoveProductFormBtn) { /* attach listener */ }
+
+
+            const startMoveScannerBtn = document.getElementById('startMoveScannerBtn');
+            if (startMoveScannerBtn) startMoveScannerBtn.addEventListener('click', startMoveScanner);
+            else console.warn("[DOMContentLoaded] startMoveScannerBtn not found");
+
+            const stopMoveScannerBtn = document.getElementById('stopMoveScannerBtn');
+            if (stopMoveScannerBtn) stopMoveScannerBtn.addEventListener('click', stopMoveScanner);
+            else console.warn("[DOMContentLoaded] stopMoveScannerBtn not found");
+
+            const moveProductBtn = document.getElementById('moveProductBtn');
+            if (moveProductBtn) moveProductBtn.addEventListener('click', moveProduct);
+            else console.warn("[DOMContentLoaded] moveProductBtn not found");
+
+            console.log('[DOMContentLoaded] Batch/Move listeners attached.');
+        } catch (e) {
+            console.error('[DOMContentLoaded] Error attaching batch/move listeners:', e);
+        }
+
+        // Block 6: Reports
+        try {
+            const generateOrderReportBtn = document.getElementById('generateOrderReportBtn');
+            if (generateOrderReportBtn) generateOrderReportBtn.addEventListener('click', () => generateFastOrderReportPDF('jspdf')); // Assuming new combined function
+            else console.warn("[DOMContentLoaded] generateOrderReportBtn not found");
+
+            // The HTML has "generateDetailedOrderReportBtn" for the slow QR version
+             const generateDetailedOrderReportBtn = document.getElementById('generateDetailedOrderReportBtn');
+             if (generateDetailedOrderReportBtn) generateDetailedOrderReportBtn.addEventListener('click', () => generateOrderReportPDFWithQRCodes('jspdf'));
+             else console.warn("[DOMContentLoaded] generateDetailedOrderReportBtn (for QR) not found");
+
+
+            const emailOrderReportBtn = document.getElementById('emailOrderReportBtn');
+            if (emailOrderReportBtn) emailOrderReportBtn.addEventListener('click', emailReport);
+            else console.warn("[DOMContentLoaded] emailOrderReportBtn not found");
+
+            const generateQRCodePDFBtn = document.getElementById('generateQRCodePDFBtn'); // For all locations
+            if (generateQRCodePDFBtn) generateQRCodePDFBtn.addEventListener('click', () => generateAllQRCodesPDF('jspdf'));
+            else console.warn("[DOMContentLoaded] generateQRCodePDFBtn not found");
+
+            // Trend chart related (if any buttons)
+            const trendProductSelect = document.getElementById('trendProductSelect');
+            if(trendProductSelect) trendProductSelect.addEventListener('change', (event) => generateProductUsageChart(event.target.value));
+            else console.warn("[DOMContentLoaded] trendProductSelect not found");
+
+            console.log('[DOMContentLoaded] Report listeners attached.');
+        } catch (e) {
+            console.error('[DOMContentLoaded] Error attaching report listeners:', e);
+        }
+
+        // Block 7: Modals
+        try {
+            const closeImageModalBtn = document.getElementById('closeImageModalBtn');
+            if (closeImageModalBtn) closeImageModalBtn.addEventListener('click', closeImageModal);
+            else console.warn("[DOMContentLoaded] closeImageModalBtn not found");
+
+            const imageModalElement = document.getElementById('imageModal');
+            if(imageModalElement) imageModalElement.addEventListener('click', (e) => { if (e.target === imageModalElement) closeImageModal(); });
+            else console.warn("[DOMContentLoaded] imageModal element not found");
+
+
+            console.log('[DOMContentLoaded] Modal listeners attached.');
+        } catch (e) {
+            console.error('[DOMContentLoaded] Error attaching modal listeners:', e);
+        }
+
+        // Block 8: Quick Stock Update (QSU) View
+        try {
+            const qsuTabs = ['manualBatchModeTab', 'barcodeScannerModeTab', 'fileUploadModeTab'];
+            qsuTabs.forEach(tabId => {
+                const tabEl = document.getElementById(tabId);
+                if (tabEl) tabEl.addEventListener('click', () => switchQuickUpdateTab(tabId));
+                else console.warn(`[DOMContentLoaded] QSU Tab not found: ${tabId}`);
+            });
+
+            const qsuScanProductBtn = document.getElementById('qsuScanProductBtn');
+            if (qsuScanProductBtn) qsuScanProductBtn.addEventListener('click', startQuickStockBarcodeScanner);
+            else console.warn("[DOMContentLoaded] qsuScanProductBtn not found");
+
+            const qsuStopScanBtn = document.getElementById('qsuStopScanBtn');
+            if (qsuStopScanBtn) qsuStopScanBtn.addEventListener('click', stopQuickStockBarcodeScanner);
+            else console.warn("[DOMContentLoaded] qsuStopScanBtn not found");
+
+            const qsuAddManualEntryBtn = document.getElementById('qsuAddManualEntryBtn');
+            if (qsuAddManualEntryBtn) qsuAddManualEntryBtn.addEventListener('click', addQuickStockManualEntry);
+            else console.warn("[DOMContentLoaded] qsuAddManualEntryBtn not found");
+
+            const qsuSubmitBatchBtn = document.getElementById('qsuSubmitBatchBtn');
+            if (qsuSubmitBatchBtn) qsuSubmitBatchBtn.addEventListener('click', submitQuickStockBatch);
+            else console.warn("[DOMContentLoaded] qsuSubmitBatchBtn not found");
+
+            const qsuProductSearch = document.getElementById('qsuProductSearch');
+            if (qsuProductSearch) qsuProductSearch.addEventListener('input', debounce(handleQuickStockProductSearch, 300));
+            else console.warn("[DOMContentLoaded] qsuProductSearch not found");
+
+            const qsuFileUpload = document.getElementById('qsuFileUpload');
+            if (qsuFileUpload) qsuFileUpload.addEventListener('change', handleQuickStockFileUpload);
+            else console.warn("[DOMContentLoaded] qsuFileUpload not found");
+
+            const qsuProcessFileBtn = document.getElementById('qsuProcessFileBtn');
+            if (qsuProcessFileBtn) qsuProcessFileBtn.addEventListener('click', processQuickStockUploadedFile);
+            else console.warn("[DOMContentLoaded] qsuProcessFileBtn not found");
+
+
+            console.log('[DOMContentLoaded] Quick Stock Update listeners attached.');
+        } catch (e) {
+            console.error('[DOMContentLoaded] Error attaching Quick Stock Update listeners:', e);
+        }
+
+        // Block 9: Dashboard View specific buttons
+        try {
+            const refreshDashboardBtn = document.getElementById('refreshDashboardBtn');
+            if(refreshDashboardBtn) refreshDashboardBtn.addEventListener('click', updateEnhancedDashboard);
+            else console.warn("[DOMContentLoaded] refreshDashboardBtn not found");
+
+            const quickAddProductBtn = document.getElementById('quickAddProductBtn');
+            if(quickAddProductBtn) quickAddProductBtn.addEventListener('click', () => {
+                showView('inventoryViewContainer', 'menuInventory'); // Switch to inventory view
+                setTimeout(() => { // Ensure form is visible
+                    document.getElementById('productName').focus(); // Focus on product name
+                    resetProductForm(); // Clear form for new product
+                }, 100); // Small delay to ensure view switch
+            });
+            else console.warn("[DOMContentLoaded] quickAddProductBtn not found");
+
+            const quickStockUpdateBtn = document.getElementById('quickStockUpdateBtn');
+            if(quickStockUpdateBtn) quickStockUpdateBtn.addEventListener('click', () => showView('quickStockUpdateContainer', 'menuQuickStockUpdate'));
+            else console.warn("[DOMContentLoaded] quickStockUpdateBtn not found");
+
+            const quickViewReportsBtn = document.getElementById('quickViewReportsBtn');
+            if(quickViewReportsBtn) quickViewReportsBtn.addEventListener('click', () => showView('reportsSectionContainer', 'menuReports'));
+            else console.warn("[DOMContentLoaded] quickViewReportsBtn not found");
+
+            console.log('[DOMContentLoaded] Dashboard view listeners attached.');
+        } catch (e) {
+            console.error('[DOMContentLoaded] Error attaching Dashboard view listeners:', e);
+        }
+
+        // Block 10: Orders View specific buttons
+        try {
+            const addOrderBtn = document.getElementById('addOrderBtn');
+            if (addOrderBtn) addOrderBtn.addEventListener('click', handleAddOrder);
+            else console.warn("[DOMContentLoaded] addOrderBtn not found");
+
+            const filterOrderStatus = document.getElementById('filterOrderStatus');
+            if (filterOrderStatus) filterOrderStatus.addEventListener('change', loadAndDisplayOrders);
+            else console.warn("[DOMContentLoaded] filterOrderStatus dropdown not found");
+
+            const filterOrderSupplierDropdown = document.getElementById('filterOrderSupplierDropdown');
+            if (filterOrderSupplierDropdown) filterOrderSupplierDropdown.addEventListener('change', loadAndDisplayOrders);
+            else console.warn("[DOMContentLoaded] filterOrderSupplierDropdown for orders not found");
+
+            console.log('[DOMContentLoaded] Orders view listeners attached.');
+        } catch (e) {
+            console.error('[DOMContentLoaded] Error attaching Orders view listeners:', e);
+        }
+
+        // Initialize other things that don't involve listeners but need DOM ready
+        try {
+            loadSuppliers().then(loadLocations); // Load initial supplier/location data for dropdowns
+            initiateImageModalVars(); // Initialize modal vars
+            // Initial UI setup based on sidebar state preference
+            const sidebarMinimized = localStorage.getItem(SIDEBAR_STATE_KEY) === 'true';
+            if (sidebarMinimized) {
+                minimizeSidebar();
+            } else {
+                maximizeSidebar();
+            }
+        } catch(e) {
+            console.error('[DOMContentLoaded] Error during miscellaneous initializations:', e);
+        }
+
+
+        // Delayed initialization of "enhancements" - this might be redundant if specific setups are done above
+        setTimeout(() => {
+            console.log('[DOMContentLoaded] Initializing enhancements (after 500ms delay)...');
+            if (typeof initializeAllEnhancements === 'function') { // This function calls updateInventoryWithAlerts etc.
+                initializeAllEnhancements();
+            } else {
+                console.error('[DOMContentLoaded] initializeAllEnhancements function not found for delayed init.');
+            }
+        }, 500); // This delay might still cause issues if inventory isn't loaded for initializeAllEnhancements
+
+    } catch (error) {
+        console.error('[DOMContentLoaded] A major error occurred during initial setup:', error);
+    }
+    console.log('[DOMContentLoaded] Setup finished.'); // Final confirmation
 });
