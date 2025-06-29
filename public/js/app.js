@@ -817,6 +817,30 @@ function updateEnhancedDashboard() {
     console.log('[updateEnhancedDashboard] Stub updated dashboard elements.');
 }
 
+// +++++ START OF STUB FUNCTIONS TO RESOLVE REFERENCEERRORS +++++
+
+function startUpdateScanner() { console.log('startUpdateScanner called - STUB'); }
+function stopUpdateScanner() { console.log('stopUpdateScanner called - STUB'); }
+function startMoveScanner() { console.log('startMoveScanner called - STUB'); }
+function stopMoveScanner() { console.log('stopMoveScanner called - STUB'); }
+function startQuickStockBarcodeScanner() { console.log('startQuickStockBarcodeScanner called - STUB'); }
+function stopQuickStockBarcodeScanner() { console.log('stopQuickStockBarcodeScanner called - STUB'); }
+function addQuickStockManualEntry() { console.log('addQuickStockManualEntry called - STUB'); }
+function submitQuickStockBatch() { console.log('submitQuickStockBatch called - STUB'); }
+function handleQuickStockProductSearch() { console.log('handleQuickStockProductSearch called - STUB'); }
+function handleQuickStockFileUpload() { console.log('handleQuickStockFileUpload called - STUB'); }
+function processQuickStockUploadedFile() { console.log('processQuickStockUploadedFile called - STUB'); }
+function handleAddOrder() { console.log('handleAddOrder called - STUB'); }
+function switchQuickUpdateTab(tabId) { console.log(`switchQuickUpdateTab called for ${tabId} - STUB`); }
+function generateFastOrderReportPDF() { console.log('generateFastOrderReportPDF called - STUB'); }
+function generateOrderReportPDFWithQRCodes() { console.log('generateOrderReportPDFWithQRCodes called - STUB'); }
+function generateAllQRCodesPDF() { console.log('generateAllQRCodesPDF called - STUB'); }
+function generateProductUsageChart(productId) { console.log(`generateProductUsageChart called for ${productId} - STUB`); }
+function viewOrderDetails(orderId) { console.log(`viewOrderDetails called for ${orderId} - STUB`); }
+function populateTrendProductSelect() { console.log('populateTrendProductSelect called - STUB'); }
+
+// +++++ END OF STUB FUNCTIONS +++++
+
 // +++++ START OF NEWLY ADDED/RESTORED FUNCTIONS +++++
 
 function displayInventory(searchTerm = '', supplierFilter = '', locationFilter = '') {
@@ -2136,9 +2160,9 @@ async function updateToOrderTable() {
             return;
         }
 
-        const toOrderTableBody = document.getElementById('toOrderTableBody');
-        if (!toOrderTableBody) {
-            console.log('toOrderTableBody element not found');
+        const toOrderTableElement = document.getElementById('toOrderTable'); // Corrected ID
+        if (!toOrderTableElement) {
+            console.log('toOrderTable element not found'); // Corrected log message
             return;
         }
 
@@ -2150,10 +2174,10 @@ async function updateToOrderTable() {
         console.log(`Found ${productsToOrder.length} products that need ordering`);
 
         // Clear existing table
-        toOrderTableBody.innerHTML = '';
+        toOrderTableElement.innerHTML = ''; // Corrected variable name
 
         if (productsToOrder.length === 0) {
-            const row = toOrderTableBody.insertRow();
+            const row = toOrderTableElement.insertRow(); // Corrected variable name
             row.innerHTML = `
                 <td colspan="6" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                     <div class="flex flex-col items-center">
@@ -2167,7 +2191,7 @@ async function updateToOrderTable() {
             `;
         } else {
             productsToOrder.forEach(item => {
-                const row = toOrderTableBody.insertRow();
+                const row = toOrderTableElement.insertRow(); // Corrected variable name
                 const quantityNeeded = Math.max(0, item.minQuantity - item.quantity - (item.quantityOrdered || 0));
                 const recommendedOrder = item.reorderQuantity || quantityNeeded;
                 
