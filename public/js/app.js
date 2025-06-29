@@ -719,75 +719,83 @@ try {
           }
         }
 
-        // Load inventory and update global array
+        // Primary attempt to set UI visibility
+        // if (authContainer) authContainer.classList.add('hidden'); // Already done above
+        // if (appNavbar) appNavbar.classList.remove('hidden'); // Already done above
+        // if (appMainContainer) appMainContainer.classList.remove('hidden'); // Already done above
+        // if (logoutBtn) logoutBtn.classList.remove('hidden'); // Already done above
+
+        // Asynchronous data loading chain
         inventoryManager.loadInventory().then(loadedInventory => {
           inventory = loadedInventory;
           console.log('Global inventory array updated with', inventory.length, 'items');
-        }).catch(error => {
-          console.error('Error loading inventory:', error);
-        });
-        
-        loadSuppliers();
-        loadLocations();
-
-        const userRoleRef = db.collection('user_roles').doc(user.uid);
-        userRoleRef.get().then(docSnapshot => {
+          return loadSuppliers(); // Chain supplier loading
+        }).then(() => {
+          console.log('Suppliers loaded successfully.');
+          return loadLocations(); // Chain location loading
+        }).then(() => {
+          console.log('Locations loaded successfully.');
+          const userRoleRef = db.collection('user_roles').doc(user.uid);
+          return userRoleRef.get(); // Chain user role fetching
+        }).then(docSnapshot => {
           if (docSnapshot.exists) {
             currentUserRole = docSnapshot.data().role;
             console.log('User role loaded:', currentUserRole);
           } else {
-            // If it's a new user (e.g., via Google Sign-In and no role doc yet), default to 'staff'.
-            // The Google Sign-In logic should ideally create this doc.
-            currentUserRole = 'staff';
+            currentUserRole = 'staff'; // Default role
             console.log('No specific role found for user, defaulting to:', currentUserRole);
+            // Optionally, create the role document here for new users if it doesn't exist
+            // db.collection('user_roles').doc(user.uid).set({ role: 'staff' });
           }
           updateUserInterfaceForRole(currentUserRole);
 
+          // Data loaded, now show the specific view
           const menuInventoryEl = document.getElementById('menuInventory');
           if (menuInventoryEl) {
-              showView('inventoryViewContainer', menuInventoryEl.id);
+            showView('inventoryViewContainer', menuInventoryEl.id);
           } else {
-              console.warn("Default menu item 'menuInventory' not found after login.");
+            console.warn("Default menu item 'menuInventory' not found after login.");
+            // Fallback: Attempt to show dashboard or a generic welcome view if inventory menu is missing
+            // For now, just log it. Could also try: showView('dashboardViewContainer', 'menuDashboard');
           }
         }).catch(error => {
-          console.error("Error fetching user role:", error);
-          currentUserRole = 'staff'; // Fallback
-          updateUserInterfaceForRole(currentUserRole);
-          const menuInventoryEl = document.getElementById('menuInventory');
-          if (menuInventoryEl) {
-              showView('inventoryViewContainer', menuInventoryEl.id);
+          console.error("Error during post-login data loading or UI setup:", error);
+          // Display a user-friendly error message in the main application area
+          if(appMainContainer) {
+            // Ensure appMainContainer is visible to show the error
+            appMainContainer.classList.remove('hidden');
+            // Clear any potential loading spinners or old content
+            appMainContainer.innerHTML = `
+              <div class="p-4 text-center">
+                <h2 class="text-xl font-semibold text-red-600 dark:text-red-400">Application Error</h2>
+                <p class="text-gray-700 dark:text-gray-300 mt-2">Could not load application data: ${error.message}</p>
+                <p class="text-gray-500 dark:text-gray-400 mt-1">Please try refreshing the page. If the problem persists, contact support.</p>
+              </div>`;
           }
+          // Also ensure the auth container is hidden if an error occurs post-login attempt
+          if (authContainer) authContainer.classList.add('hidden');
+          if (appNavbar) appNavbar.classList.remove('hidden'); // Keep navbar visible for logout option
         });
 
-        // Debug UI containers after authentication
+        // Diagnostic logging after a slightly longer delay
         setTimeout(() => {
+          console.log("State of UI after 1.5 seconds (for debugging):");
           debugUIContainers();
-          
-          // Force show main app if it's hidden (temporary fix)
-          const authContainer = document.getElementById('authContainer');
-          const appMainContainer = document.getElementById('appMainContainer');
-          const appNavbar = document.getElementById('appNavbar');
-          
-          if (authContainer && !authContainer.classList.contains('hidden')) {
-            console.warn('Auth container still visible, forcing hide');
-            authContainer.classList.add('hidden');
-          }
-          
-          if (appMainContainer && appMainContainer.classList.contains('hidden')) {  
-            console.warn('Main container hidden, forcing show');
-            appMainContainer.classList.remove('hidden');
-          }
-          
-          if (appNavbar && appNavbar.classList.contains('hidden')) {
-            console.warn('Navbar hidden, forcing show');
-            appNavbar.classList.remove('hidden');
-          }
-          
-          // Force show the inventory view since that's what the logs show is happening
-          showView('inventoryViewContainer', 'menuInventory');
-        }, 1000);
 
-        // Load user data and update UI based on role
+          // Check if the main container is still hidden after all primary attempts.
+          // This is purely for logging to see if the primary approach failed.
+          if (appMainContainer && appMainContainer.classList.contains('hidden')) {
+            console.error("CRITICAL DIAGNOSTIC: appMainContainer is still hidden after 1.5s and primary logic. This indicates a persistent issue with initial visibility settings or interference from other scripts/CSS.");
+          }
+          if (authContainer && !authContainer.classList.contains('hidden')) {
+            console.error("CRITICAL DIAGNOSTIC: authContainer is still visible after 1.5s and primary logic. Login screen should be hidden.");
+          }
+          if (appNavbar && appNavbar.classList.contains('hidden')) {
+            console.warn("DIAGNOSTIC: appNavbar is hidden after 1.5s. It should be visible for logged-in users.");
+          }
+
+        }, 1500);
+
       } else {
         // User is signed out.
         console.log('Auth state changed: User is signed out');
