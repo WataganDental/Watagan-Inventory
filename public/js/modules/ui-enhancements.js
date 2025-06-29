@@ -177,7 +177,6 @@ export class UIEnhancementManager {
         const minQuantity = parseInt(item.minQuantity) || 0;
         const stockStatus = this.getStockStatus(quantity, minQuantity);
         const stockBadge = this.getStockBadge(stockStatus);
-        const placeholderImage = "data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D'48'%20height%3D'48'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2048%2048'%20preserveAspectRatio%3D'none'%3E%3Crect%20width%3D'48'%20height%3D'48'%20fill%3D'%23ddd'%2F%3E%3Ctext%20x%3D'50%25'%20y%3D'50%25'%20font-family%3D'Arial%2Csans-serif'%20font-size%3D'10px'%20fill%3D'%23aaa'%20dominant-baseline%3D'middle'%20text-anchor%3D'middle'%3ENo%20Img%3C%2Ftext%3E%3C%2Fsvg%3E"; // Simple SVG placeholder
 
         return `
             <tr class="hover:bg-base-200 transition-colors">
@@ -186,13 +185,9 @@ export class UIEnhancementManager {
                 </td>
                 <td>
                     <div class="flex items-center gap-3">
-                        <div class="avatar">
-                            <div class="mask mask-squircle w-12 h-12">
-                                <img src="${placeholderImage}"
-                                     data-src="${item.photo || placeholderImage}"
-                                     alt="${item.name || 'Product Image'}"
-                                     class="lazy-load-image object-cover w-full h-full"
-                                     onerror="this.onerror=null; this.src='${placeholderImage}';"/>
+                        <div class="avatar placeholder">
+                            <div class="bg-neutral text-neutral-content rounded-full w-12 h-12">
+                                <span class="text-xs">${(item.name || 'N/A').substring(0, 2).toUpperCase()}</span>
                             </div>
                         </div>
                         <div>
@@ -253,6 +248,12 @@ export class UIEnhancementManager {
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 011-1h2m0 0V3a1 1 0 011-1h4a1 1 0 011 1v1m0 0h2a1 1 0 011 1v2a1 1 0 01-1 1h-2m0 0v4a1 1 0 01-1 1h-2a1 1 0 01-1-1v-4m-6 0V9a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1h2z"></path>
                                 </svg>
                                 QR Code
+                            </a></li>
+                            <li><a href="#" class="move-product-btn" data-product-id="${item.id}">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+                                </svg>
+                                Move Location
                             </a></li>
                             <li><a href="#" class="delete-product-btn text-error" data-product-id="${item.id}">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">

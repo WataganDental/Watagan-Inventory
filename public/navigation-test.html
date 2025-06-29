@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navigation & Move Product Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-100 p-4">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-2xl font-bold mb-4">Navigation & Move Product Test</h1>
+        
+        <!-- Test Navigation -->
+        <div class="bg-white p-4 rounded-lg shadow mb-4">
+            <h2 class="text-lg font-semibold mb-2">Navigation Test</h2>
+            <div class="flex gap-2 mb-4">
+                <button id="menuInventory" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Inventory</button>
+                <button id="menuSuppliers" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Suppliers</button>
+                <button id="menuOrders" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">Orders</button>
+                <button id="menuReports" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Reports</button>
+            </div>
+            
+            <!-- View containers -->
+            <div id="inventoryViewContainer" class="p-4 bg-blue-50 rounded">
+                <h3 class="font-medium">Inventory View</h3>
+                <p>This is the inventory view content.</p>
+            </div>
+            <div id="suppliersSectionContainer" class="hidden p-4 bg-green-50 rounded">
+                <h3 class="font-medium">Suppliers View</h3>
+                <p>This is the suppliers view content.</p>
+            </div>
+            <div id="ordersSectionContainer" class="hidden p-4 bg-purple-50 rounded">
+                <h3 class="font-medium">Orders View</h3>
+                <p>This is the orders view content.</p>
+            </div>
+            <div id="reportsSectionContainer" class="hidden p-4 bg-yellow-50 rounded">
+                <h3 class="font-medium">Reports View</h3>
+                <p>This is the reports view content.</p>
+            </div>
+        </div>
+
+        <!-- Test Move Product Form -->
+        <div class="bg-white p-4 rounded-lg shadow mb-4">
+            <h2 class="text-lg font-semibold mb-2">Move Product Test</h2>
+            
+            <div class="collapse collapse-arrow border border-gray-200">
+                <input id="toggleMoveProductFormBtn" type="checkbox" />
+                <div class="collapse-title text-lg font-medium">
+                    Move Product Location
+                </div>
+                <div class="collapse-content" id="moveProductFormContent">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Product ID</label>
+                            <input id="moveProductId" type="text" placeholder="Product ID (from QR/Barcode scan)" class="w-full border border-gray-300 p-2 rounded">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-1">New Location</label>
+                            <select id="newLocation" class="w-full border border-gray-300 p-2 rounded">
+                                <option value="">Select Location</option>
+                                <option value="Surgery 1">Surgery 1</option>
+                                <option value="Surgery 2">Surgery 2</option>
+                                <option value="Storage">Storage</option>
+                            </select>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <button id="startMoveScannerBtn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                                Scan QR Code
+                            </button>
+                            <button id="stopMoveScannerBtn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Stop Scanner</button>
+                            <button id="moveProductBtn" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
+                                Move Product
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Table with Move Buttons -->
+        <div class="bg-white p-4 rounded-lg shadow">
+            <h2 class="text-lg font-semibold mb-2">Table Move Product Test</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full border border-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="border border-gray-200 p-2 text-left">Product</th>
+                            <th class="border border-gray-200 p-2 text-center">Stock</th>
+                            <th class="border border-gray-200 p-2 text-center">Location</th>
+                            <th class="border border-gray-200 p-2 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="testTableBody">
+                        <!-- Will be populated by script -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="status" class="mt-4 p-4 bg-gray-50 rounded-lg">
+            <h3 class="font-medium mb-2">Test Status:</h3>
+            <div id="statusLog" class="text-sm space-y-1"></div>
+        </div>
+    </div>
+
+    <!-- Mock modules for testing -->
+    <script type="module">
+        // Mock UI Enhancement Manager
+        const uiEnhancementManager = {
+            showToast: (message, type) => {
+                console.log(`Toast [${type}]: ${message}`);
+                addToStatus(`Toast [${type}]: ${message}`);
+            },
+            updateDashboard: (data) => {
+                console.log('Dashboard updated:', data);
+                addToStatus('Dashboard updated with data');
+            },
+            updateTable: (tableId, items) => {
+                console.log(`Table ${tableId} updated with ${items.length} items`);
+                addToStatus(`Table ${tableId} updated with ${items.length} items`);
+            },
+            generateModernTableRow: (item, index) => {
+                return `
+                    <tr>
+                        <td class="border border-gray-200 p-2">${item.name}</td>
+                        <td class="border border-gray-200 p-2 text-center">${item.quantity}</td>
+                        <td class="border border-gray-200 p-2 text-center">${item.location}</td>
+                        <td class="border border-gray-200 p-2 text-center">
+                            <div class="dropdown dropdown-end relative inline-block">
+                                <button class="bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded text-sm">•••</button>
+                                <div class="dropdown-content absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded shadow-lg z-10 hidden">
+                                    <a href="#" class="edit-product-btn block px-4 py-2 text-sm hover:bg-gray-100" data-product-id="${item.id}">Edit</a>
+                                    <a href="#" class="view-qr-btn block px-4 py-2 text-sm hover:bg-gray-100" data-product-id="${item.id}">QR Code</a>
+                                    <a href="#" class="move-product-btn block px-4 py-2 text-sm hover:bg-gray-100" data-product-id="${item.id}">Move Location</a>
+                                    <a href="#" class="delete-product-btn block px-4 py-2 text-sm hover:bg-gray-100 text-red-600" data-product-id="${item.id}">Delete</a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        };
+
+        // Mock global variables
+        window.inventory = [
+            { id: 'TEST001', name: 'Test Product 1', quantity: 10, location: 'Surgery 1' },
+            { id: 'TEST002', name: 'Test Product 2', quantity: 5, location: 'Surgery 2' },
+            { id: 'TEST003', name: 'Test Product 3', quantity: 0, location: 'Storage' }
+        ];
+
+        window.batchUpdates = [];
+        window.currentPage = 1;
+        window.ITEMS_PER_PAGE = 25;
+        window.totalFilteredItems = 0;
+
+        function addToStatus(message) {
+            const statusLog = document.getElementById('statusLog');
+            const div = document.createElement('div');
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            statusLog.appendChild(div);
+            statusLog.scrollTop = statusLog.scrollHeight;
+        }
+
+        // Simple showView function
+        function showView(viewIdToShow, clickedMenuId) {
+            console.log(`Attempting to show view: ${viewIdToShow} triggered by ${clickedMenuId}`);
+            addToStatus(`Navigation: ${clickedMenuId} -> ${viewIdToShow}`);
+
+            const allViewContainers = [
+                document.getElementById('inventoryViewContainer'),
+                document.getElementById('suppliersSectionContainer'),
+                document.getElementById('ordersSectionContainer'),
+                document.getElementById('reportsSectionContainer')
+            ].filter(container => container !== null);
+
+            allViewContainers.forEach(container => {
+                if (container.id === viewIdToShow) {
+                    container.classList.remove('hidden');
+                    addToStatus(`Showing: ${container.id}`);
+                } else {
+                    container.classList.add('hidden');
+                }
+            });
+
+            // Update menu styling
+            const menuItems = ['menuInventory', 'menuSuppliers', 'menuOrders', 'menuReports'];
+            menuItems.forEach(menuId => {
+                const menuItem = document.getElementById(menuId);
+                if (menuItem) {
+                    if (menuId === clickedMenuId) {
+                        menuItem.classList.add('bg-opacity-75', 'font-semibold');
+                    } else {
+                        menuItem.classList.remove('bg-opacity-75', 'font-semibold');
+                    }
+                }
+            });
+        }
+
+        // Populate test table
+        function populateTestTable() {
+            const tableBody = document.getElementById('testTableBody');
+            tableBody.innerHTML = '';
+            
+            window.inventory.forEach((item, index) => {
+                const row = uiEnhancementManager.generateModernTableRow(item, index);
+                tableBody.innerHTML += row;
+            });
+
+            // Add event listeners for move buttons
+            document.querySelectorAll('.move-product-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const productId = button.getAttribute('data-product-id');
+                    addToStatus(`Move button clicked for product: ${productId}`);
+                    
+                    // Pre-populate the move product form and open it
+                    document.getElementById('moveProductId').value = productId;
+                    const moveProductFormCheckbox = document.getElementById('toggleMoveProductFormBtn');
+                    if (moveProductFormCheckbox) {
+                        moveProductFormCheckbox.checked = true;
+                        addToStatus('Move product form opened and pre-populated');
+                    }
+                });
+            });
+
+            // Add dropdown toggle functionality
+            document.querySelectorAll('.dropdown button').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const dropdown = button.nextElementSibling;
+                    dropdown.classList.toggle('hidden');
+                });
+            });
+        }
+
+        // Initialize the test page
+        document.addEventListener('DOMContentLoaded', function() {
+            addToStatus('Test page loaded');
+
+            // Set up navigation
+            const menuItems = ['menuInventory', 'menuSuppliers', 'menuOrders', 'menuReports'];
+            const viewMappings = {
+                'menuInventory': 'inventoryViewContainer',
+                'menuSuppliers': 'suppliersSectionContainer',
+                'menuOrders': 'ordersSectionContainer',
+                'menuReports': 'reportsSectionContainer'
+            };
+
+            menuItems.forEach(menuId => {
+                const menuItem = document.getElementById(menuId);
+                if (menuItem) {
+                    menuItem.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        addToStatus(`${menuId} clicked`);
+                        showView(viewMappings[menuId], menuId);
+                    });
+                    addToStatus(`Navigation listener added for ${menuId}`);
+                }
+            });
+
+            // Set up move product form buttons
+            const moveProductBtn = document.getElementById('moveProductBtn');
+            if (moveProductBtn) {
+                moveProductBtn.addEventListener('click', () => {
+                    const productId = document.getElementById('moveProductId').value;
+                    const newLocation = document.getElementById('newLocation').value;
+                    addToStatus(`Move Product clicked: ${productId} to ${newLocation}`);
+                    uiEnhancementManager.showToast(`Product ${productId} moved to ${newLocation}`, 'success');
+                });
+            }
+
+            const startMoveScannerBtn = document.getElementById('startMoveScannerBtn');
+            if (startMoveScannerBtn) {
+                startMoveScannerBtn.addEventListener('click', () => {
+                    addToStatus('Start Move Scanner clicked');
+                    uiEnhancementManager.showToast('Move Scanner started (mock)', 'info');
+                });
+            }
+
+            const stopMoveScannerBtn = document.getElementById('stopMoveScannerBtn');
+            if (stopMoveScannerBtn) {
+                stopMoveScannerBtn.addEventListener('click', () => {
+                    addToStatus('Stop Move Scanner clicked');
+                    uiEnhancementManager.showToast('Move Scanner stopped (mock)', 'info');
+                });
+            }
+
+            // Populate test table
+            populateTestTable();
+            addToStatus('Test table populated');
+
+            addToStatus('All event listeners set up successfully');
+        });
+    </script>
+</body>
+</html>
