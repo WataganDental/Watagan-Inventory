@@ -1,5 +1,6 @@
 // Import the UI enhancement manager
 import { uiEnhancementManager } from './modules/ui-enhancements.js';
+import { InventoryManager } from './modules/inventory.js';
 
 const SIDEBAR_STATE_KEY = 'sidebarMinimized';
 
@@ -15,6 +16,7 @@ let locations = []; // Added for location management
 let batchUpdates = [];
 let db; // Declare db globally
 let storage; // Declare storage globally
+let inventoryManager; // Declare inventory manager globally
 let originalPhotoUrlForEdit = ''; // Stores the original photo URL when editing a product
 
 // Global variables for Quick Stock Update
@@ -634,10 +636,12 @@ try {
   }
   db = firebase.firestore();
   storage = firebase.storage();
+  inventoryManager = new InventoryManager(db, storage); // Initialize inventory manager
   const auth = firebase.auth(); // Added Firebase Auth
   const ui = new firebaseui.auth.AuthUI(auth); // FirebaseUI instance
   console.log('Firestore instance created:', !!db);
   console.log('Storage instance created:', !!storage);
+  console.log('InventoryManager instance created:', !!inventoryManager);
   console.log('Auth instance created:', !!auth);
   console.log('FirebaseUI instance created:', !!ui);
 
@@ -674,7 +678,14 @@ try {
           }
         }
 
-        loadInventory();
+        // Load inventory and update global array
+        inventoryManager.loadInventory().then(loadedInventory => {
+          inventory = loadedInventory;
+          console.log('Global inventory array updated with', inventory.length, 'items');
+        }).catch(error => {
+          console.error('Error loading inventory:', error);
+        });
+        
         loadSuppliers();
         loadLocations();
 
@@ -1268,7 +1279,6 @@ async function submitProduct() {
       const productIdValue = document.getElementById('productId').value;
 
       if (currentPhotoSrc.startsWith('data:image')) {
-        photoUrlToSave = await uploadPhoto(id, currentPhotoSrc);
       } else if (productIdValue && currentPhotoSrc === originalPhotoUrlForEdit) {
         photoUrlToSave = originalPhotoUrlForEdit;
       } else if (!currentPhotoSrc) {
@@ -1293,7 +1303,7 @@ async function submitProduct() {
         photo: photoUrlToSave
       });
       resetProductForm();
-      await loadInventory();
+      inventory = await inventoryManager.loadInventory();
     } catch (error) {
       console.error('Error submitting product:', error);
       alert('Failed to submit product: ' + error.message);
@@ -1359,7 +1369,7 @@ async function deleteProduct(id) {
       } catch (err) {
         console.log('No photo to delete:', err);
       }
-      await loadInventory();
+      inventory = await inventoryManager.loadInventory();
       await updateToOrderTable();
     } catch (error) {
       console.error('Error deleting product:', error);
@@ -1511,7 +1521,7 @@ async function submitBatchUpdates() {
     }
   }
   if (messages.length > 0) {
-    await loadInventory();
+    inventory = await inventoryManager.loadInventory();
     await updateToOrderTable();
     document.getElementById('batchUpdates').innerHTML = '';
     batchUpdates = [];
@@ -1530,7 +1540,7 @@ async function moveProduct() {
     const product = snapshot.docs[0].data();
     try {
       await db.collection('inventory').doc(productId).update({ location: newLocation });
-      await loadInventory();
+      inventory = await inventoryManager.loadInventory();
       await updateToOrderTable();
       document.getElementById('moveProductId').value = '';
       uiEnhancementManager.showToast(`Product ${product.name} moved to ${newLocation}`, 'success');
@@ -1982,7 +1992,7 @@ async function createOrder(productId, quantity) {
         }
 
         // Refresh data
-        await loadInventory();
+        inventory = await inventoryManager.loadInventory();
         await updateToOrderTable();
 
         uiEnhancementManager.showToast(`Order created for ${quantity} units of ${product.name}`, 'success');
