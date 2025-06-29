@@ -342,6 +342,35 @@ export class UIEnhancementManager {
         const emptyElement = document.getElementById('inventoryEmptyState');
         if (emptyElement) emptyElement.classList.add('hidden');
     }
+
+    /**
+     * Update dashboard UI with provided stats
+     * @param {Object} stats - Dashboard statistics
+     * @param {number} stats.totalProducts
+     * @param {number} stats.lowStockItems
+     * @param {number} stats.outOfStockItems
+     * @param {number} stats.totalValue
+     */
+    updateDashboard(stats) {
+        if (!stats || typeof stats !== 'object') return;
+        const totalProductsEl = document.getElementById('totalProductsCount');
+        const lowStockEl = document.getElementById('lowStockCount');
+        const outOfStockEl = document.getElementById('outOfStockCount');
+        const totalValueEl = document.getElementById('totalInventoryValue');
+
+        if (totalProductsEl && typeof stats.totalProducts === 'number') {
+            this.animateCounter(totalProductsEl, stats.totalProducts);
+        }
+        if (lowStockEl && typeof stats.lowStockItems === 'number') {
+            this.animateCounter(lowStockEl, stats.lowStockItems);
+        }
+        if (outOfStockEl && typeof stats.outOfStockItems === 'number') {
+            this.animateCounter(outOfStockEl, stats.outOfStockItems);
+        }
+        if (totalValueEl && typeof stats.totalValue === 'number') {
+            totalValueEl.textContent = `$${stats.totalValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+    }
 }
 
 // Export for use in other modules
