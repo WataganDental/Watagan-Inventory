@@ -1054,13 +1054,21 @@ async function loadSuppliers() {
     updateSupplierDropdown();
   } catch (error) {
     console.error('Error loading suppliers:', error);
-    alert('Failed to load suppliers: ' + error.message);
+    // Don't show alert to user, just log the error
+    console.warn('Failed to load suppliers, continuing with empty supplier list');
+    suppliers = []; // Ensure suppliers array is not undefined
   }
 }
 
 function updateSupplierList() {
   const supplierList = document.getElementById('supplierList');
   console.log('Updating supplier list with:', suppliers);
+  
+  if (!supplierList) {
+    console.log('supplierList element not found in DOM - skipping supplier list update');
+    return;
+  }
+  
   supplierList.innerHTML = '';
   suppliers.forEach(supplier => {
     const li = document.createElement('li');
@@ -1113,7 +1121,8 @@ async function loadLocations() {
     updateLocationDropdowns();
   } catch (error) {
     console.error('Error loading locations:', error);
-    alert('Failed to load locations: ' + error.message);
+    console.warn('Failed to load locations, continuing with empty location list');
+    locations = []; // Ensure locations array is not undefined
   }
 }
 
