@@ -1223,15 +1223,55 @@ async function submitProduct() {
     try {
       let photoUrlToSave;
       const productIdValue = document.getElementById('productId').value;
+      const isPlaceholderOrEmpty = !currentPhotoSrc || currentPhotoSrc.endsWith('#') || currentPhotoSrc === window.location.href || currentPhotoSrc === '';
 
-      if (currentPhotoSrc.startsWith('data:image')) {
+      if (currentPhotoSrc.startsWith('data:image')) { // New photo captured
         photoUrlToSave = await uploadPhoto(id, currentPhotoSrc);
-      } else if (productIdValue && currentPhotoSrc === originalPhotoUrlForEdit) {
+        // If editing and there was an old photo, delete it
+        if (productIdValue && originalPhotoUrlForEdit && originalPhotoUrlForEdit !== photoUrlToSave) {
+          try {
+            console.log(`Deleting old photo (replaced by new capture) for product ${id}: ${originalPhotoUrlForEdit}`);
+            const oldPhotoRef = storage.refFromURL(originalPhotoUrlForEdit);
+            await oldPhotoRef.delete();
+          } catch (deleteError) {
+            console.warn(`Failed to delete old photo ${originalPhotoUrlForEdit} after new capture:`, deleteError);
+          }
+        }
+      } else if (isPlaceholderOrEmpty) { // Photo was cleared or never set
+        photoUrlToSave = '';
+        if (productIdValue && originalPhotoUrlForEdit) { // If editing and there was an old photo
+          try {
+            console.log(`Deleting old photo (cleared) for product ${id}: ${originalPhotoUrlForEdit}`);
+            const oldPhotoRef = storage.refFromURL(originalPhotoUrlForEdit);
+            await oldPhotoRef.delete();
+          } catch (deleteError) {
+            console.warn(`Failed to delete old photo ${originalPhotoUrlForEdit} when clearing:`, deleteError);
+          }
+        }
+      } else if (productIdValue && currentPhotoSrc === originalPhotoUrlForEdit) { // Existing photo, unchanged
         photoUrlToSave = originalPhotoUrlForEdit;
-      } else if (!currentPhotoSrc) {
-        photoUrlToSave = ''; 
+      } else if (currentPhotoSrc.startsWith('https://firebasestorage.googleapis.com/')) { // It's a Firebase URL, potentially different from original
+        photoUrlToSave = currentPhotoSrc;
+        if (productIdValue && originalPhotoUrlForEdit && originalPhotoUrlForEdit !== currentPhotoSrc) {
+          // A different Firebase photo was set, delete the old one.
+          try {
+            console.log(`Deleting old photo (replaced by another Firebase URL) for product ${id}: ${originalPhotoUrlForEdit}`);
+            const oldPhotoRef = storage.refFromURL(originalPhotoUrlForEdit);
+            await oldPhotoRef.delete();
+          } catch (deleteError) {
+            console.warn(`Failed to delete old photo ${originalPhotoUrlForEdit} when replacing with another Firebase URL:`, deleteError);
+          }
+        }
       } else {
-        photoUrlToSave = await uploadPhoto(id, currentPhotoSrc);
+        // Fallback: currentPhotoSrc is some other kind of URL or invalid.
+        // This case should ideally not be reached with the current UI.
+        // If it's not a data URL, not original, not placeholder, and not a Firebase URL, it's ambiguous.
+        console.warn(`Unexpected photo src for product ${id}: ${currentPhotoSrc}. Attempting to re-upload if it's a new product, or keeping original/empty if editing.`);
+        if (!productIdValue) { // New product, but src is not a data:image. This is odd. Try uploading.
+            photoUrlToSave = await uploadPhoto(id, currentPhotoSrc); // This might fail if currentPhotoSrc is not a data URL
+        } else { // Editing, but src is unrecognized. Safer to keep original or clear.
+            photoUrlToSave = originalPhotoUrlForEdit || '';
+        }
       }
 
       await db.collection('inventory').doc(id).set({
@@ -2852,101 +2892,82 @@ function switchQuickUpdateTab(selectedTabId) {
     const barcodeScannerModeTabBtn = document.getElementById('barcodeScannerModeTab');
     const manualBatchModeContentPane = document.getElementById('manualBatchModeContent');
     const barcodeScannerModeContentPane = document.getElementById('barcodeScannerModeContent');
-    // const quickStockUpdateFeedbackElem = document.getElementById('quickStockUpdateFeedback'); // Potentially unused now
 
     if (!manualBatchModeTabBtn || !barcodeScannerModeTabBtn || !manualBatchModeContentPane || !barcodeScannerModeContentPane) {
-        console.error("Tab switching UI elements not all found for Manual Batch/Barcode Scanner. Tab switching aborted.");
+        console.error("Tab switching UI elements not all found. Tab switching aborted.");
         return;
     }
 
-    const activeSpecificClasses = ['border-blue-600', 'text-blue-600', 'dark:border-blue-500', 'dark:text-blue-500', 'font-semibold'];
-    const inactiveSpecificClasses = ['border-transparent', 'text-gray-500', 'dark:text-gray-400', 'hover:border-gray-300', 'dark:hover:border-gray-600'];
-    const hoverClasses = ['hover:text-gray-700', 'hover:border-gray-300', 'dark:hover:text-gray-300', 'dark:hover:border-gray-600'];
+    // Define classes for active and inactive states
+    // Active state: blue border, blue text, bold
+    const activeClasses = ['border-blue-600', 'text-blue-600', 'dark:border-blue-500', 'dark:text-blue-500', 'font-semibold'];
+    // Inactive state: transparent border, gray text. Hover states are part of Tailwind's default behavior or defined in CSS.
+    const inactiveClasses = ['border-transparent', 'text-gray-500', 'dark:text-gray-400'];
+    // Base classes that should always be on both tabs (like padding, rounding, common hover effects if not covered by inactive)
+    // For this example, we assume base structural/hover classes are already in the HTML or part of inactiveClasses.
+    // We will primarily add/remove the 'active' specific styling.
 
-    if (selectedTabId === 'manualBatchModeTab' || selectedTabId === 'manualBatchModeContent') {
-        manualBatchModeTabBtn.setAttribute('aria-selected', 'true');
-        barcodeScannerModeTabBtn.setAttribute('aria-selected', 'false');
+    const tabs = [
+        { btn: manualBatchModeTabBtn, pane: manualBatchModeContentPane, id: 'manualBatchModeTab' },
+        { btn: barcodeScannerModeTabBtn, pane: barcodeScannerModeContentPane, id: 'barcodeScannerModeTab' }
+    ];
 
-        manualBatchModeTabBtn.classList.remove(...inactiveSpecificClasses);
-        manualBatchModeTabBtn.classList.add(...activeSpecificClasses);
-        hoverClasses.forEach(hc => manualBatchModeTabBtn.classList.add(hc));
+    let selectedIsManual = (selectedTabId === 'manualBatchModeTab' || selectedTabId === 'manualBatchModeContent');
 
-        barcodeScannerModeTabBtn.classList.remove(...activeSpecificClasses);
-        barcodeScannerModeTabBtn.classList.add(...inactiveSpecificClasses);
-        hoverClasses.forEach(hc => barcodeScannerModeTabBtn.classList.add(hc));
+    tabs.forEach(tab => {
+        const isCurrentTabSelected = (selectedIsManual && tab.id === 'manualBatchModeTab') || (!selectedIsManual && tab.id === 'barcodeScannerModeTab');
 
-        manualBatchModeContentPane.classList.remove('hidden');
-        barcodeScannerModeContentPane.classList.add('hidden');
-
-        // Stop Barcode Scanner Mode if it was active
-        if (isBarcodeScannerModeActive) {
-            // If there's a specific function to reset/stop Barcode Scanner Mode, call it here.
-            // For now, setting the flag is the primary action.
-            // e.g., if a stopBarcodeScannerMode() function existed that handled UI/state for that mode specifically.
+        if (isCurrentTabSelected) {
+            tab.btn.setAttribute('aria-selected', 'true');
+            inactiveClasses.forEach(c => tab.btn.classList.remove(c));
+            activeClasses.forEach(c => tab.btn.classList.add(c));
+            tab.pane.classList.remove('hidden');
+        } else {
+            tab.btn.setAttribute('aria-selected', 'false');
+            activeClasses.forEach(c => tab.btn.classList.remove(c));
+            inactiveClasses.forEach(c => tab.btn.classList.add(c));
+            tab.pane.classList.add('hidden');
         }
-        // Stop Quick Stock Update related scanners/states if any were active (OBSOLETE - quickStockUpdateStream and stopQuickStockUpdateScanner are removed)
-        // if (quickStockUpdateStream && typeof stopQuickStockUpdateScanner === 'function') { // REMOVE
-        //     console.log("Switching to Manual Batch: Attempting to stop quick stock update scanner."); // REMOVE
-        //     stopQuickStockUpdateScanner(); // REMOVE
-        // } // REMOVE
-        // Stop general purpose camera stream if it's active (used by batch update, move, edit)
-        if (stream) {
-            if (typeof stopUpdateScanner === 'function' && document.getElementById('updateVideo') && !document.getElementById('updateVideo').classList.contains('hidden')) stopUpdateScanner();
-            if (typeof stopMoveScanner === 'function' && document.getElementById('moveVideo') && !document.getElementById('moveVideo').classList.contains('hidden')) stopMoveScanner();
-            if (typeof stopEditScanner === 'function' && document.getElementById('editVideo') && !document.getElementById('editVideo').classList.contains('hidden')) stopEditScanner();
-        }
+    });
 
+    // Common logic for stopping scanners and resetting states
+    if (stream) {
+        if (typeof stopUpdateScanner === 'function' && document.getElementById('updateVideo') && !document.getElementById('updateVideo').classList.contains('hidden')) stopUpdateScanner();
+        if (typeof stopMoveScanner === 'function' && document.getElementById('moveVideo') && !document.getElementById('moveVideo').classList.contains('hidden')) stopMoveScanner();
+        if (typeof stopEditScanner === 'function' && document.getElementById('editVideo') && !document.getElementById('editVideo').classList.contains('hidden')) stopEditScanner();
+    }
+
+    quickStockBarcodeBuffer = ""; // Clear buffer regardless of which tab is chosen
+
+    if (selectedIsManual) {
         isBarcodeScannerModeActive = false;
-        isEditScanModeActive = false; // Ensure edit scan mode is also off
-        quickStockBarcodeBuffer = ""; // Clear any potentially active buffer
+        isEditScanModeActive = false;
         console.log("Switched to Manual Batch Mode Tab.");
-
-    } else if (selectedTabId === 'barcodeScannerModeTab' || selectedTabId === 'barcodeScannerModeContent') {
-        barcodeScannerModeTabBtn.setAttribute('aria-selected', 'true');
-        manualBatchModeTabBtn.setAttribute('aria-selected', 'false');
-
-        barcodeScannerModeTabBtn.classList.remove(...inactiveSpecificClasses);
-        barcodeScannerModeTabBtn.classList.add(...activeSpecificClasses);
-        hoverClasses.forEach(hc => barcodeScannerModeTabBtn.classList.add(hc));
-
-        manualBatchModeTabBtn.classList.remove(...activeSpecificClasses);
-        manualBatchModeTabBtn.classList.add(...inactiveSpecificClasses);
-        hoverClasses.forEach(hc => manualBatchModeTabBtn.classList.add(hc));
-
-        barcodeScannerModeContentPane.classList.remove('hidden');
-        manualBatchModeContentPane.classList.add('hidden');
-        barcodeScannerModeContentPane.focus({ preventScroll: true });
-
-        // Stop Quick Stock Update related scanners/states if any were active (OBSOLETE - quickStockUpdateStream and stopQuickStockUpdateScanner are removed)
-        // if (quickStockUpdateStream && typeof stopQuickStockUpdateScanner === 'function') { // REMOVE
-        //     console.log("Switching to Barcode Scanner: Attempting to stop quick stock update scanner."); // REMOVE
-        //     stopQuickStockUpdateScanner(); // REMOVE
-        // } // REMOVE
-        // Stop general purpose camera stream if it's active (used by batch update, move, edit)
-         if (stream) {
-             if (typeof stopUpdateScanner === 'function' && document.getElementById('updateVideo') && !document.getElementById('updateVideo').classList.contains('hidden')) stopUpdateScanner();
-             if (typeof stopMoveScanner === 'function' && document.getElementById('moveVideo') && !document.getElementById('moveVideo').classList.contains('hidden')) stopMoveScanner();
-             if (typeof stopEditScanner === 'function' && document.getElementById('editVideo') && !document.getElementById('editVideo').classList.contains('hidden')) stopEditScanner();
-        }
-
+    } else { // Barcode Scanner Mode selected
         isBarcodeScannerModeActive = true;
         isEditScanModeActive = false;
 
         currentBarcodeModeProductId = null;
         const activeProductNameEl = document.getElementById('barcodeActiveProductName');
         if (activeProductNameEl) activeProductNameEl.textContent = 'None';
-        setLastActionFeedback('---');
-        setBarcodeStatus('Scan a Product QR Code to begin.');
-        quickStockBarcodeBuffer = "";
+
+        setLastActionFeedback('---'); // Reset feedback
+        setBarcodeStatus('Scan a Product QR Code to begin.'); // Reset status message
 
         const productDetailsDisplay = document.getElementById('barcodeProductDetailsDisplay');
         if (productDetailsDisplay) {
-            document.getElementById('barcodeProductSpecificQR').innerHTML = '';
+            const qrDiv = document.getElementById('barcodeProductSpecificQR');
+            if (qrDiv) qrDiv.innerHTML = '';
+
             const imgElement = document.getElementById('barcodeProductSpecificImage');
-            imgElement.src = '#';
-            imgElement.classList.add('hidden');
+            if (imgElement) {
+                imgElement.src = '#';
+                imgElement.classList.add('hidden');
+            }
         }
-        displayBarcodeModeActionQRCodes();
+        if (typeof displayBarcodeModeActionQRCodes === 'function') {
+            displayBarcodeModeActionQRCodes();
+        }
         console.log("Switched to Barcode Scanner Mode Tab.");
     }
 }
