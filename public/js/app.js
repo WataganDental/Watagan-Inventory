@@ -81,6 +81,7 @@ function showView(viewIdToShow, clickedMenuId) {
   // These would ideally be passed as parameters or ensured to be globally available and initialized.
   // For now, re-querying them or hoping they are global. This is a potential refactor point.
   const allViewContainers = [
+    document.getElementById('dashboardViewContainer'),
     document.getElementById('inventoryViewContainer'),
     document.getElementById('suppliersSectionContainer'),
     document.getElementById('ordersSectionContainer'),
@@ -137,6 +138,7 @@ function showView(viewIdToShow, clickedMenuId) {
       // setActiveMenuItem needs to be globally available or passed.
       // This is a simplified version assuming menuItems are queryable here.
       const menuItems = [
+          document.getElementById('menuDashboard'),
           document.getElementById('menuInventory'),
           document.getElementById('menuSuppliers'),
           document.getElementById('menuOrders'),
@@ -1385,7 +1387,7 @@ function addBatchEntry() {
         // This part of the logic might need to be the same as what was there before,
         // or adjusted based on whether this is the *last* entry.
         // The original code just called addBatchEntry(); which might be too aggressive if not the last line.
-        // Let's refine to: focus quantity, and if it's the last entry, then add new.
+        // Let's refine to: focus quantity, and if it's the last line, add new.
         // Check if this is the last entry in batchUpdates
         const isLastEntry = batchUpdates.indexOf(currentEntryId) === batchUpdates.length - 1;
         if (isLastEntry) {
@@ -1490,13 +1492,49 @@ async function moveProduct() {
       await loadInventory();
       await updateToOrderTable();
       document.getElementById('moveProductId').value = '';
-      alert(`Product ${product.name} moved to ${newLocation}`);
+      uiEnhancementManager.showToast(`Product ${product.name} moved to ${newLocation}`, 'success');
     } catch (error) {
       console.error('Error moving product:', error);
-      alert('Failed to move product: ' + error.message);
+      uiEnhancementManager.showToast('Failed to move product: ' + error.message, 'error');
     }
   } else {
-    alert('Product not found.');
+    uiEnhancementManager.showToast('Product not found.', 'error');
+  }
+}
+
+// NEW: Open Move Product Form - missing function that was being called
+function openMoveProductForm(productId) {
+  console.log(`Opening move product form for product: ${productId}`);
+  
+  // Pre-populate the product ID
+  const moveProductIdInput = document.getElementById('moveProductId');
+  if (moveProductIdInput) {
+    moveProductIdInput.value = productId;
+  }
+  
+  // Open the move product form section
+  const moveProductFormContent = document.getElementById('moveProductFormContent');
+  const toggleMoveProductFormBtn = document.getElementById('toggleMoveProductFormBtn');
+  
+  if (moveProductFormContent && toggleMoveProductFormBtn) {
+    // If it's a checkbox-style toggle (DaisyUI collapse)
+    if (toggleMoveProductFormBtn.type === 'checkbox') {
+      toggleMoveProductFormBtn.checked = true;
+    } else {
+      // If it's a regular button toggle
+      moveProductFormContent.classList.remove('hidden');
+    }
+    
+    // Scroll the move product section into view
+    const moveProductSection = document.getElementById('moveProductSection') || moveProductFormContent.closest('.card');
+    if (moveProductSection) {
+      moveProductSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    
+    uiEnhancementManager.showToast(`Move form opened for product: ${productId}`, 'info');
+  } else {
+    console.error('Move product form elements not found');
+    uiEnhancementManager.showToast('Error: Move product form not found', 'error');
   }
 }
 
@@ -1527,7 +1565,6 @@ async function exportInventoryToCSV() {
     console.log('exportInventoryToCSV called - function stub');
   } catch (error) {
     console.error('Error in exportInventoryToCSV:', error);
-    alert('Failed to export to CSV: ' + error.message);
   }
 }
 
@@ -1616,69 +1653,113 @@ function displayInventory() {
     return;
   }
 
-  let filteredInventory = [...inventory];
-  
-  // Apply filters if they exist
-  const supplierFilter = document.getElementById('filterSupplier')?.value;
-  const locationFilter = document.getElementById('filterLocation')?.value;
-  const searchInput = document.getElementById('inventorySearchInput')?.value?.toLowerCase();
-
-  if (supplierFilter) {
-    filteredInventory = filteredInventory.filter(item => item.supplier === supplierFilter);
-  }
-  
-  if (locationFilter) {
-    filteredInventory = filteredInventory.filter(item => item.location === locationFilter);
-  }
-  
-  if (searchInput) {
-    filteredInventory = filteredInventory.filter(item => 
-      (item.name || '').toLowerCase().includes(searchInput) ||
-      (item.id || '').toLowerCase().includes(searchInput)
-    );
-  }
+  // Apply enhanced filters
+  const filteredInventory = applyInventoryFilters();
 
   // Handle pagination
-  totalFilteredItems = filteredInventory.length;
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const paginatedItems = filteredInventory.slice(startIndex, endIndex);
 
-  console.log('Updating inventory table with:', paginatedItems.length, 'items');
+  console.log('Updating inventory table with:', paginatedItems.length, 'items (filtered from', totalFilteredItems, 'total)');
 
   // Use UI enhancement manager for modern table
   if (typeof uiEnhancementManager !== 'undefined') {
     uiEnhancementManager.updateTable('inventoryTable', paginatedItems);
   } else {
-    // Fallback to basic table update
+    // Enhanced fallback table update with better styling and image support
     tableBody.innerHTML = '';
-    paginatedItems.forEach((item, index) => {
+    
+    if (paginatedItems.length === 0) {
       const row = tableBody.insertRow();
       row.innerHTML = `
-        <td class="id-column hidden">${item.id}</td>
-        <td>${item.name}</td>
-        <td class="text-center">${item.quantity}</td>
-        <td class="text-center">${item.minQuantity}</td>
-        <td class="text-right">${(item.cost || 0).toFixed(2)}</td>
-        <td>${item.supplier || ''}</td>
-        <td>${item.location || ''}</td>
-        <td class="text-center">
-          <button onclick="editProduct('${item.id}')" class="text-blue-500 hover:underline">Edit</button>
-          <button onclick="deleteProduct('${item.id}')" class="text-red-500 hover:underline ml-2">Delete</button>
+        <td colspan="10" class="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
+          <div class="flex flex-col items-center">
+            <svg class="w-12 h-12 mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2 2v-5m16 0h-2a2 2 0 00-2 2H6a2 2 0 00-2-2H4"></path>
+            </svg>
+            <h3 class="text-lg font-semibold mb-2">No products found</h3>
+            <p class="text-sm">Try adjusting your search or filter criteria</p>
+          </div>
         </td>
       `;
-    });
+    } else {
+      paginatedItems.forEach((item, index) => {
+        const row = tableBody.insertRow();
+        row.className = 'border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-750';
+        
+        // Determine stock status for styling
+        const isLowStock = item.quantity <= item.minQuantity && item.minQuantity > 0;
+        const isOutOfStock = item.quantity === 0;
+        
+        if (isOutOfStock) {
+          row.classList.add('bg-red-50', 'dark:bg-red-900/20');
+        } else if (isLowStock) {
+          row.classList.add('bg-amber-50', 'dark:bg-amber-900/20');
+        }
+        
+        row.innerHTML = `
+          <td class="id-column hidden">${item.id}</td>
+          <td class="px-4 py-2 font-medium">${item.name}</td>
+          <td class="px-4 py-2 text-center">
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+              isOutOfStock ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+              isLowStock ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' :
+              'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+            }">
+              ${item.quantity}
+            </span>
+          </td>
+          <td class="px-4 py-2 text-center">${item.minQuantity || 0}</td>
+          <td class="px-4 py-2 text-right">$${(item.cost || 0).toFixed(2)}</td>
+          <td class="px-4 py-2">${item.supplier || 'Not specified'}</td>
+          <td class="px-4 py-2">${item.location || 'Not specified'}</td>
+          <td class="px-4 py-2 text-center">
+            ${item.photo ? displayProductImage(item.photo, item.name) : '<span class="text-gray-400 text-xs">No image</span>'}
+          </td>
+          <td class="px-4 py-2 text-center">
+            <button onclick="viewQRCode('${item.id}')" class="text-blue-500 hover:text-blue-700 text-sm">
+              <svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+              </svg>
+            </button>
+          </td>
+          <td class="px-4 py-2">
+            <div class="relative dropdown">
+              <button class="btn btn-ghost btn-xs" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+                </svg>
+              </button>
+              <div class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-slate-700 rounded-md shadow-lg z-10 border dark:border-slate-600">
+                <a href="#" class="edit-product-btn block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-600" data-product-id="${item.id}">Edit</a>
+                <a href="#" class="move-product-btn block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-600" data-product-id="${item.id}">Move Location</a>
+                <a href="#" class="view-qr-btn block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-600" data-product-id="${item.id}">QR Code</a>
+                <a href="#" class="delete-product-btn block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-600 text-red-600" data-product-id="${item.id}">Delete</a>
+              </div>
+            </div>
+          </td>
+        `;
+      });
+    }
   }
 
-  console.log('Inventory table updated with modern UI, rows:', paginatedItems.length);
+  console.log('Inventory table updated with enhanced UI, rows:', paginatedItems.length);
   
   // Attach event listeners after table update
   attachTableEventListeners();
   
   // Update pagination info
   updatePaginationControls();
+  
+  // Set up lazy loading for images
+  if (imageObserver) {
+    document.querySelectorAll('img[data-src]').forEach(img => {
+      imageObserver.observe(img);
+    });
+  }
 
-  console.log('QR code generation skipped for performance - use QR Code action in dropdown');
+  console.log('Enhanced inventory display complete');
 }
 
 // Attach event listeners to table action buttons after table update
@@ -1733,14 +1814,226 @@ function attachTableEventListeners() {
     });
 }
 
-// Add the missing main initialization
+// Quick Stock Update Functions - Missing Implementation
+function switchQuickUpdateTab(tabId) {
+  console.log('switchQuickUpdateTab called with:', tabId);
+  
+  // Hide all tab contents
+  const tabContents = [
+    document.getElementById('manualBatchModeContent'),
+    document.getElementById('barcodeScannerModeContent')
+  ].filter(el => el !== null);
+  
+  // Remove active state from all tabs
+  const tabs = [
+    document.getElementById('manualBatchModeTab'),
+    document.getElementById('barcodeScannerModeTab')
+  ].filter(el => el !== null);
+  
+  tabs.forEach(tab => {
+    if (tab) {
+      tab.classList.remove('tab-active', 'bg-blue-500', 'text-white');
+      tab.classList.add('bg-gray-200', 'text-gray-700', 'dark:bg-slate-700', 'dark:text-gray-300');
+    }
+  });
+  
+  tabContents.forEach(content => {
+    if (content) content.classList.add('hidden');
+  });
+  
+  // Show selected tab content and activate tab
+  const selectedTab = document.getElementById(tabId);
+  if (selectedTab) {
+    selectedTab.classList.remove('bg-gray-200', 'text-gray-700', 'dark:bg-slate-700', 'dark:text-gray-300');
+    selectedTab.classList.add('tab-active', 'bg-blue-500', 'text-white');
+    
+    // Show corresponding content
+    if (tabId === 'manualBatchModeTab') {
+      const content = document.getElementById('manualBatchModeContent');
+      if (content) content.classList.remove('hidden');
+    } else if (tabId === 'barcodeScannerModeTab') {
+      const content = document.getElementById('barcodeScannerModeContent');
+      if (content) content.classList.remove('hidden');
+    }
+  }
+}
+
+// Enhanced Image Display Functions
+function setupImageLazyLoading() {
+  // Set up intersection observer for lazy loading images
+  if ('IntersectionObserver' in window) {
+    imageObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          const src = img.dataset.src;
+          if (src) {
+            img.src = src;
+            img.classList.remove('opacity-50');
+            img.classList.add('opacity-100');
+            observer.unobserve(img);
+          }
+        }
+      });
+    });
+  }
+}
+
+function displayProductImage(imageUrl, productName) {
+  if (!imageUrl) return '';
+  
+  const imgElement = `
+    <img 
+      data-src="${imageUrl}" 
+      alt="${productName}" 
+      class="w-16 h-16 object-cover rounded border opacity-50 cursor-pointer transition-opacity duration-200 hover:opacity-75" 
+      onclick="openImageModal('${imageUrl}', '${productName}')"
+      onerror="this.style.display='none'"
+    />
+  `;
+  
+  return imgElement;
+}
+
+function openImageModal(imageUrl, productName) {
+  const modal = document.getElementById('imageModal');
+  const modalImage = document.getElementById('modalImage');
+  
+  if (modal && modalImage) {
+    modalImage.src = imageUrl;
+    modalImage.alt = productName;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+}
+
+// Enhanced pagination with better UI feedback
+function updatePaginationControls() {
+  const totalPages = Math.ceil(totalFilteredItems / ITEMS_PER_PAGE);
+  const pageInfo = document.getElementById('pageInfo');
+  const prevBtn = document.getElementById('prevPageBtn');
+  const nextBtn = document.getElementById('nextPageBtn');
+
+  if (pageInfo) {
+    const startItem = ((currentPage - 1) * ITEMS_PER_PAGE) + 1;
+    const endItem = Math.min(currentPage * ITEMS_PER_PAGE, totalFilteredItems);
+    pageInfo.textContent = `Showing ${startItem}-${endItem} of ${totalFilteredItems} items (Page ${currentPage} of ${totalPages})`;
+  }
+  
+  if (prevBtn) {
+    prevBtn.disabled = currentPage <= 1;
+    prevBtn.classList.toggle('btn-disabled', currentPage <= 1);
+    prevBtn.onclick = () => {
+      if (currentPage > 1) {
+        currentPage--;
+        displayInventory();
+        // Scroll to top of table
+        const inventorySection = document.getElementById('inventoryListSection');
+        if (inventorySection) {
+          inventorySection.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    };
+  }
+  
+  if (nextBtn) {
+    nextBtn.disabled = currentPage >= totalPages;
+    nextBtn.classList.toggle('btn-disabled', currentPage >= totalPages);
+    nextBtn.onclick = () => {
+      if (currentPage < totalPages) {
+        currentPage++;
+        displayInventory();
+        // Scroll to top of table
+        const inventorySection = document.getElementById('inventoryListSection');
+        if (inventorySection) {
+          inventorySection.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    };
+  }
+}
+
+// Enhanced inventory filtering
+function applyInventoryFilters() {
+  const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || '';
+  const locationFilter = document.getElementById('filterLocation')?.value || '';
+  const supplierFilter = document.getElementById('filterSupplier')?.value || '';
+  const stockFilter = document.getElementById('filterStock')?.value || '';
+  
+  let filteredInventory = [...inventory];
+  
+  // Apply search filter
+  if (searchTerm) {
+    filteredInventory = filteredInventory.filter(item => 
+      item.name.toLowerCase().includes(searchTerm) ||
+      item.id.toLowerCase().includes(searchTerm) ||
+      (item.supplier && item.supplier.toLowerCase().includes(searchTerm)) ||
+      (item.location && item.location.toLowerCase().includes(searchTerm))
+    );
+  }
+  
+  // Apply location filter
+  if (locationFilter) {
+    filteredInventory = filteredInventory.filter(item => item.location === locationFilter);
+  }
+  
+  // Apply supplier filter
+  if (supplierFilter) {
+    filteredInventory = filteredInventory.filter(item => item.supplier === supplierFilter);
+  }
+  
+  // Apply stock filter
+  if (stockFilter) {
+    switch (stockFilter) {
+      case 'low':
+        filteredInventory = filteredInventory.filter(item => item.quantity <= item.minQuantity && item.minQuantity > 0);
+        break;
+      case 'out':
+        filteredInventory = filteredInventory.filter(item => item.quantity === 0);
+        break;
+      case 'good':
+        filteredInventory = filteredInventory.filter(item => item.quantity > item.minQuantity);
+        break;
+    }
+  }
+  
+  // Update global filtered count and reset to page 1
+  totalFilteredItems = filteredInventory.length;
+  currentPage = 1;
+  
+  return filteredInventory;
+}
+
+// Enhanced DOMContentLoaded Initialization
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOMContentLoaded fired');
+  console.log('DOMContentLoaded fired - Enhanced initialization starting');
   
   // Initialize dark mode
   initialDarkModeCheck();
+  
+  // Set up image lazy loading
+  setupImageLazyLoading();
+  
+  // Set up image modal functionality
+  const closeImageModalBtn = document.getElementById('closeImageModalBtn');
+  const imageModal = document.getElementById('imageModal');
+  if (closeImageModalBtn && imageModal) {
+    closeImageModalBtn.addEventListener('click', () => {
+      imageModal.classList.add('hidden');
+      imageModal.classList.remove('flex');
+    });
+    
+    // Close modal when clicking outside
+    imageModal.addEventListener('click', (e) => {
+      if (e.target === imageModal) {
+        imageModal.classList.add('hidden');
+        imageModal.classList.remove('flex');
+      }
+    });
+  }
 
   // Set up menu navigation
+  const menuDashboard = document.getElementById('menuDashboard');
   const menuInventory = document.getElementById('menuInventory');
   const menuSuppliers = document.getElementById('menuSuppliers');
   const menuOrders = document.getElementById('menuOrders');
@@ -1748,19 +2041,18 @@ document.addEventListener('DOMContentLoaded', function() {
   const menuQuickStockUpdate = document.getElementById('menuQuickStockUpdate');
   const menuUserManagement = document.getElementById('menuUserManagement');
 
-  const allViewContainers = [
-    document.getElementById('inventoryViewContainer'),
-    document.getElementById('suppliersSectionContainer'),
-    document.getElementById('ordersSectionContainer'),
-    document.getElementById('reportsSectionContainer'),
-    document.getElementById('quickStockUpdateContainer'),
-    document.getElementById('userManagementSectionContainer')
-  ].filter(container => container !== null);
-
-  console.log('Found view containers:', allViewContainers.length);
-  console.log('Found menu items:', [menuInventory, menuSuppliers, menuOrders, menuReports, menuQuickStockUpdate, menuUserManagement].filter(item => item !== null).length);
-
-  // Navigation event listeners
+  // Add navigation event listeners with error handling
+  if (menuDashboard) {
+    menuDashboard.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('Dashboard menu clicked');
+      showView('dashboardViewContainer', menuDashboard.id);
+      // Update dashboard when shown
+      setTimeout(() => updateEnhancedDashboard(), 100);
+    });
+  } else {
+    console.error('menuDashboard element not found');
+  }
   if (menuInventory) {
     menuInventory.addEventListener('click', (e) => {
       e.preventDefault();
@@ -1821,16 +2113,59 @@ document.addEventListener('DOMContentLoaded', function() {
     console.error('menuUserManagement element not found');
   }
 
-  // Other event listeners
+  // Dashboard quick action buttons
+  const quickAddProductBtn = document.getElementById('quickAddProductBtn');
+  if (quickAddProductBtn) {
+    quickAddProductBtn.addEventListener('click', () => {
+      showView('inventoryViewContainer', 'menuInventory');
+      // Open the product form
+      const productFormBtn = document.getElementById('toggleProductFormBtn');
+      if (productFormBtn && productFormBtn.type === 'checkbox') {
+        productFormBtn.checked = true;
+      }
+      uiEnhancementManager.showToast('Product form opened', 'info');
+    });
+  }
+
+  const quickStockUpdateBtn = document.getElementById('quickStockUpdateBtn');
+  if (quickStockUpdateBtn) {
+    quickStockUpdateBtn.addEventListener('click', () => {
+      showView('quickStockUpdateContainer', 'menuQuickStockUpdate');
+      uiEnhancementManager.showToast('Quick stock update opened', 'info');
+    });
+  }
+
+  const quickViewReportsBtn = document.getElementById('quickViewReportsBtn');
+  if (quickViewReportsBtn) {
+    quickViewReportsBtn.addEventListener('click', () => {
+      showView('reportsSectionContainer', 'menuReports');
+      uiEnhancementManager.showToast('Reports section opened', 'info');
+    });
+  }
+
+  const refreshDashboardBtn = document.getElementById('refreshDashboardBtn');
+  if (refreshDashboardBtn) {
+    refreshDashboardBtn.addEventListener('click', () => {
+      updateEnhancedDashboard();
+      uiEnhancementManager.showToast('Dashboard refreshed', 'success');
+    });
+  }
+
+  // Enhanced dark mode toggle
   const darkModeToggle = document.getElementById('darkModeToggle');
   if (darkModeToggle) {
     darkModeToggle.addEventListener('click', () => {
       if (document.documentElement.classList.contains('dark')) {
         removeDarkMode();
+        uiEnhancementManager.showToast('Light mode enabled', 'info');
       } else {
         applyDarkMode();
+        uiEnhancementManager.showToast('Dark mode enabled', 'info');
       }
     });
+    console.log('Dark mode toggle setup complete');
+  } else {
+    console.error('darkModeToggle element not found');
   }
 
   // Form event listeners
@@ -1854,163 +2189,143 @@ document.addEventListener('DOMContentLoaded', function() {
     addLocationBtn.addEventListener('click', addLocation);
   }
 
-  // Set up collapsible sections
+  // Quick stock update tab functionality
+  const manualBatchModeTab = document.getElementById('manualBatchModeTab');
+  const barcodeScannerModeTab = document.getElementById('barcodeScannerModeTab');
+  
+  if (manualBatchModeTab) {
+    manualBatchModeTab.addEventListener('click', () => switchQuickUpdateTab('manualBatchModeTab'));
+  }
+  
+  if (barcodeScannerModeTab) {
+    barcodeScannerModeTab.addEventListener('click', () => switchQuickUpdateTab('barcodeScannerModeTab'));
+  }
+
+  // Search and filter functionality
+  const searchInput = document.getElementById('inventorySearchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', debounce(() => {
+      currentPage = 1; // Reset to first page when searching
+      displayInventory();
+    }, 300));
+  }
+
+  const filterSupplier = document.getElementById('filterSupplier');
+  if (filterSupplier) {
+    filterSupplier.addEventListener('change', () => {
+      currentPage = 1;
+      displayInventory();
+    });
+  }
+
+  const filterLocation = document.getElementById('filterLocation');
+  if (filterLocation) {
+    filterLocation.addEventListener('change', () => {
+      currentPage = 1;
+      displayInventory();
+    });
+  }
+
+  const filterStock = document.getElementById('filterStock');
+  if (filterStock) {
+    filterStock.addEventListener('change', () => {
+      currentPage = 1;
+      displayInventory();
+    });
+  }
+
+  // Set up collapsible sections with improved timing
   setTimeout(() => {
-    console.log('Initializing collapsible sections...');
+    console.log('Setting up collapsible sections...');
     setupCollapsibleSection('toggleProductFormBtn', 'productFormContent', true);
     setupCollapsibleSection('toggleMoveProductFormBtn', 'moveProductFormContent', true);
     setupCollapsibleSection('toggleInventoryTableBtn', 'inventoryTableContent', true);
   }, 100);
 
-  console.log('DOMContentLoaded initialization complete');
+  console.log('Enhanced DOMContentLoaded initialization complete');
 });
 
-// Add pagination functions
-function updatePaginationControls() {
-  const totalPages = Math.ceil(totalFilteredItems / ITEMS_PER_PAGE);
-  const pageInfo = document.getElementById('pageInfo');
-  const prevBtn = document.getElementById('prevPageBtn');
-  const nextBtn = document.getElementById('nextPageBtn');
+// Enhanced Dashboard Functions
+function updateEnhancedDashboard() {
+  console.log('Updating enhanced dashboard with current inventory data');
+  
+  if (!inventory || inventory.length === 0) {
+    console.log('No inventory data available for dashboard');
+    return;
+  }
 
-  if (pageInfo) {
-    pageInfo.textContent = `Page ${currentPage} of ${totalPages} (${totalFilteredItems} items)`;
+  // Calculate comprehensive metrics
+  const totalProducts = inventory.length;
+  const lowStockItems = inventory.filter(item => item.quantity <= item.minQuantity && item.minQuantity > 0);
+  const outOfStockItems = inventory.filter(item => item.quantity === 0);
+  const totalValue = inventory.reduce((sum, item) => sum + (item.quantity * item.cost || 0), 0);
+  
+  // High-value items (top 10% by value)
+  const itemValues = inventory.map(item => ({
+    ...item,
+    totalValue: item.quantity * (item.cost || 0)
+  })).sort((a, b) => b.totalValue - a.totalValue);
+  
+  // Update dashboard stats
+  const dashboardTotalProducts = document.getElementById('dashboardTotalProducts');
+  const dashboardLowStockItems = document.getElementById('dashboardLowStockItems');
+  const dashboardOutOfStockItems = document.getElementById('dashboardOutOfStockItems');
+  const dashboardTotalValue = document.getElementById('dashboardTotalValue');
+  
+  if (dashboardTotalProducts) dashboardTotalProducts.textContent = totalProducts;
+  if (dashboardLowStockItems) dashboardLowStockItems.textContent = lowStockItems.length;
+  if (dashboardOutOfStockItems) dashboardOutOfStockItems.textContent = outOfStockItems.length;
+  if (dashboardTotalValue) dashboardTotalValue.textContent = `$${totalValue.toFixed(2)}`;
+  
+  // Update recent activity
+  updateRecentActivity();
+  
+  // Use UI enhancement manager for additional dashboard features
+  if (typeof uiEnhancementManager !== 'undefined') {
+    uiEnhancementManager.updateDashboard({
+      totalProducts,
+      lowStockItems: lowStockItems.length,
+      outOfStockItems: outOfStockItems.length,
+      totalValue
+    });
   }
   
-  if (prevBtn) {
-    prevBtn.disabled = currentPage <= 1;
-    prevBtn.onclick = () => {
-      if (currentPage > 1) {
-        currentPage--;
-        displayInventory();
-      }
-    };
-  }
+  console.log(`Dashboard updated: ${totalProducts} products, ${lowStockItems.length} low stock, ${outOfStockItems.length} out of stock, $${totalValue.toFixed(2)} total value`);
+}
+
+function updateRecentActivity() {
+  const recentActivityList = document.getElementById('recentActivityList');
+  if (!recentActivityList) return;
   
-  if (nextBtn) {
-    nextBtn.disabled = currentPage >= totalPages;
-    nextBtn.onclick = () => {
-      if (currentPage < totalPages) {
-        currentPage++;
-        displayInventory();
-      }
-    };
-  }
-}
-
-// Stub for updateToOrderTable to prevent ReferenceError
-function updateToOrderTable() {
-    // TODO: Implement actual logic to update the 'To Order' table
-    console.log('updateToOrderTable called - function stub');
-}
-
-// Missing Scanner Functions (Stubs for now)
-async function startUpdateScanner() {
-  try {
-    uiEnhancementManager.showToast('Update Scanner is not yet implemented', 'warning');
-    console.log('startUpdateScanner called - function stub');
-  } catch (error) {
-    console.error('Error in startUpdateScanner:', error);
-    alert('Failed to start update scanner: ' + error.message);
-  }
-}
-
-async function stopUpdateScanner() {
-  try {
-    uiEnhancementManager.showToast('Update Scanner stopped', 'info');
-    console.log('stopUpdateScanner called - function stub');
-  } catch (error) {
-    console.error('Error in stopUpdateScanner:', error);
-  }
-}
-
-async function startMoveScanner() {
-  try {
-    uiEnhancementManager.showToast('Move Scanner is not yet implemented', 'warning');
-    console.log('startMoveScanner called - function stub');
-  } catch (error) {
-    console.error('Error in startMoveScanner:', error);
-    alert('Failed to start move scanner: ' + error.message);
-  }
-}
-
-async function stopMoveScanner() {
-  try {
-    uiEnhancementManager.showToast('Move Scanner stopped', 'info');
-    console.log('stopMoveScanner called - function stub');
-  } catch (error) {
-    console.error('Error in stopMoveScanner:', error);
-  }
-}
-
-async function startEditScanner() {
-  try {
-    uiEnhancementManager.showToast('Edit Scanner is not yet implemented', 'warning');
-    console.log('startEditScanner called - function stub');
-  } catch (error) {
-    console.error('Error in startEditScanner:', error);
-    alert('Failed to start edit scanner: ' + error.message);
-  }
-}
-
-async function stopEditScanner() {
-  try {
-    uiEnhancementManager.showToast('Edit Scanner stopped', 'info');
-    console.log('stopEditScanner called - function stub');
-  } catch (error) {
-    console.error('Error in stopEditScanner:', error);
-  }
-}
-
-// Missing Dashboard and Report Functions (Stubs)
-async function updateInventoryDashboard() {
-  try {
-    console.log('updateInventoryDashboard called - function stub');
-    // This could use the UI enhancement manager's dashboard update
-    if (typeof uiEnhancementManager !== 'undefined') {
-      uiEnhancementManager.updateDashboard({
-        totalProducts: inventory.length,
-        lowStockItems: inventory.filter(item => item.quantity <= item.minQuantity).length,
-        outOfStockItems: inventory.filter(item => item.quantity === 0).length,
-        totalValue: inventory.reduce((sum, item) => sum + (item.quantity * item.cost || 0), 0)
-      });
-    }
-  } catch (error) {
-    console.error('Error in updateInventoryDashboard:', error);
-  }
-}
-
-async function generateSupplierOrderSummaries() {
-  try {
-    uiEnhancementManager.showToast('Supplier Order Summaries generation is not yet implemented', 'warning');
-    console.log('generateSupplierOrderSummaries called - function stub');
-  } catch (error) {
-    console.error('Error in generateSupplierOrderSummaries:', error);
-  }
-}
-
-async function populateTrendProductSelect() {
-  try {
-    console.log('populateTrendProductSelect called - function stub');
-    const select = document.getElementById('trendProductSelect');
-    if (select) {
-      select.innerHTML = '<option value="">Select a product...</option>';
-      inventory.slice(0, 10).forEach(item => {
-        const option = document.createElement('option');
-        option.value = item.id;
-        option.textContent = item.name || item.id;
-        select.appendChild(option);
-      });
-    }
-  } catch (error) {
-    console.error('Error in populateTrendProductSelect:', error);
-  }
-}
-
-async function generateProductUsageChart(productId) {
-  try {
-    uiEnhancementManager.showToast('Product Usage Chart generation is not yet implemented', 'warning');
-    console.log('generateProductUsageChart called with productId:', productId);
-  } catch (error) {
-    console.error('Error in generateProductUsageChart:', error);
-  }
+  // Mock recent activity for now - in a real app, this would come from a log/history
+  const activities = [
+    { type: 'add', message: 'Dashboard system initialized', time: 'Just now', icon: 'info' },
+    { type: 'update', message: 'Inventory data loaded successfully', time: '1 minute ago', icon: 'success' },
+    { type: 'alert', message: `${inventory.filter(item => item.quantity <= item.minQuantity && item.minQuantity > 0).length} items need restocking`, time: '2 minutes ago', icon: 'warning' }
+  ];
+  
+  recentActivityList.innerHTML = activities.map(activity => `
+    <div class="flex items-center justify-between py-2 border-b dark:border-slate-700 last:border-b-0">
+      <div class="flex items-center">
+        <div class="w-8 h-8 rounded-full flex items-center justify-center mr-3 ${
+          activity.icon === 'success' ? 'bg-green-100 text-green-600' :
+          activity.icon === 'warning' ? 'bg-amber-100 text-amber-600' :
+          'bg-blue-100 text-blue-600'
+        }">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            ${activity.icon === 'success' ? 
+              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>' :
+              activity.icon === 'warning' ?
+              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z"></path>' :
+              '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>'
+            }
+          </svg>
+        </div>
+        <div>
+          <p class="text-sm font-medium">${activity.message}</p>
+          <p class="text-xs text-gray-500">${activity.time}</p>
+        </div>
+      </div>
+    </div>
+  `).join('');
 }
