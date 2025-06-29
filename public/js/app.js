@@ -72,6 +72,45 @@ function updateUserInterfaceForRole(role) {
 }
 
 
+// Debug function to check UI container visibility
+function debugUIContainers() {
+  const containers = [
+    'authContainer',
+    'appNavbar', 
+    'appMainContainer',
+    'mainContent',
+    'dashboardViewContainer',
+    'inventoryViewContainer'
+  ];
+  
+  console.log('=== UI CONTAINER DEBUG ===');
+  containers.forEach(containerId => {
+    const element = document.getElementById(containerId);
+    if (element) {
+      const isHidden = element.classList.contains('hidden');
+      const computedStyle = window.getComputedStyle(element);
+      const display = computedStyle.display;
+      const visibility = computedStyle.visibility;
+      const opacity = computedStyle.opacity;
+      
+      console.log(`${containerId}:`, {
+        exists: true,
+        hidden: isHidden,
+        display: display,
+        visibility: visibility,
+        opacity: opacity,
+        classList: Array.from(element.classList)
+      });
+    } else {
+      console.log(`${containerId}: NOT FOUND`);
+    }
+  });
+  console.log('=== END DEBUG ===');
+}
+
+// Add debug function to window for console access
+window.debugUIContainers = debugUIContainers;
+
 // Moved showView function here to ensure it's defined before being called by onAuthStateChanged
 function showView(viewIdToShow, clickedMenuId) {
   // This function relies on allViewContainers and setActiveMenuItem (which uses menuItems)
@@ -614,6 +653,8 @@ const initialDarkModeCheck = () => {
   }
 };
 
+initialDarkModeCheck();
+
 // Firebase Initialization
 const firebaseConfig = {
   apiKey: "AIzaSyC4I5X1Gca4VEvqRspnitNFSLu8C0jH7sQ",
@@ -718,6 +759,12 @@ try {
           }
         });
 
+        // Debug UI containers after authentication
+        setTimeout(() => {
+          debugUIContainers();
+        }, 1000);
+
+        // Load user data and update UI based on role
       } else {
         // User is signed out.
         console.log('Auth state changed: User is signed out');
@@ -2128,8 +2175,6 @@ function enhanceQuickQRFeatures() {
         quickQRBtn.innerHTML = `
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
-            </svg>
-            Quick QR View
         `;
         quickQRBtn.onclick = () => {
             if (inventory && inventory.length > 0) {

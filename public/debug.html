@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Watagan Inventory</title>
+    <link href="./css/output.css" rel="stylesheet">
+</head>
+<body class="p-8">
+    <h1 class="text-2xl font-bold mb-4">Debug Page</h1>
+    <div id="debug-info" class="space-y-2">
+        <p id="css-test" class="text-blue-500">CSS Test: If this is blue, CSS is working</p>
+        <p id="js-test" class="text-red-500">JavaScript Test: Loading...</p>
+        <p id="firebase-test" class="text-yellow-500">Firebase Test: Loading...</p>
+        <p id="module-test" class="text-green-500">Module Test: Loading...</p>
+    </div>
+
+    <!-- Firebase Scripts -->
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+
+    <script type="module">
+        // Test basic JavaScript
+        document.getElementById('js-test').textContent = 'JavaScript Test: ✅ Working';
+        
+        // Test Firebase
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (typeof firebase !== 'undefined') {
+                    document.getElementById('firebase-test').textContent = 'Firebase Test: ✅ Loaded';
+                } else {
+                    document.getElementById('firebase-test').textContent = 'Firebase Test: ❌ Not loaded';
+                }
+            }, 1000);
+        });
+
+        // Test modules
+        try {
+            import('./js/modules/inventory.js').then(module => {
+                document.getElementById('module-test').textContent = 'Module Test: ✅ Inventory module loaded';
+            }).catch(error => {
+                document.getElementById('module-test').textContent = 'Module Test: ❌ Error: ' + error.message;
+                console.error('Module loading error:', error);
+            });
+        } catch (error) {
+            document.getElementById('module-test').textContent = 'Module Test: ❌ Error: ' + error.message;
+            console.error('Module import error:', error);
+        }
+    </script>
+</body>
+</html>
