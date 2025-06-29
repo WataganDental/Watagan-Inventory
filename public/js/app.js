@@ -95,29 +95,35 @@ function showView(viewIdToShow, clickedMenuId) {
           container.classList.remove('hidden');
           viewFound = true;
           console.log(`Showing: ${container.id}`);
-          if (container.id === 'quickStockUpdateContainer') {
-            const initialTabToSelect = document.getElementById('barcodeScannerModeTab') ? 'barcodeScannerModeTab' : 'manualBatchModeTab';
-            if (typeof switchQuickUpdateTab === 'function') { // Defensive check
-                switchQuickUpdateTab(initialTabToSelect);
-            } else {
-                console.error("switchQuickUpdateTab is not defined or available when trying to show quickStockUpdateContainer");
+          try {
+            if (container.id === 'quickStockUpdateContainer') {
+              const initialTabToSelect = document.getElementById('barcodeScannerModeTab') ? 'barcodeScannerModeTab' : 'manualBatchModeTab';
+              if (typeof switchQuickUpdateTab === 'function') {
+                  switchQuickUpdateTab(initialTabToSelect);
+              } else {
+                  console.error("switchQuickUpdateTab is not defined for quickStockUpdateContainer");
+              }
+            } else if (container.id === 'ordersSectionContainer') {
+              console.log('Orders section shown. Initializing orders view content...');
+              if (typeof populateProductsDropdown === 'function') populateProductsDropdown(); else console.error("populateProductsDropdown is not defined for orders view");
+              if (typeof loadAndDisplayOrders === 'function') loadAndDisplayOrders(); else console.error("loadAndDisplayOrders is not defined for orders view");
+            } else if (container.id === 'reportsSectionContainer') {
+              console.log('Reports section shown. Initializing reports view content...');
+              if (typeof updateInventoryDashboard === 'function') updateInventoryDashboard(); else console.error("updateInventoryDashboard is not defined for reports view");
+              if (typeof generateSupplierOrderSummaries === 'function') generateSupplierOrderSummaries(); else console.error("generateSupplierOrderSummaries is not defined for reports view");
+              if (typeof populateTrendProductSelect === 'function') populateTrendProductSelect(); else console.error("populateTrendProductSelect is not defined for reports view");
+              if (typeof generateProductUsageChart === 'function') generateProductUsageChart(''); else console.error("generateProductUsageChart is not defined for reports view");
+              if (typeof loadAndDisplayOrders === 'function') loadAndDisplayOrders(); else console.error("loadAndDisplayOrders (for reports) is not defined");
+            } else if (container.id === 'userManagementSectionContainer') {
+              console.log('User Management section shown. Initializing user management content...');
+              if (typeof displayUserRoleManagement === 'function') displayUserRoleManagement(); else console.error("displayUserRoleManagement is not defined for user management view");
             }
-          } else if (container.id === 'ordersSectionContainer') {
-            // When showing the orders section, populate products and load orders
-            console.log('Orders section is being shown. Calling populateProductsDropdown and loadAndDisplayOrders.');
-            if (typeof populateProductsDropdown === 'function') populateProductsDropdown(); else console.error("populateProductsDropdown is not defined");
-            if (typeof loadAndDisplayOrders === 'function') loadAndDisplayOrders(); else console.error("loadAndDisplayOrders is not defined");
-          } else if (container.id === 'reportsSectionContainer') {
-            if (typeof updateInventoryDashboard === 'function') updateInventoryDashboard(); else console.error("updateInventoryDashboard is not defined");
-            if (typeof generateSupplierOrderSummaries === 'function') generateSupplierOrderSummaries(); else console.error("generateSupplierOrderSummaries is not defined");
-            if (typeof populateTrendProductSelect === 'function') populateTrendProductSelect(); else console.error("populateTrendProductSelect is not defined");
-            if (typeof generateProductUsageChart === 'function') generateProductUsageChart(''); else console.error("generateProductUsageChart is not defined");
-            // Also load orders when reports view is shown, as per instructions
-            if (typeof loadAndDisplayOrders === 'function') loadAndDisplayOrders(); else console.error("loadAndDisplayOrders is not defined for reports view");
-          } else if (container.id === 'userManagementSectionContainer') {
-            if (typeof displayUserRoleManagement === 'function') displayUserRoleManagement(); else console.error("displayUserRoleManagement is not defined");
+          } catch (e) {
+            console.error(`Error initializing content for view ${container.id}:`, e);
+            // Optionally, display a user-friendly error message in the view itself
           }
       } else {
+          // Logic for hiding other containers
           if (container.id === 'quickStockUpdateContainer') {
               if(typeof quickStockBarcodeBuffer !== 'undefined') quickStockBarcodeBuffer = "";
               if(typeof isBarcodeScannerModeActive !== 'undefined') isBarcodeScannerModeActive = false;
