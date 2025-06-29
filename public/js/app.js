@@ -817,6 +817,221 @@ function updateEnhancedDashboard() {
     console.log('[updateEnhancedDashboard] Stub updated dashboard elements.');
 }
 
+// +++++ START OF NEWLY ADDED/RESTORED FUNCTIONS +++++
+
+function displayInventory(searchTerm = '', supplierFilter = '', locationFilter = '') {
+    const inventoryTableBody = document.getElementById('inventoryTable');
+    // Adjusted to use existing DaisyUI loading spinner and error display if possible
+    const loadingEl = document.getElementById('inventoryLoading');
+    const errorEl = document.getElementById('inventoryError'); // General error display
+    const emptyStateEl = document.getElementById('inventoryEmptyState'); // From old root, might need to add to public/index.html if not present
+
+    const currentPageDisplay = document.getElementById('currentPageDisplay'); // From public/index.html
+    const prevPageBtn = document.getElementById('prevPageBtn'); // From public/index.html
+    const nextPageBtn = document.getElementById('nextPageBtn'); // From public/index.html
+
+    if (!inventoryTableBody) {
+        console.error("displayInventory: inventoryTable body not found.");
+        if(errorEl) {
+            errorEl.textContent = "Inventory table element not found in HTML.";
+            errorEl.classList.remove('hidden');
+        }
+        return;
+    }
+
+    if (loadingEl) loadingEl.classList.remove('hidden');
+    if (errorEl) errorEl.classList.add('hidden');
+    if (emptyStateEl) emptyStateEl.classList.add('hidden'); // Hide empty state initially
+    inventoryTableBody.innerHTML = ''; // Clear previous items
+
+    // 1. Filter Data
+    let filteredInventory = inventory; // Use the global inventory array
+
+    if (!Array.isArray(inventory)) {
+        console.error("Global inventory data is not loaded or not an array.");
+        if (loadingEl) loadingEl.classList.add('hidden');
+        if (errorEl) {
+            errorEl.textContent = "Inventory data is not available. Please try reloading.";
+            errorEl.classList.remove('hidden');
+        }
+        return;
+    }
+
+    const searchTermVal = document.getElementById('inventorySearchInput')?.value.toLowerCase() || searchTerm.toLowerCase();
+    const supplierFilterVal = document.getElementById('filterSupplier')?.value || supplierFilter;
+    const locationFilterVal = document.getElementById('filterLocation')?.value || locationFilter;
+
+    if (searchTermVal) {
+        filteredInventory = filteredInventory.filter(item =>
+            (item.name && item.name.toLowerCase().includes(searchTermVal)) ||
+            (item.id && item.id.toLowerCase().includes(searchTermVal))
+        );
+    }
+    if (supplierFilterVal) {
+        filteredInventory = filteredInventory.filter(item => item.supplier === supplierFilterVal);
+    }
+    if (locationFilterVal) {
+        filteredInventory = filteredInventory.filter(item => item.location === locationFilterVal);
+    }
+
+    totalFilteredItems = filteredInventory.length;
+
+    // 2. Paginate Data
+    const totalPages = Math.ceil(totalFilteredItems / ITEMS_PER_PAGE) || 1;
+    currentPage = Math.max(1, Math.min(currentPage, totalPages));
+
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const paginatedItems = filteredInventory.slice(startIndex, endIndex);
+
+    if (loadingEl) loadingEl.classList.add('hidden');
+
+    if (paginatedItems.length === 0) {
+        if (emptyStateEl) { // Use dedicated empty state from public/index.html if available
+            emptyStateEl.classList.remove('hidden');
+        } else { // Fallback to simple message in table
+            inventoryTableBody.innerHTML = `<tr><td colspan="10" class="text-center p-4">
+                <div role="alert" class="alert alert-info justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  <span>No products found matching your criteria.</span>
+                </div>
+            </td></tr>`;
+        }
+    } else {
+        paginatedItems.forEach(item => {
+            const row = inventoryTableBody.insertRow();
+            // Determine row class based on stock levels (similar to lowStockAlerts styling)
+            let rowClass = 'hover:bg-gray-50 dark:hover:bg-slate-750'; // Default hover
+            if (item.quantity === 0) {
+                rowClass = 'bg-error/20 hover:bg-error/30'; // Out of stock
+            } else if (item.quantity <= item.minQuantity && item.minQuantity > 0) {
+                rowClass = 'bg-warning/20 hover:bg-warning/30'; // Low stock
+            }
+            row.className = rowClass;
+
+            // Columns based on public/index.html thead for inventoryTable:
+            // ID, Name, Qty, Min.Qty, Cost, Supplier, Location, Photo, QR, Actions
+            row.innerHTML = `
+                <td class="px-2 py-1 text-xs align-middle">${item.id}</td>
+                <td class="px-2 py-1 font-medium align-middle">${item.name}</td>
+                <td class="px-2 py-1 text-center align-middle">${item.quantity}</td>
+                <td class="px-2 py-1 text-center align-middle">${item.minQuantity || 0}</td>
+                <td class="px-2 py-1 text-right align-middle">$${(item.cost || 0).toFixed(2)}</td>
+                <td class="px-2 py-1 align-middle">${item.supplier || 'N/A'}</td>
+                <td class="px-2 py-1 align-middle">${item.location || 'N/A'}</td>
+                <td class="px-2 py-1 text-center align-middle">
+                    ${item.photo ? `<img src="${item.photo}" alt="${item.name}" class="w-10 h-10 object-cover rounded cursor-pointer product-photo-thumb mx-auto" data-img-url="${item.photo}">` : '<span class="text-xs text-gray-400">No Photo</span>'}
+                </td>
+                <td class="px-2 py-1 text-center align-middle">
+                    <div id="qr-${item.id}" class="inline-block mx-auto" style="width:40px; height:40px;"></div>
+                </td>
+                <td class="px-2 py-1 text-center align-middle whitespace-nowrap">
+                    <button class="btn btn-xs btn-outline btn-primary edit-product-btn" data-product-id="${item.id}" title="Edit">Edit</button>
+                    <button class="btn btn-xs btn-outline btn-error delete-product-btn" data-product-id="${item.id}" title="Delete">Del</button>
+                    <button class="btn btn-xs btn-outline btn-info move-product-action-btn" data-product-id="${item.id}" title="Move">Move</button>
+                </td>
+            `;
+            const qrCellDiv = row.querySelector(`#qr-${item.id}`);
+            if (qrCellDiv && typeof QRCode !== 'undefined') {
+                new QRCode(qrCellDiv, {
+                    text: item.id,
+                    width: 40,
+                    height: 40,
+                    colorDark: document.documentElement.classList.contains('dark') ? "#FFFFFF" : "#000000",
+                    colorLight: document.documentElement.classList.contains('dark') ? "#334155" : "#FFFFFF", // slate-700 for dark bg
+                    correctLevel: QRCode.CorrectLevel.L
+                });
+            } else if (qrCellDiv) {
+                 qrCellDiv.innerHTML = `<span class="text-xs text-gray-400">QR Err</span>`;
+            }
+        });
+    }
+
+    // 3. Update Pagination Controls
+    if (currentPageDisplay) currentPageDisplay.textContent = `${currentPage} / ${totalPages}`;
+    if (prevPageBtn) prevPageBtn.disabled = currentPage === 1;
+    if (nextPageBtn) nextPageBtn.disabled = currentPage === totalPages;
+
+    const pageInfo = document.getElementById('pageInfo'); // From root index.html, public/index.html has currentPageDisplay
+    if(pageInfo) pageInfo.textContent = `Page ${currentPage} of ${totalPages}. Total items: ${totalFilteredItems}`;
+
+
+    // 4. Attach Event Listeners
+    attachTableEventListeners();
+}
+
+function attachTableEventListeners() {
+    // Remove existing listeners to prevent duplicates if table is re-rendered often
+    // This is a simple approach; a more robust way might involve checking if listeners already exist or using a single delegated listener.
+    const table = document.getElementById('inventoryTable');
+    if (!table) return;
+
+    // For simplicity in this context, we'll re-query and add.
+    // If performance becomes an issue, event delegation is better.
+
+    table.querySelectorAll('.edit-product-btn').forEach(button => {
+        // Clone and replace to remove old listeners if any
+        const newButton = button.cloneNode(true);
+        button.parentNode.replaceChild(newButton, button);
+        newButton.addEventListener('click', (e) => {
+            const productId = e.currentTarget.dataset.productId;
+            const productFormSection = document.getElementById('productManagement'); // Section containing the form
+            if (productFormSection) productFormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            const formCheckbox = document.getElementById('toggleProductFormCheckbox');
+            if (formCheckbox) formCheckbox.checked = true; // Ensure DaisyUI collapse is open
+
+            editProduct(productId); // This function should populate the form
+        });
+    });
+
+    table.querySelectorAll('.delete-product-btn').forEach(button => {
+        const newButton = button.cloneNode(true);
+        button.parentNode.replaceChild(newButton, button);
+        newButton.addEventListener('click', (e) => deleteProduct(e.currentTarget.dataset.productId));
+    });
+
+    table.querySelectorAll('.move-product-action-btn').forEach(button => {
+        const newButton = button.cloneNode(true);
+        button.parentNode.replaceChild(newButton, button);
+        newButton.addEventListener('click', (e) => {
+            const productId = e.currentTarget.dataset.productId;
+            console.log(`Move action for ${productId}`);
+            // Logic to open the move product modal/form section
+            // This should interact with the "Move Product Location" form in the "Product Tools" section
+            const moveProductIdInput = document.getElementById('moveProductId');
+            const moveProductFormContent = document.getElementById('moveProductFormContent');
+            const batchActionsSection = document.getElementById('batchActions'); // Card containing the move form
+            const toggleMoveProductFormCheckbox = document.getElementById('toggleMoveProductFormBtn'); // This is the input type=checkbox
+
+            if (moveProductIdInput && moveProductFormContent && batchActionsSection && toggleMoveProductFormCheckbox) {
+                moveProductIdInput.value = productId;
+                batchActionsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                toggleMoveProductFormCheckbox.checked = true; // Open the collapse
+                setTimeout(() => document.getElementById('newLocation')?.focus(), 150);
+            } else {
+                uiEnhancementManager.showToast('Move product UI elements not found.', 'error');
+                console.error('Move product UI elements missing:', {moveProductIdInput, moveProductFormContent, batchActionsSection, toggleMoveProductFormCheckbox});
+            }
+        });
+    });
+
+    table.querySelectorAll('.product-photo-thumb').forEach(img => {
+        const newImg = img.cloneNode(true);
+        img.parentNode.replaceChild(newImg, img);
+        newImg.addEventListener('click', (e) => {
+            const imageUrl = e.currentTarget.dataset.imgUrl;
+            if (imageUrl && typeof openImageModal === 'function') {
+                openImageModal(imageUrl);
+            } else {
+                console.warn("No image URL or openImageModal function not available for product photo.");
+            }
+        });
+    });
+}
+
+// +++++ END OF NEWLY ADDED/RESTORED FUNCTIONS +++++
+
 
 // Firebase Initialization
 const firebaseConfig = {
