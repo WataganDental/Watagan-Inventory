@@ -18,7 +18,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <link type="text/css" rel="stylesheet" href="https://www.gstatic.com/firebasejs/ui/latest/firebase-ui-auth.css" />
 </head>
 <body class="bg-gray-100 dark:bg-slate-900 font-sans text-gray-900 dark:text-gray-100">
 
@@ -38,12 +37,12 @@
       <form id="loginForm" class="hidden">
         <div class="mb-4">
           <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email Address</label>
-          <input type="email" id="email" name="email" required class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-slate-700 dark:text-gray-200">
+          <input type="email" id="email" name="email" autocomplete="email" required class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-slate-700 dark:text-gray-200">
         </div>
         <div class="mb-6">
           <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
           <div class="relative mt-1">
-            <input type="password" id="password" name="password" required class="block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-slate-700 dark:text-gray-200 pr-10">
+            <input type="password" id="password" name="password" autocomplete="current-password" required class="block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-slate-700 dark:text-gray-200 pr-10">
             <button type="button" id="togglePasswordVisibility" class="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none">
               <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" id="eyeIconPassword">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -58,7 +57,7 @@
         <div class="mb-6">
           <label for="confirmPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</label>
           <div class="relative mt-1">
-            <input type="password" id="confirmPassword" name="confirmPassword" required class="block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-slate-700 dark:text-gray-200 pr-10">
+            <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" required class="block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-slate-700 dark:text-gray-200 pr-10">
             <button type="button" id="toggleConfirmPasswordVisibility" class="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none">
               <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" id="eyeIconConfirmPassword">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -429,7 +428,7 @@
                         <span class="label-text">Product Name</span>
                         <span class="label-text-alt text-error">Required</span>
                       </label>
-                      <input id="productName" type="text" placeholder="Enter product name" class="input input-bordered w-full" />
+                      <input id="productName" type="text" placeholder="Enter product name" autocomplete="off" class="input input-bordered w-full" />
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -437,13 +436,13 @@
                         <label class="label">
                           <span class="label-text">Current Quantity</span>
                         </label>
-                        <input id="productQuantity" type="number" placeholder="0" class="input input-bordered" />
+                        <input id="productQuantity" type="number" placeholder="0" autocomplete="off" class="input input-bordered" />
                       </div>
                       <div class="form-control">
                         <label class="label">
                           <span class="label-text">Cost per Unit ($)</span>
                         </label>
-                        <input id="productCost" type="number" step="0.01" placeholder="0.00" class="input input-bordered" />
+                        <input id="productCost" type="number" step="0.01" placeholder="0.00" autocomplete="off" class="input input-bordered" />
                       </div>
                     </div>
 
@@ -453,14 +452,14 @@
                           <span class="label-text">Minimum Quantity</span>
                           <span class="label-text-alt">Reorder threshold</span>
                         </label>
-                        <input id="productMinQuantity" type="number" placeholder="0" class="input input-bordered" />
+                        <input id="productMinQuantity" type="number" placeholder="0" autocomplete="off" class="input input-bordered" />
                       </div>
                       <div class="form-control">
                         <label class="label">
                           <span class="label-text">Reorder Quantity</span>
                           <span class="label-text-alt">Amount to order</span>
                         </label>
-                        <input id="productReorderQuantity" type="number" placeholder="0" class="input input-bordered" />
+                        <input id="productReorderQuantity" type="number" placeholder="0" autocomplete="off" class="input input-bordered" />
                       </div>
                     </div>
 
@@ -469,13 +468,13 @@
                         <label class="label">
                           <span class="label-text">Quantity Ordered</span>
                         </label>
-                        <input id="productQuantityOrdered" type="number" placeholder="0" class="input input-bordered" />
+                        <input id="productQuantityOrdered" type="number" placeholder="0" autocomplete="off" class="input input-bordered" />
                       </div>
                       <div class="form-control">
                         <label class="label">
                           <span class="label-text">Quantity Backordered</span>
                         </label>
-                        <input id="productQuantityBackordered" type="number" placeholder="0" class="input input-bordered" />
+                        <input id="productQuantityBackordered" type="number" placeholder="0" autocomplete="off" class="input input-bordered" />
                       </div>
                     </div>
 
@@ -586,7 +585,8 @@
 
           <!-- Optional: Add a search/filter input here later -->
           <!-- <div class="mb-4">
-            <input type="text" id="userSearchInput" placeholder="Search users by email..." class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 w-full md:w-1/2">
+            <label for="userSearchInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search Users</label>
+            <input type="text" id="userSearchInput" placeholder="Search users by email..." autocomplete="off" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 w-full md:w-1/2">
           </div> -->
 
           <div class="overflow-x-auto shadow-md rounded-lg">
