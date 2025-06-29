@@ -192,137 +192,366 @@
     <main id="mainContent" class="flex-1 p-4 ml-64 container mx-auto"> 
         
         <div id="inventoryViewContainer">
-            <section id="productManagement" class="mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
-              <h2 id="toggleProductFormBtn" class="text-xl font-semibold mb-4 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-md p-2">Product Management</h2>
-              <div id="productFormContent" class="hidden grid grid-cols-1 gap-4">
-                <input id="productId" type="hidden">
-                <button id="scanToEditBtn" class="bg-purple-500 hover:bg-purple-600 text-white p-2 rounded dark:bg-purple-700 dark:hover:bg-purple-600">Scan QR to Edit Product</button>
-                <div class="mt-2">
-                  <video id="editVideo" class="w-full max-w-md mx-auto mb-4 hidden" autoplay playsinline></video>
-                  <canvas id="editCanvas" class="hidden"></canvas>
-                  <p id="editScanResult" class="mt-4 text-center"></p>
-                  <button id="stopEditScannerBtn" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded dark:bg-red-700 dark:hover:bg-red-600 hidden mt-2">Stop Edit Scanner</button>
+            <!-- Dashboard Stats Section -->
+            <section class="mb-8">
+              <div class="stats stats-vertical lg:stats-horizontal shadow w-full">
+                <div class="stat">
+                  <div class="stat-figure text-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                  </div>
+                  <div class="stat-title">Total Products</div>
+                  <div class="stat-value text-primary" id="totalProductsCount">0</div>
+                  <div class="stat-desc">Items in inventory</div>
                 </div>
-                <div class="flex items-center mb-3">
-                    <label for="productName" class="w-auto text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Product Name</label>
-                    <input id="productName" type="text" class="grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
+                
+                <div class="stat">
+                  <div class="stat-figure text-warning">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                  </div>
+                  <div class="stat-title">Low Stock Items</div>
+                  <div class="stat-value text-warning" id="lowStockCount">0</div>
+                  <div class="stat-desc">Need reordering</div>
                 </div>
-                <div class="flex items-center mb-3">
-                    <label for="productQuantity" class="w-auto text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Quantity</label>
-                    <input id="productQuantity" type="number" class="grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
+                
+                <div class="stat">
+                  <div class="stat-figure text-error">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                  </div>
+                  <div class="stat-title">Out of Stock</div>
+                  <div class="stat-value text-error" id="outOfStockCount">0</div>
+                  <div class="stat-desc">Critical items</div>
                 </div>
-                <div class="flex items-center mb-3">
-                    <label for="productCost" class="w-auto text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Cost per Unit ($)</label>
-                    <input id="productCost" type="number" step="0.01" class="grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
-                </div>
-                <div class="flex items-center mb-3">
-                    <label for="productMinQuantity" class="w-auto text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Minimum Quantity</label>
-                    <input id="productMinQuantity" type="number" class="grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
-                </div>
-                <div class="flex items-center mb-3">
-                    <label for="productQuantityOrdered" class="w-auto text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Quantity Ordered</label>
-                    <input id="productQuantityOrdered" type="number" class="grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
-                </div>
-                <div class="flex items-center mb-3">
-                    <label for="productQuantityBackordered" class="w-auto text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Quantity Backordered</label>
-                    <input id="productQuantityBackordered" type="number" class="grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
-                </div>
-                <div class="flex items-center mb-3">
-                    <label for="productReorderQuantity" class="w-auto text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Reorder Quantity</label>
-                    <input id="productReorderQuantity" type="number" class="grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
-                </div>
-                <div class="flex items-center mb-3">
-                    <label for="productSupplier" class="w-auto text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Supplier</label>
-                    <select id="productSupplier" class="grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
-                        <option value="">Select Supplier</option>
-                    </select>
-                </div>
-                <div class="flex items-center mb-3">
-                    <label for="productLocation" class="w-auto text-sm font-medium text-gray-700 dark:text-gray-300 mr-3">Location</label>
-                    <select id="productLocation" class="grow p-2 border dark:border-slate-600 rounded dark:bg-slate-700 dark:text-gray-200">
-                    </select>
-                </div>
-                <div>
-                  <video id="photoVideo" class="w-full max-w-xs mx-auto mb-2 hidden" autoplay playsinline></video>
-                  <canvas id="photoCanvas" class="hidden"></canvas>
-                  <img id="productPhotoPreview" class="w-full max-w-xs mx-auto mb-2 hidden" alt="Product Photo Preview">
-                  <button id="capturePhotoBtn" class="bg-purple-500 hover:bg-purple-600 text-white p-2 rounded dark:bg-purple-700 dark:hover:bg-purple-600">Capture Photo</button>
-                  <button id="takePhotoBtn" class="hidden bg-green-500 hover:bg-green-600 text-white p-2 rounded dark:bg-green-700 dark:hover:bg-green-600">Take Photo</button>
-                  <button id="cancelPhotoBtn" class="hidden bg-red-500 hover:bg-red-600 text-white p-2 rounded dark:bg-red-700 dark:hover:bg-red-600">Cancel</button>
-                </div>
-                <button id="productSubmitBtn" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded dark:bg-blue-700 dark:hover:bg-blue-600">Add Product</button>
-                <button id="cancelEditBtn" class="hidden bg-gray-500 hover:bg-gray-600 text-white p-2 rounded dark:bg-slate-600 dark:hover:bg-slate-500">Cancel</button>
               </div>
             </section>
 
-            <section id="batchActions" class="mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
-                <h2 class="text-2xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">Other Product Tools</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="p-4 border dark:border-slate-700 rounded-md">
-                      <h3 id="toggleMoveProductFormBtn" class="text-xl font-semibold mb-4 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-md p-2">Move Product</h3>
-                      <div id="moveProductFormContent" class="hidden">
-                        <div class="grid grid-cols-1 gap-4">
-                          <input id="moveProductId" type="text" placeholder="Product ID (from QR/Barcode scan)" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400">
-                          <select id="newLocation" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200">
-                          </select>
-                          <button id="moveProductBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white p-2 rounded dark:bg-yellow-600 dark:hover:bg-yellow-500">Move Product</button>
-                        </div>
-                        <div class="mt-4">
-                          <video id="moveVideo" class="w-full max-w-md mx-auto mb-4 hidden" autoplay playsinline></video>
-                          <canvas id="moveCanvas" class="hidden"></canvas>
-                          <button id="startMoveScannerBtn" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded dark:bg-green-700 dark:hover:bg-green-600">Scan QR Code</button>
-                          <button id="stopMoveScannerBtn" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded dark:bg-red-700 dark:hover:bg-red-600">Stop Scanner</button>
-                          <p id="moveScanResult" class="mt-4 text-center"></p>
+            <!-- Product Management Card -->
+            <section id="productManagement" class="mb-8">
+              <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                  <h2 id="toggleProductFormBtn" class="card-title cursor-pointer hover:text-primary transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-6 h-6 stroke-current">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    Product Management
+                  </h2>
+                  <div id="productFormContent" class="hidden space-y-4">
+                    <input id="productId" type="hidden">
+                    
+                    <div class="alert alert-info">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      <span>Scan QR code to quickly edit existing products or add new ones.</span>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                      <button id="scanToEditBtn" class="btn btn-secondary">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 011-1h2m0 0V3a1 1 0 011-1h4a1 1 0 011 1v1m0 0h2a1 1 0 011 1v2a1 1 0 01-1 1h-2m0 0v4a1 1 0 01-1 1h-2a1 1 0 01-1-1v-4m-6 0V9a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1h2z"></path>
+                        </svg>
+                        Scan QR to Edit
+                      </button>
+                      <button id="stopEditScannerBtn" class="btn btn-error hidden">
+                        Stop Scanner
+                      </button>
+                    </div>
+
+                    <div class="mt-2">
+                      <video id="editVideo" class="w-full max-w-md mx-auto mb-4 hidden rounded-lg" autoplay playsinline></video>
+                      <canvas id="editCanvas" class="hidden"></canvas>
+                      <p id="editScanResult" class="mt-4 text-center font-medium"></p>
+                    </div>
+
+                    <!-- Form Fields -->
+                    <div class="form-control w-full">
+                      <label class="label">
+                        <span class="label-text">Product Name</span>
+                        <span class="label-text-alt text-error">Required</span>
+                      </label>
+                      <input id="productName" type="text" placeholder="Enter product name" class="input input-bordered w-full" />
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div class="form-control">
+                        <label class="label">
+                          <span class="label-text">Current Quantity</span>
+                        </label>
+                        <input id="productQuantity" type="number" placeholder="0" class="input input-bordered" />
+                      </div>
+                      <div class="form-control">
+                        <label class="label">
+                          <span class="label-text">Cost per Unit ($)</span>
+                        </label>
+                        <input id="productCost" type="number" step="0.01" placeholder="0.00" class="input input-bordered" />
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div class="form-control">
+                        <label class="label">
+                          <span class="label-text">Minimum Quantity</span>
+                          <span class="label-text-alt">Reorder threshold</span>
+                        </label>
+                        <input id="productMinQuantity" type="number" placeholder="0" class="input input-bordered" />
+                      </div>
+                      <div class="form-control">
+                        <label class="label">
+                          <span class="label-text">Reorder Quantity</span>
+                          <span class="label-text-alt">Amount to order</span>
+                        </label>
+                        <input id="productReorderQuantity" type="number" placeholder="0" class="input input-bordered" />
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div class="form-control">
+                        <label class="label">
+                          <span class="label-text">Quantity Ordered</span>
+                        </label>
+                        <input id="productQuantityOrdered" type="number" placeholder="0" class="input input-bordered" />
+                      </div>
+                      <div class="form-control">
+                        <label class="label">
+                          <span class="label-text">Quantity Backordered</span>
+                        </label>
+                        <input id="productQuantityBackordered" type="number" placeholder="0" class="input input-bordered" />
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div class="form-control">
+                        <label class="label">
+                          <span class="label-text">Supplier</span>
+                        </label>
+                        <select id="productSupplier" class="select select-bordered">
+                          <option value="">Select Supplier</option>
+                        </select>
+                      </div>
+                      <div class="form-control">
+                        <label class="label">
+                          <span class="label-text">Storage Location</span>
+                        </label>
+                        <select id="productLocation" class="select select-bordered">
+                        </select>
+                      </div>
+                    </div>
+
+                    <!-- Photo Section -->
+                    <div class="form-control">
+                      <label class="label">
+                        <span class="label-text">Product Photo</span>
+                        <span class="label-text-alt">Optional</span>
+                      </label>
+                      <div class="flex flex-col items-center gap-4">
+                        <video id="photoVideo" class="w-full max-w-xs mx-auto hidden rounded-lg" autoplay playsinline></video>
+                        <canvas id="photoCanvas" class="hidden"></canvas>
+                        <img id="productPhotoPreview" class="w-full max-w-xs mx-auto hidden rounded-lg shadow" alt="Product Photo Preview">
+                        <div class="flex flex-wrap gap-2">
+                          <button id="capturePhotoBtn" class="btn btn-accent btn-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            Capture Photo
+                          </button>
+                          <button id="takePhotoBtn" class="btn btn-success btn-sm hidden">Take Photo</button>
+                          <button id="cancelPhotoBtn" class="btn btn-error btn-sm hidden">Cancel</button>
                         </div>
                       </div>
                     </div>
+
+                    <!-- Action Buttons -->
+                    <div class="card-actions justify-end">
+                      <button id="cancelEditBtn" class="btn btn-ghost hidden">Cancel</button>
+                      <button id="productSubmitBtn" class="btn btn-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Add Product
+                      </button>
+                    </div>
+                  </div>
                 </div>
+              </div>
             </section>
 
-            <section id="inventoryDisplaySection" class="mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
-              <h2 id="toggleInventoryTableBtn" class="text-xl font-semibold mb-4 cursor-pointer hover:bg-gray-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-md p-2">Inventory List</h2>
-              <div id="inventoryTableContent" class="hidden">
-                <div class="mb-4 flex flex-wrap gap-2">
-                  <button id="generateLocationQRCodePDFBtn" class="bg-teal-500 hover:bg-teal-600 text-white p-2 rounded dark:bg-teal-700 dark:hover:bg-teal-600">Generate QR PDF (Filtered Location)</button>
-                  <button id="toggleInventoryIDColumnBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded dark:bg-gray-700 dark:hover:bg-gray-600">Show IDs</button>
-                  <button id="exportInventoryCSVBtn" class="bg-green-600 hover:bg-green-700 text-white p-2 rounded dark:bg-green-700 dark:hover:bg-green-800">Export to CSV</button>
+            <!-- Other Tools Section -->
+            <section id="batchActions" class="mb-8">
+              <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                  <h2 class="card-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-6 h-6 stroke-current">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    Product Tools
+                  </h2>
+                  
+                  <div class="collapse collapse-arrow">
+                    <input id="toggleMoveProductFormBtn" type="checkbox" />
+                    <div class="collapse-title text-xl font-medium">
+                      Move Product Location
+                    </div>
+                    <div class="collapse-content" id="moveProductFormContent">
+                      <div class="space-y-4">
+                        <div class="form-control">
+                          <label class="label">
+                            <span class="label-text">Product ID</span>
+                            <span class="label-text-alt">Scan QR code or enter manually</span>
+                          </label>
+                          <input id="moveProductId" type="text" placeholder="Product ID (from QR/Barcode scan)" class="input input-bordered">
+                        </div>
+                        
+                        <div class="form-control">
+                          <label class="label">
+                            <span class="label-text">New Location</span>
+                          </label>
+                          <select id="newLocation" class="select select-bordered">
+                          </select>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2">
+                          <button id="startMoveScannerBtn" class="btn btn-success btn-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 011-1h2m0 0V3a1 1 0 011-1h4a1 1 0 011 1v1m0 0h2a1 1 0 011 1v2a1 1 0 01-1 1h-2m0 0v4a1 1 0 01-1 1h-2a1 1 0 01-1-1v-4m-6 0V9a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1h2z"></path>
+                            </svg>
+                            Scan QR Code
+                          </button>
+                          <button id="stopMoveScannerBtn" class="btn btn-error btn-sm">Stop Scanner</button>
+                          <button id="moveProductBtn" class="btn btn-warning">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+                            </svg>
+                            Move Product
+                          </button>
+                        </div>
+
+                        <div class="mt-4">
+                          <video id="moveVideo" class="w-full max-w-md mx-auto mb-4 hidden rounded-lg" autoplay playsinline></video>
+                          <canvas id="moveCanvas" class="hidden"></canvas>
+                          <p id="moveScanResult" class="mt-4 text-center font-medium"></p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4 items-center">
-                  <select id="filterSupplier" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 sm:col-span-1">
-                    <option value="">Filter by Supplier (All)</option>
-                  </select>
-                  <select id="filterLocation" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 sm:col-span-1">
-                    <option value="">Filter by Location (All)</option>
-                  </select>
-                  <input type="search" id="inventorySearchInput" placeholder="Search name, ID, etc..." class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 dark:placeholder-gray-400 sm:col-span-1">
-                  <button id="clearInventoryFiltersBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded dark:bg-gray-700 dark:hover:bg-gray-600 h-10 sm:col-span-1">Clear Filters</button>
-                </div>
-                <div id="inventoryPaginationControls" class="mt-4 flex justify-between items-center">
-                    <button id="prevPageBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded disabled:opacity-50">Previous</button>
-                    <span id="pageInfo" class="text-sm dark:text-gray-300">Page 1 of 1</span>
-                    <button id="nextPageBtn" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded disabled:opacity-50">Next</button>
-                </div>
-                <div class="overflow-x-auto shadow-md rounded-lg mt-4">
-                    <table class="min-w-full w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                        <thead class="text-xs text-gray-700 uppercase bg-gray-200 dark:bg-slate-700 dark:text-gray-300">
-                            <tr>
-                                <th scope="col" class="px-4 py-3 id-column hidden">ID</th>
-                                <th scope="col" class="px-4 py-3">Name</th>
-                                <th scope="col" class="px-4 py-3 text-center">Qty</th>
-                                <th scope="col" class="px-4 py-3 text-center">Min.Qty</th>
-                                <th scope="col" class="px-4 py-3 text-center">Reorder Qty</th>
-                                <th scope="col" class="px-4 py-3 text-right">Cost</th>
-                                <th scope="col" class="px-4 py-3">Supplier</th>
-                                <th scope="col" class="px-4 py-3">Location</th>
-                                <th scope="col" class="px-4 py-3 text-center">Qty Ordered</th>
-                                <th scope="col" class="px-4 py-3 text-center">Qty Backordered</th>
-                                <th scope="col" class="px-4 py-3 text-center">Photo</th>
-                                <th scope="col" class="px-4 py-3 text-center">QR Code</th>
-                                <th scope="col" class="px-4 py-3 text-center">Actions</th>
-                            </tr>
+              </div>
+            </section>
+
+            <!-- Inventory Management Section -->
+            <section id="inventoryDisplaySection" class="mb-8">
+              <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                  <h2 id="toggleInventoryTableBtn" class="card-title cursor-pointer hover:text-primary transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-6 h-6 stroke-current">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h6a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                    Inventory Management
+                  </h2>
+                  
+                  <div id="inventoryTableContent" class="hidden space-y-4">
+                    <!-- Action Buttons -->
+                    <div class="flex flex-wrap gap-2">
+                      <button id="generateLocationQRCodePDFBtn" class="btn btn-accent btn-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Generate QR PDF
+                      </button>
+                      <button id="toggleInventoryIDColumnBtn" class="btn btn-outline btn-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.478 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                        Show IDs
+                      </button>
+                      <button id="exportInventoryCSVBtn" class="btn btn-success btn-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Export CSV
+                      </button>
+                    </div>
+
+                    <!-- Search and Filters -->
+                    <div class="join w-full">
+                      <select id="filterSupplier" class="select select-bordered join-item flex-1">
+                        <option value="">All Suppliers</option>
+                      </select>
+                      <select id="filterLocation" class="select select-bordered join-item flex-1">
+                        <option value="">All Locations</option>
+                      </select>
+                      <input type="search" id="inventorySearchInput" placeholder="Search products..." class="input input-bordered join-item flex-2">
+                      <button id="clearInventoryFiltersBtn" class="btn join-item">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        Clear
+                      </button>
+                    </div>
+
+                    <!-- Pagination Controls -->
+                    <div class="flex justify-between items-center">
+                      <div class="join">
+                        <button id="prevPageBtn" class="join-item btn btn-outline">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                          </svg>
+                          Previous
+                        </button>
+                        <button id="nextPageBtn" class="join-item btn btn-outline">
+                          Next
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-4 h-4 stroke-current">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                          </svg>
+                        </button>
+                      </div>
+                      <span id="pageInfo" class="text-sm opacity-70">Page 1 of 1</span>
+                    </div>
+
+                    <!-- Modern Table -->
+                    <div class="overflow-x-auto">
+                      <table class="table table-zebra">
+                        <thead>
+                          <tr>
+                            <th class="id-column hidden">ID</th>
+                            <th>Product</th>
+                            <th class="text-center">Stock</th>
+                            <th class="text-center hidden md:table-cell">Min/Reorder</th>
+                            <th class="text-right hidden lg:table-cell">Cost</th>
+                            <th class="hidden md:table-cell">Supplier</th>
+                            <th class="hidden lg:table-cell">Location</th>
+                            <th class="text-center hidden xl:table-cell">Ordered</th>
+                            <th class="text-center hidden xl:table-cell">Backordered</th>
+                            <th class="text-center">Actions</th>
+                          </tr>
                         </thead>
-                        <tbody id="inventoryTable" class="divide-y dark:divide-slate-700"></tbody>
-                    </table>
+                        <tbody id="inventoryTable">
+                          <!-- Table rows will be generated by JavaScript -->
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div id="inventoryLoadingState" class="hidden flex justify-center py-8">
+                      <span class="loading loading-spinner loading-lg"></span>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="inventoryEmptyState" class="hidden text-center py-8">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-16 h-16 stroke-current opacity-50 mb-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293L16 14.586a1 1 0 01-.707.293h-2.586a1 1 0 01-.707-.293L11.293 13.707a1 1 0 00-.707-.293H8.414a1 1 0 01-.707-.293L6 11.414a1 1 0 00-.707-.293H3"></path>
+                      </svg>
+                      <h3 class="text-lg font-semibold opacity-70">No products found</h3>
+                      <p class="text-sm opacity-50">Try adjusting your search or filters</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </section>

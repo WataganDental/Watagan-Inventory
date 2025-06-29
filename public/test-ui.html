@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI Test</title>
+    <link href="./css/output.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="container mx-auto">
+        <h1 class="text-3xl font-bold mb-8">UI Enhancements Test</h1>
+        
+        <!-- Dashboard Stats Test -->
+        <div class="stats stats-vertical lg:stats-horizontal shadow w-full mb-8">
+            <div class="stat">
+                <div class="stat-figure text-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="stat-title">Total Products</div>
+                <div class="stat-value text-primary" id="totalProductsCount">0</div>
+                <div class="stat-desc">Items in inventory</div>
+            </div>
+            
+            <div class="stat">
+                <div class="stat-figure text-warning">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                </div>
+                <div class="stat-title">Low Stock Items</div>
+                <div class="stat-value text-warning" id="lowStockCount">0</div>
+                <div class="stat-desc">Need reordering</div>
+            </div>
+            
+            <div class="stat">
+                <div class="stat-figure text-error">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="stat-title">Out of Stock</div>
+                <div class="stat-value text-error" id="outOfStockCount">0</div>
+                <div class="stat-desc">Critical items</div>
+            </div>
+        </div>
+
+        <!-- Test Buttons -->
+        <div class="space-x-4 mb-8">
+            <button id="testStatsBtn" class="btn btn-primary">Test Dashboard Stats</button>
+            <button id="testToastBtn" class="btn btn-secondary">Test Toast</button>
+            <button id="testTableBtn" class="btn btn-accent">Test Table Row</button>
+        </div>
+
+        <!-- Test Table -->
+        <div class="overflow-x-auto">
+            <table class="table table-zebra">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th class="text-center">Stock</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="testTable">
+                    <!-- Table rows will be generated here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Loading State -->
+        <div id="inventoryLoadingState" class="hidden flex justify-center py-8">
+            <span class="loading loading-spinner loading-lg"></span>
+        </div>
+
+        <!-- Empty State -->
+        <div id="inventoryEmptyState" class="hidden text-center py-8">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-16 h-16 stroke-current opacity-50 mb-4">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293L16 14.586a1 1 0 01-.707.293h-2.586a1 1 0 01-.707-.293L11.293 13.707a1 1 0 00-.707-.293H8.414a1 1 0 01-.707-.293L6 11.414a1 1 0 00-.707-.293H3"></path>
+            </svg>
+            <h3 class="text-lg font-semibold opacity-70">No products found</h3>
+            <p class="text-sm opacity-50">Try adjusting your search or filters</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { uiEnhancementManager } from './js/modules/ui-enhancements.js';
+
+        // Test data
+        const testInventory = [
+            {
+                id: 'test1',
+                productName: 'Test Product 1',
+                quantity: 5,
+                minQuantity: 10,
+                reorderQuantity: 20,
+                cost: 15.99,
+                supplier: 'Test Supplier',
+                location: 'Storage A',
+                quantityOrdered: 0,
+                quantityBackordered: 0
+            },
+            {
+                id: 'test2',
+                productName: 'Test Product 2',
+                quantity: 0,
+                minQuantity: 5,
+                reorderQuantity: 15,
+                cost: 25.50,
+                supplier: 'Another Supplier',
+                location: 'Storage B',
+                quantityOrdered: 10,
+                quantityBackordered: 5
+            }
+        ];
+
+        // Test button event listeners
+        document.getElementById('testStatsBtn').addEventListener('click', () => {
+            console.log('Testing dashboard stats update...');
+            uiEnhancementManager.updateDashboardStats(testInventory);
+        });
+
+        document.getElementById('testToastBtn').addEventListener('click', () => {
+            console.log('Testing toast notification...');
+            uiEnhancementManager.showToast('This is a test notification!', 'success');
+        });
+
+        document.getElementById('testTableBtn').addEventListener('click', () => {
+            console.log('Testing table row generation...');
+            const tableBody = document.getElementById('testTable');
+            tableBody.innerHTML = '';
+            
+            testInventory.forEach((item, index) => {
+                const rowHTML = uiEnhancementManager.generateModernTableRow(item, index);
+                tableBody.innerHTML += rowHTML;
+            });
+
+            // Add event listeners
+            document.querySelectorAll('.edit-product-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const productId = button.getAttribute('data-product-id');
+                    uiEnhancementManager.showToast(`Edit product: ${productId}`, 'info');
+                });
+            });
+
+            document.querySelectorAll('.view-qr-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const productId = button.getAttribute('data-product-id');
+                    uiEnhancementManager.showToast(`View QR for: ${productId}`, 'info');
+                });
+            });
+
+            document.querySelectorAll('.delete-product-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const productId = button.getAttribute('data-product-id');
+                    uiEnhancementManager.showToast(`Delete product: ${productId}`, 'warning');
+                });
+            });
+        });
+
+        // Initialize on page load
+        console.log('UI Enhancement Manager loaded:', uiEnhancementManager);
+        uiEnhancementManager.showToast('UI Test page loaded successfully!', 'info');
+    </script>
+</body>
+</html>

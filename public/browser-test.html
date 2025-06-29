@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Test - UI Enhancements</title>
+    <link href="css/output.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <div class="container mx-auto p-8">
+        <h1 class="text-3xl font-bold text-gray-800 dark:text-white mb-8">UI Enhancements Browser Test</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Test Buttons -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Test Actions</h2>
+                <div class="space-y-3">
+                    <button id="testSuccess" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-colors">
+                        Show Success Toast
+                    </button>
+                    <button id="testError" class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition-colors">
+                        Show Error Toast
+                    </button>
+                    <button id="testInfo" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors">
+                        Show Info Toast
+                    </button>
+                    <button id="testLoading" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded transition-colors">
+                        Toggle Table Loading
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dashboard Stats -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Dashboard Stats</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded">
+                        <div class="text-2xl font-bold text-blue-600 dark:text-blue-400" id="totalProducts">0</div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">Total Products</div>
+                    </div>
+                    <div class="bg-red-50 dark:bg-red-900/20 p-4 rounded">
+                        <div class="text-2xl font-bold text-red-600 dark:text-red-400" id="lowStockCount">0</div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">Low Stock</div>
+                    </div>
+                    <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded">
+                        <div class="text-2xl font-bold text-green-600 dark:text-green-400" id="totalValue">$0</div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">Total Value</div>
+                    </div>
+                    <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded">
+                        <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400" id="pendingOrders">0</div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">Pending Orders</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Test -->
+        <div class="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div class="p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Modern Table Test</h2>
+                
+                <!-- Loading overlay -->
+                <div id="tableLoadingOverlay" class="hidden relative">
+                    <div class="absolute inset-0 bg-white/75 dark:bg-gray-800/75 backdrop-blur-sm flex items-center justify-center rounded-lg z-10">
+                        <div class="flex items-center space-x-3">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                            <span class="text-gray-700 dark:text-gray-300 font-medium">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="overflow-x-auto">
+                    <table id="inventoryTable" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-800">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Product</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Stock</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryTableBody" class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                            <!-- Table content will be generated here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty state -->
+                <div id="emptyState" class="hidden text-center py-12">
+                    <svg class="mx-auto h-24 w-24 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2 2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                    </svg>
+                    <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">No inventory items</h3>
+                    <p class="mt-2 text-gray-500 dark:text-gray-400">Get started by adding your first product.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Container -->
+        <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2">
+            <!-- Toasts will be inserted here -->
+        </div>
+    </div>
+
+    <script type="module">
+        import { uiEnhancementManager } from './js/modules/ui-enhancements.js';
+
+        // Initialize UI enhancement manager
+        uiEnhancementManager.init();
+
+        // Test buttons
+        document.getElementById('testSuccess').addEventListener('click', () => {
+            uiEnhancementManager.showToast('Success message test!', 'success');
+        });
+
+        document.getElementById('testError').addEventListener('click', () => {
+            uiEnhancementManager.showToast('Error message test!', 'error');
+        });
+
+        document.getElementById('testInfo').addEventListener('click', () => {
+            uiEnhancementManager.showToast('Info message test!', 'info');
+        });
+
+        let isLoading = false;
+        document.getElementById('testLoading').addEventListener('click', () => {
+            if (isLoading) {
+                uiEnhancementManager.hideTableLoading();
+                isLoading = false;
+            } else {
+                uiEnhancementManager.showTableLoading();
+                isLoading = true;
+            }
+        });
+
+        // Test dashboard stats update
+        setTimeout(() => {
+            const mockInventory = [
+                { id: 'test1', name: 'Test Product 1', quantity: 5, minQuantity: 10, price: 25.99 },
+                { id: 'test2', name: 'Test Product 2', quantity: 15, minQuantity: 5, price: 45.50 },
+                { id: 'test3', name: 'Test Product 3', quantity: 2, minQuantity: 8, price: 15.99 }
+            ];
+            
+            uiEnhancementManager.updateDashboardStats(mockInventory);
+            
+            // Test table with mock data
+            const tableBody = document.getElementById('inventoryTableBody');
+            tableBody.innerHTML = mockInventory.map(item => 
+                uiEnhancementManager.generateModernTableRow(item, [], [])
+            ).join('');
+            
+            // Show success message
+            uiEnhancementManager.showToast('Test data loaded successfully!', 'success');
+        }, 1000);
+    </script>
+</body>
+</html>

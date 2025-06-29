@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full Integration Test</title>
+    <link href="./css/output.css" rel="stylesheet">
+    <link href="./css/custom.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="container mx-auto">
+        <h1 class="text-4xl font-bold mb-8 text-center">Full Integration Test</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Test Results Panel -->
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title">Test Results</h2>
+                    <div id="testResults" class="space-y-2">
+                        <!-- Test results will appear here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls Panel -->
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title">Test Controls</h2>
+                    <div class="space-y-2">
+                        <button id="runAllTests" class="btn btn-primary btn-block">Run All Tests</button>
+                        <button id="testUIManager" class="btn btn-secondary btn-block">Test UI Manager</button>
+                        <button id="testDashboard" class="btn btn-accent btn-block">Test Dashboard</button>
+                        <button id="testTable" class="btn btn-info btn-block">Test Table</button>
+                        <button id="testToasts" class="btn btn-success btn-block">Test Toasts</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Demo Dashboard -->
+        <div class="mt-8">
+            <h2 class="text-2xl font-bold mb-4">Demo Dashboard</h2>
+            <div class="stats stats-vertical lg:stats-horizontal shadow w-full">
+                <div class="stat">
+                    <div class="stat-figure text-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="stat-title">Total Products</div>
+                    <div class="stat-value text-primary" id="totalProductsCount">0</div>
+                    <div class="stat-desc">Items in inventory</div>
+                </div>
+                
+                <div class="stat">
+                    <div class="stat-figure text-warning">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                    </div>
+                    <div class="stat-title">Low Stock Items</div>
+                    <div class="stat-value text-warning" id="lowStockCount">0</div>
+                    <div class="stat-desc">Need reordering</div>
+                </div>
+                
+                <div class="stat">
+                    <div class="stat-figure text-error">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="stat-title">Out of Stock</div>
+                    <div class="stat-value text-error" id="outOfStockCount">0</div>
+                    <div class="stat-desc">Critical items</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Demo Table -->
+        <div class="mt-8">
+            <h2 class="text-2xl font-bold mb-4">Demo Table</h2>
+            <div class="overflow-x-auto">
+                <table class="table table-zebra">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th class="text-center">Stock</th>
+                            <th class="text-center hidden md:table-cell">Min/Reorder</th>
+                            <th class="text-right hidden lg:table-cell">Cost</th>
+                            <th class="hidden md:table-cell">Supplier</th>
+                            <th class="hidden lg:table-cell">Location</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="demoTable">
+                        <!-- Table rows will be generated here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Loading State -->
+            <div id="inventoryLoadingState" class="hidden flex justify-center py-8">
+                <span class="loading loading-spinner loading-lg"></span>
+            </div>
+
+            <!-- Empty State -->
+            <div id="inventoryEmptyState" class="hidden text-center py-8">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-16 h-16 stroke-current opacity-50 mb-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293L16 14.586a1 1 0 01-.707.293h-2.586a1 1 0 01-.707-.293L11.293 13.707a1 1 0 00-.707-.293H8.414a1 1 0 01-.707-.293L6 11.414a1 1 0 00-.707-.293H3"></path>
+                </svg>
+                <h3 class="text-lg font-semibold opacity-70">No products found</h3>
+                <p class="text-sm opacity-50">Try adjusting your search or filters</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { uiEnhancementManager } from './js/modules/ui-enhancements.js';
+
+        // Test data
+        const testInventory = [
+            {
+                id: 'prod-001',
+                productName: 'Dental Composite Resin',
+                quantity: 5,
+                minQuantity: 10,
+                reorderQuantity: 25,
+                cost: 45.99,
+                supplier: 'Dental Supply Co',
+                location: 'Storage Room A',
+                quantityOrdered: 0,
+                quantityBackordered: 0
+            },
+            {
+                id: 'prod-002',
+                productName: 'Disposable Gloves (Box)',
+                quantity: 0,
+                minQuantity: 5,
+                reorderQuantity: 20,
+                cost: 12.50,
+                supplier: 'Medical Supplies Inc',
+                location: 'Storage Room B',
+                quantityOrdered: 15,
+                quantityBackordered: 5
+            },
+            {
+                id: 'prod-003',
+                productName: 'Dental Impression Material',
+                quantity: 25,
+                minQuantity: 10,
+                reorderQuantity: 30,
+                cost: 89.95,
+                supplier: 'Dental Supply Co',
+                location: 'Storage Room A',
+                quantityOrdered: 0,
+                quantityBackordered: 0
+            }
+        ];
+
+        // Test functions
+        const tests = {
+            uiManager: () => {
+                return new Promise((resolve) => {
+                    try {
+                        if (uiEnhancementManager && typeof uiEnhancementManager.updateDashboardStats === 'function') {
+                            resolve({ success: true, message: 'UI Enhancement Manager loaded successfully' });
+                        } else {
+                            resolve({ success: false, message: 'UI Enhancement Manager not available' });
+                        }
+                    } catch (error) {
+                        resolve({ success: false, message: `UI Manager error: ${error.message}` });
+                    }
+                });
+            },
+
+            dashboard: () => {
+                return new Promise((resolve) => {
+                    try {
+                        uiEnhancementManager.updateDashboardStats(testInventory);
+                        
+                        // Check if stats were updated
+                        setTimeout(() => {
+                            const totalElement = document.getElementById('totalProductsCount');
+                            const lowStockElement = document.getElementById('lowStockCount');
+                            const outOfStockElement = document.getElementById('outOfStockCount');
+                            
+                            if (totalElement && totalElement.textContent === '3' &&
+                                lowStockElement && lowStockElement.textContent === '1' &&
+                                outOfStockElement && outOfStockElement.textContent === '1') {
+                                resolve({ success: true, message: 'Dashboard stats updated correctly' });
+                            } else {
+                                resolve({ success: false, message: 'Dashboard stats not updated correctly' });
+                            }
+                        }, 1200); // Wait for animation to complete
+                    } catch (error) {
+                        resolve({ success: false, message: `Dashboard error: ${error.message}` });
+                    }
+                });
+            },
+
+            table: () => {
+                return new Promise((resolve) => {
+                    try {
+                        const tableBody = document.getElementById('demoTable');
+                        tableBody.innerHTML = '';
+                        
+                        testInventory.forEach((item, index) => {
+                            const rowHTML = uiEnhancementManager.generateModernTableRow(item, index);
+                            tableBody.innerHTML += rowHTML;
+                        });
+
+                        // Attach event listeners
+                        document.querySelectorAll('.edit-product-btn').forEach(button => {
+                            button.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                const productId = button.getAttribute('data-product-id');
+                                uiEnhancementManager.showToast(`Edit clicked for: ${productId}`, 'info');
+                            });
+                        });
+
+                        document.querySelectorAll('.view-qr-btn').forEach(button => {
+                            button.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                const productId = button.getAttribute('data-product-id');
+                                uiEnhancementManager.showToast(`QR view clicked for: ${productId}`, 'info');
+                            });
+                        });
+
+                        document.querySelectorAll('.delete-product-btn').forEach(button => {
+                            button.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                const productId = button.getAttribute('data-product-id');
+                                uiEnhancementManager.showToast(`Delete clicked for: ${productId}`, 'warning');
+                            });
+                        });
+
+                        if (tableBody.children.length === 3) {
+                            resolve({ success: true, message: 'Table rows generated and events attached successfully' });
+                        } else {
+                            resolve({ success: false, message: 'Table rows not generated correctly' });
+                        }
+                    } catch (error) {
+                        resolve({ success: false, message: `Table error: ${error.message}` });
+                    }
+                });
+            },
+
+            toasts: () => {
+                return new Promise((resolve) => {
+                    try {
+                        uiEnhancementManager.showToast('Success toast test', 'success');
+                        uiEnhancementManager.showToast('Error toast test', 'error');
+                        uiEnhancementManager.showToast('Warning toast test', 'warning');
+                        uiEnhancementManager.showToast('Info toast test', 'info');
+                        
+                        resolve({ success: true, message: 'All toast types displayed successfully' });
+                    } catch (error) {
+                        resolve({ success: false, message: `Toast error: ${error.message}` });
+                    }
+                });
+            }
+        };
+
+        // Display test result
+        function displayTestResult(testName, result) {
+            const resultsDiv = document.getElementById('testResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `alert ${result.success ? 'alert-success' : 'alert-error'}`;
+            resultDiv.innerHTML = `
+                <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-6 h-6 stroke-current shrink-0">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${result.success ? 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' : 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z'}"></path>
+                    </svg>
+                    <div>
+                        <strong>${testName}:</strong> ${result.message}
+                    </div>
+                </div>
+            `;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        // Run single test
+        async function runTest(testName) {
+            console.log(`Running test: ${testName}`);
+            const result = await tests[testName]();
+            displayTestResult(testName, result);
+            return result;
+        }
+
+        // Run all tests
+        async function runAllTests() {
+            document.getElementById('testResults').innerHTML = '';
+            
+            const results = {};
+            for (const testName of Object.keys(tests)) {
+                results[testName] = await runTest(testName);
+            }
+            
+            const allPassed = Object.values(results).every(r => r.success);
+            const summary = document.createElement('div');
+            summary.className = `alert ${allPassed ? 'alert-success' : 'alert-warning'} mt-4`;
+            summary.innerHTML = `
+                <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="w-6 h-6 stroke-current shrink-0">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                        <strong>Test Summary:</strong> ${Object.values(results).filter(r => r.success).length}/${Object.keys(tests).length} tests passed
+                    </div>
+                </div>
+            `;
+            document.getElementById('testResults').appendChild(summary);
+            
+            if (allPassed) {
+                uiEnhancementManager.showToast('All integration tests passed! 🎉', 'success');
+            } else {
+                uiEnhancementManager.showToast('Some tests failed. Check results above.', 'warning');
+            }
+        }
+
+        // Event listeners
+        document.getElementById('runAllTests').addEventListener('click', runAllTests);
+        document.getElementById('testUIManager').addEventListener('click', () => runTest('uiManager'));
+        document.getElementById('testDashboard').addEventListener('click', () => runTest('dashboard'));
+        document.getElementById('testTable').addEventListener('click', () => runTest('table'));
+        document.getElementById('testToasts').addEventListener('click', () => runTest('toasts'));
+
+        // Initialize
+        console.log('Full Integration Test loaded');
+        uiEnhancementManager.showToast('Integration test page loaded successfully!', 'info');
+    </script>
+</body>
+</html>

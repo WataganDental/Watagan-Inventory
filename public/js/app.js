@@ -1,3 +1,6 @@
+// Import the UI enhancement manager
+import { uiEnhancementManager } from './modules/ui-enhancements.js';
+
 const SIDEBAR_STATE_KEY = 'sidebarMinimized';
 
 // Global variables for edit scan mode
@@ -447,7 +450,7 @@ async function loadAndDisplayOrders() {
     console.log('[loadAndDisplayOrders] Orders loaded and displayed successfully into ordersTableBody.');
 
   } catch (error) {
-    console.error('[loadAndDisplayOrders] Error loading and displaying orders:', error.message, error.stack ? error.stack : '');
+    console.error('[loadAndDisplayOrders] Error loading and displaying orders:', error.message, error.stack);
     ordersTableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-red-500 dark:text-red-400">Error loading orders. Details: ${error.message}. Check console.</td></tr>`;
     if (ordersContainerFallback && ordersTableBody !== ordersContainerFallback) { // If using a different general container for high-level errors
         ordersContainerFallback.innerHTML = `<p class="text-red-500 dark:text-red-400">Error loading orders. Please check console.</p>`;
@@ -1383,7 +1386,6 @@ function addBatchEntry() {
         // or adjusted based on whether this is the *last* entry.
         // The original code just called addBatchEntry(); which might be too aggressive if not the last line.
         // Let's refine to: focus quantity, and if it's the last entry, then add new.
-
         // Check if this is the last entry in batchUpdates
         const isLastEntry = batchUpdates.indexOf(currentEntryId) === batchUpdates.length - 1;
         if (isLastEntry) {
@@ -1505,10 +1507,17 @@ let productIdsWithPendingOrders = []; // Global or module-scoped variable
 async function loadInventory() {
   try {
     console.log('Fetching inventory from Firestore...');
+    
+    // Show loading state
+    uiEnhancementManager.showTableLoading();
+    
     const inventorySnapshot = await db.collection('inventory').get();
     console.log('Inventory snapshot:', inventorySnapshot.size, 'documents');
     inventory = inventorySnapshot.docs.map(doc => doc.data());
     console.log('Inventory loaded:', inventory);
+
+    // Update dashboard statistics
+    uiEnhancementManager.updateDashboardStats(inventory);
 
     // Fetch pending orders to identify products
     console.log('Fetching pending orders...');
@@ -1525,13 +1534,19 @@ async function loadInventory() {
     productIdsWithClientBackorders = [...new Set(productIdsWithClientBackorders)];
     console.log('Product IDs with client backorders:', productIdsWithClientBackorders);
 
+    // Hide loading state
+    uiEnhancementManager.hideTableLoading();
 
     currentPage = 1; // Reset to page 1 on initial load
     applyAndRenderInventoryFilters(); // This will call updateInventoryTable, which now needs access to productIdsWithPendingOrders & productIdsWithClientBackorders
     await updateToOrderTable();
+    
+    // Show success toast
+    uiEnhancementManager.showToast('Inventory loaded successfully', 'success');
   } catch (error) {
     console.error('Error loading inventory, pending orders, or client backorders:', error);
-    alert('Failed to load inventory: ' + error.message);
+    uiEnhancementManager.hideTableLoading();
+    uiEnhancementManager.showToast('Failed to load inventory: ' + error.message, 'error');
   }
 }
 
@@ -1606,107 +1621,72 @@ function updateInventoryTable(itemsToDisplay) {
   tableBody.innerHTML = '';
 
   if (!itemsToDisplay || itemsToDisplay.length === 0) {
-    const row = tableBody.insertRow();
-    const cell = row.insertCell();
-    cell.colSpan = 13;
-    cell.textContent = 'No products found matching your criteria.';
-    cell.className = 'text-center p-4 dark:text-gray-400';
+    uiEnhancementManager.showTableEmpty();
     return;
   }
 
-  itemsToDisplay.forEach(item => {
-    const row = document.createElement('tr');
+  uiEnhancementManager.hideTableEmpty();
 
-    // Clear existing background classes first
-    row.classList.remove(
-      'inventory-row-needs-reordering',
-      'inventory-row-client-backordered',
-      'inventory-row-pending-order',
-      'bg-red-100', // Old direct red class for low stock
-      'dark:bg-red-800/60' // Old direct dark red class for low stock
-    );
+  itemsToDisplay.forEach((item, index) => {
+    // Use the modern table row generator
+    const rowHTML = uiEnhancementManager.generateModernTableRow(item, index);
+    tableBody.innerHTML += rowHTML;
+  });
 
-    // Apply new background logic with precedence
-    const needsReordering = (item.quantity + (item.quantityOrdered || 0) + (item.productQuantityBackordered || 0)) <= item.minQuantity && item.minQuantity > 0;
-    const hasClientBackorders = productIdsWithClientBackorders.includes(item.id);
-    const hasPendingOrders = productIdsWithPendingOrders.includes(item.id);
+  console.log('Inventory table updated with modern UI, rows:', tableBody.children.length);
+  
+  // Re-attach event listeners for the new rows
+  attachTableEventListeners();
+  
+  // Generate QR codes for visible items
+  generateQRCodesForVisibleItems(itemsToDisplay);
+}
 
-    if (needsReordering) {
-      row.classList.add('inventory-row-needs-reordering');
-    } else if (hasClientBackorders) {
-      row.classList.add('inventory-row-client-backordered');
-    } else if (hasPendingOrders) {
-      row.classList.add('inventory-row-pending-order');
-    }
-
-    // NOTE: Images are displayed as w-16 h-16 thumbnails via CSS.
-    // However, the item.photo URL likely points to the original uploaded image.
-    // For optimal performance and reduced data usage, it is highly recommended
-    // to implement backend image resizing (e.g., using a Firebase Extension like "Resize Images")
-    // to generate and serve actual thumbnail URLs. Lazy loading (implemented) helps,
-    // but serving smaller images is key.
-    const placeholderSrc = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
-    row.innerHTML = `
-      <td class="border dark:border-slate-600 p-2 id-column hidden">${item.id}</td>
-      <td class="border dark:border-slate-600 p-2">${item.name}</td>
-      <td class="border dark:border-slate-600 p-2">${item.quantity}</td>
-      <td class="border dark:border-slate-600 p-2">${item.minQuantity}</td>
-      <td class="border dark:border-slate-600 p-2">${item.reorderQuantity || 0}</td>
-      <td class="border dark:border-slate-600 p-2">${item.cost.toFixed(2)}</td>
-      <td class="border dark:border-slate-600 p-2">${item.supplier}</td>
-      <td class="border dark:border-slate-600 p-2">${item.location}</td>
-      <td class="border dark:border-slate-600 p-2">${item.quantityOrdered || 0}</td>
-      <td class="border dark:border-slate-600 p-2">${item.productQuantityBackordered || 0}</td>
-      <td class="border dark:border-slate-600 p-2">${item.photo ? `<img data-src="${item.photo}" src="${placeholderSrc}" alt="Product Photo: ${item.name}" class="w-16 h-16 object-cover mx-auto cursor-pointer inventory-photo-thumbnail lazy-load-image">` : 'No Photo'}</td>
-      <td class="border dark:border-slate-600 p-2"><div id="qrcode-${item.id}" class="mx-auto w-24 h-24"></div></td>
-      <td class="border dark:border-slate-600 p-2">
-        <button data-id="${item.id}" class="editProductBtn text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 mr-2">Edit</button>
-        <button data-id="${item.id}" class="deleteProductBtn text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">Delete</button>
-      </td>
-    `;
-    tableBody.appendChild(row);
-
-    if (item.photo) {
-      const thumbnailImg = row.querySelector('.inventory-photo-thumbnail');
-      if (thumbnailImg) {
-        thumbnailImg.addEventListener('click', () => {
-          if (imageModal && modalImage) { 
-            modalImage.src = item.photo;
-            imageModal.classList.remove('hidden');
-            console.log('Opening image modal for:', item.photo);
-          } else {
-            console.error('Modal elements not available for image click.');
-          }
-        });
+/**
+ * Attach event listeners to table elements
+ */
+function attachTableEventListeners() {
+  // Edit product buttons
+  document.querySelectorAll('.edit-product-btn').forEach(button => {
+    button.addEventListener('click', (e) => {
+      e.preventDefault();
+      const productId = button.getAttribute('data-product-id');
+      if (productId) {
+        editProduct(productId);
       }
-    }
+    });
+  });
 
-    const qrCodeDiv = document.getElementById(`qrcode-${item.id}`);
-    try {
-      console.log('QRCode check:', typeof window.QRCode);
-      if (typeof window.QRCode !== 'function') {
-        throw new Error('QRCode is not a constructor');
+  // Delete product buttons
+  document.querySelectorAll('.delete-product-btn').forEach(button => {
+    button.addEventListener('click', (e) => {
+      e.preventDefault();
+      const productId = button.getAttribute('data-product-id');
+      if (productId) {
+        deleteProduct(productId);
       }
-      new window.QRCode(qrCodeDiv, {
-        text: item.id,
-        width: 96,
-        height: 96,
-        colorDark: '#000000',
-        colorLight: '#ffffff',
-        correctLevel: window.QRCode.CorrectLevel.L
-      });
-    } catch (error) {
-      console.error('QR Code generation failed for ID', item.id, ':', error);
-      qrCodeDiv.innerHTML = `<p class="text-red-500 dark:text-red-400">QR Code generation failed: ${error.message}</p>`;
-    }
+    });
   });
-  console.log('Inventory table updated, rows:', tableBody.children.length);
-  document.querySelectorAll('.editProductBtn').forEach(button => {
-    button.addEventListener('click', () => editProduct(button.getAttribute('data-id')));
+
+  // QR code view buttons
+  document.querySelectorAll('.view-qr-btn').forEach(button => {
+    button.addEventListener('click', (e) => {
+      e.preventDefault();
+      const productId = button.getAttribute('data-product-id');
+      if (productId) {
+        viewProductQR(productId);
+      }
+    });
   });
-  document.querySelectorAll('.deleteProductBtn').forEach(button => {
-    button.addEventListener('click', () => deleteProduct(button.getAttribute('data-id')));
-  });
+}
+
+/**
+ * Generate QR codes for visible items (simplified version)
+ */
+function generateQRCodesForVisibleItems(items) {
+  // For now, we'll skip QR code generation in the table to improve performance
+  // QR codes can be generated on-demand when needed
+  console.log('QR code generation skipped for performance - use QR Code action in dropdown');
 }
 
 async function updateToOrderTable() {
@@ -2091,12 +2071,12 @@ async function generateDetailedOrderReportPDFWithQRCodes() {
     const margin = 20;
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const bottomMargin = 20;
+    const bottomMargin = 20; // For page number
     const QR_CODE_SIZE_IN_PDF = 30;
     const ROW_HEIGHT = QR_CODE_SIZE_IN_PDF + 5; // Ensure this is enough
     const TEXT_FONT_SIZE = 10;
-    const HEADER_FONT_SIZE = 12;
-    const SUPPLIER_HEADER_FONT_SIZE = 14;
+    const HEADER_FONT_SIZE = 14;
+    const SUPPLIER_HEADER_FONT_SIZE = 16;
 
     let xQr = margin;
     let xName = xQr + QR_CODE_SIZE_IN_PDF + 5;
@@ -2108,565 +2088,132 @@ async function generateDetailedOrderReportPDFWithQRCodes() {
     let xSupplier = xReorderQty + 40 + 5; // ReorderQty width: 40
 
 
-    let y = margin + 20;
+    let yPosition = margin + 20;
+    let pageNumber = 1;
 
     function drawPageHeaders(docInstance, currentY) {
-        console.log(`[QR Order Report] Drawing page headers at Y: ${currentY}`); // LOG
-        docInstance.setFontSize(16);
-        docInstance.text('Watagan Dental Order Report', margin, margin);
-        docInstance.setFontSize(TEXT_FONT_SIZE);
-        docInstance.text(`Date: ${new Date().toLocaleDateString()}`, margin, margin + 10);
-        
-        currentY = margin + 30;
-        docInstance.setFont("helvetica", "bold");
-        docInstance.setFontSize(HEADER_FONT_SIZE);
-        docInstance.text('QR Code', xQr, currentY);
-        docInstance.text('Name', xName, currentY);
-        docInstance.text('Qty', xQty, currentY, { align: 'right' });
-        docInstance.text('Qty Ord', xQtyOrdered, currentY, { align: 'right' });
-        // Corrected header text for backordered quantity
-        docInstance.text('Backorder', xQtyBackordered, currentY, { align: 'right' });
-        docInstance.text('ReorderQ', xReorderQty, currentY, { align: 'right' });
-        docInstance.text('Supplier', xSupplier, currentY);
-        docInstance.setFont("helvetica", "normal");
-        
-        currentY += 7; // Space after headers
-        docInstance.setLineWidth(0.5);
-        docInstance.line(margin, currentY, pageWidth - margin, currentY); // Line under headers
-        currentY += 10; // Space after line
-        return currentY;
-    }
-
-    y = drawPageHeaders(doc, y);
-
-    const itemsBySupplierGroup = toOrderItems.reduce((acc, item) => {
-      const supplierName = item.supplier || 'Supplier Not Assigned';
-      if (!acc[supplierName]) {
-        acc[supplierName] = [];
-      }
-      acc[supplierName].push(item);
-      return acc;
-    }, {});
-    console.log('[QR Order Report] Items grouped by supplier.'); // LOG
-
-    const sortedSupplierNames = Object.keys(itemsBySupplierGroup).sort();
-
-    for (const supplierName of sortedSupplierNames) {
-        const items = itemsBySupplierGroup[supplierName];
-        if (items.length === 0) continue;
-        console.log(`[QR Order Report] Processing supplier: ${supplierName}, items: ${items.length}`); // LOG
-
-        if (y + 20 + (items.length * ROW_HEIGHT) > pageHeight - bottomMargin) { // Rough check, might need refinement
-            console.log(`[QR Order Report] Adding new page for supplier ${supplierName}. Current Y: ${y}`); // LOG
-            doc.addPage();
-            y = drawPageHeaders(doc, margin + 30); // Reset Y to top after headers
-        }
-        
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(SUPPLIER_HEADER_FONT_SIZE);
-        doc.text(supplierName, margin, y);
-        y += SUPPLIER_HEADER_FONT_SIZE; 
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(TEXT_FONT_SIZE);
-
-        for (const item of items) {
-            console.log(`[QR Order Report] Processing item: ${item.name} (ID: ${item.id}) at Y: ${y}`); // LOG ITEM
-            if (y + ROW_HEIGHT > pageHeight - bottomMargin) {
-                console.log(`[QR Order Report] Adding new page for item ${item.name}. Current Y: ${y}`); // LOG
-                doc.addPage();
-                y = drawPageHeaders(doc, margin + 30); // Reset Y to top after headers
-                // Redraw supplier header if it's a continued section
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(SUPPLIER_HEADER_FONT_SIZE);
-                doc.text(`${supplierName} (continued)`, margin, y);
-                y += SUPPLIER_HEADER_FONT_SIZE;
-                doc.setFont("helvetica", "normal");
-                doc.setFontSize(TEXT_FONT_SIZE);
-            }
-
-            const tempDivId = `temp-qr-order-${item.id}`;
-            const tempDiv = document.createElement('div');
-            tempDiv.id = tempDivId;
-            // Make it invisible but attach to DOM for QRCode.js to work reliably
-            tempDiv.style.position = 'absolute';
-            tempDiv.style.left = '-9999px';
-            tempDiv.style.top = '-9999px';
-            tempDiv.style.width = `${QR_CODE_SIZE_IN_PDF}px`; // Ensure size for QR generation
-            tempDiv.style.height = `${QR_CODE_SIZE_IN_PDF}px`;
-            document.body.appendChild(tempDiv);
-            console.log(`[QR Order Report] Temporary div for QR code created for item ${item.id}`);
-
-
-            let qrImageFromCanvas = '';
-            try {
-                console.log(`[QR Order Report] Generating QR for item: ${item.id}`); // LOG QR
-                new window.QRCode(tempDiv, {
-                    text: item.id,
-                    width: QR_CODE_SIZE_IN_PDF, // Use defined size
-                    height: QR_CODE_SIZE_IN_PDF,
-                    colorDark: '#000000',
-                    colorLight: '#ffffff',
-                    correctLevel: window.QRCode.CorrectLevel.L // L is fine for IDs
-                });
-                const qrCanvas = tempDiv.querySelector('canvas');
-                if (qrCanvas) {
-                    qrImageFromCanvas = qrCanvas.toDataURL('image/png');
-                    console.log(`[QR Order Report] QR canvas toDataURL successful for ${item.id}`); // LOG
-                } else {
-                     console.error(`[QR Order Report] QR Canvas not found for item: ${item.id}`);
-                     doc.text('QR Error', xQr + QR_CODE_SIZE_IN_PDF / 2, y + QR_CODE_SIZE_IN_PDF / 2, { align: 'center' });
-                }
-            } catch (qrError) {
-                console.error(`[QR Order Report] Error generating QR code for order report, item ID ${item.id}:`, qrError);
-                doc.text('QR Error', xQr + QR_CODE_SIZE_IN_PDF / 2, y + QR_CODE_SIZE_IN_PDF / 2, { align: 'center' });
-            } finally {
-                // Clean up the temporary div
-                if (document.getElementById(tempDivId)) {
-                    document.body.removeChild(tempDiv);
-                    console.log(`[QR Order Report] Temporary div for QR code removed for item ${item.id}`);
-                }
-            }
-            
-            if (qrImageFromCanvas) {
-                try {
-                    console.log(`[QR Order Report] Adding QR image to PDF for ${item.id} at X:${xQr}, Y:${y}`); // LOG
-                    doc.addImage(qrImageFromCanvas, 'PNG', xQr, y, QR_CODE_SIZE_IN_PDF, QR_CODE_SIZE_IN_PDF);
-                } catch (pdfAddImageError) {
-                    console.error(`[QR Order Report] Error adding QR image to PDF for ${item.id}:`, pdfAddImageError);
-                    doc.text('QR Img Err', xQr + QR_CODE_SIZE_IN_PDF / 2, y + QR_CODE_SIZE_IN_PDF / 2, { align: 'center' });
-                }
-            }
-
-            // Adjust textY to be vertically centered relative to the QR code image if desired,
-            // or simply placed below it. For simplicity, let's place it aligned with top of QR + some offset.
-            const textY = y + (TEXT_FONT_SIZE / 2) + 2; // Adjust this as needed for vertical alignment
-            console.log(`[QR Order Report] Adding text for ${item.name} at X:${xName}, Y:${textY}`); // LOG
-
-            doc.text(item.name || 'N/A', xName, textY, {maxWidth: xQty - xName - 10}); // Added maxWidth
-            doc.text((item.quantity === undefined ? 'N/A' : item.quantity).toString(), xQty, textY, { align: 'right' });
-            doc.text((item.quantityOrdered === undefined ? 'N/A' : item.quantityOrdered).toString(), xQtyOrdered, textY, { align: 'right' });
-            // Corrected field for backordered quantity
-            doc.text((item.quantityBackordered === undefined ? 'N/A' : item.quantityBackordered).toString(), xQtyBackordered, textY, { align: 'right' });
-            doc.text((item.reorderQuantity === undefined ? 'N/A' : item.reorderQuantity).toString(), xReorderQty, textY, { align: 'right' });
-            doc.text(item.supplier || 'N/A', xSupplier, textY, {maxWidth: pageWidth - xSupplier - margin - 5}); // Added maxWidth
-            
-            y += ROW_HEIGHT;
-        }
-        y += 10; // Extra space between supplier groups
-    }
-
-    console.log('[QR Order Report] Attempting to save PDF...'); // LOG
-    doc.save('Watagan_Dental_Order_Report_With_QR.pdf');
-    console.log('[QR Order Report] PDF save initiated.'); // LOG
-  } catch (error) {
-    console.error('[QR Order Report] Failed to generate Order Report PDF (jsPDF):', error.message, error.stack);
-    alert('Failed to generate Order Report PDF (jsPDF): ' + error.message);
-  }
-}
-
-
-// Order Reports - Alternative PDF generation with pdf-lib.js
-async function generateFastOrderReportPDF() {
-  try {
-    await ensurePDFLibIsAvailable();
-    // The old check can be removed or commented out:
-    // if (!window.PDFLib) {
-    //   alert('Error: PDFLib library is not loaded. Cannot generate PDF.');
-    //   console.error('PDFLib library not found on window object.');
-    //   return;
-    // }
-
-    const { PDFDocument, StandardFonts, rgb, PageSizes } = window.PDFLib;
-
-    // Fetch data early for warning and reuse
-    const snapshot = await db.collection('inventory').get();
-    let toOrderItems = snapshot.docs.map(doc => doc.data()).filter(item => item.quantity <= item.minQuantity);
-
-    const filterToOrderSupplierDropdown = document.getElementById('filterToOrderSupplier');
-    const selectedSupplier = filterToOrderSupplierDropdown ? filterToOrderSupplierDropdown.value : "";
-
-    if (selectedSupplier) {
-      toOrderItems = toOrderItems.filter(item => item.supplier === selectedSupplier);
-    }
-
-    const totalNumberOfItemsInReport = toOrderItems.length;
-    const LARGE_REPORT_THRESHOLD = 100; // Adjustable
-
-    if (totalNumberOfItemsInReport > LARGE_REPORT_THRESHOLD) {
-      const userConfirmed = confirm(
-        `You are about to generate an order report with ${totalNumberOfItemsInReport} items. ` +
-        `This might take some time. Do you want to proceed?`
-      );
-      if (!userConfirmed) {
-        alert("Order report generation cancelled by user.");
-        return;
-      }
+      docInstance.setFontSize(16);
+      docInstance.text('Watagan Dental Order Report', margin, currentY);
+      docInstance.setFontSize(TEXT_FONT_SIZE);
+      docInstance.text(`Date: ${new Date().toLocaleDateString()}`, margin, currentY + 10);
+      
+      currentY += 20;
+      docInstance.setFont("helvetica", "bold");
+      docInstance.setFontSize(HEADER_FONT_SIZE);
+      docInstance.text('QR Code', xQr, currentY);
+      docInstance.text('Name', xName, currentY);
+      docInstance.text('Qty', xQty, currentY, { align: 'right' });
+      docInstance.text('Qty Ord', xQtyOrdered, currentY, { align: 'right' });
+      // Corrected header text for backordered quantity
+      docInstance.text('Backorder', xQtyBackordered, currentY, { align: 'right' });
+      docInstance.text('ReorderQ', xReorderQty, currentY, { align: 'right' });
+      docInstance.text('Supplier', xSupplier, currentY);
+      docInstance.setFont("helvetica", "normal");
+      
+      currentY += 10; // Space after headers
+      docInstance.setLineWidth(0.5);
+      docInstance.line(margin, currentY, pageWidth - margin, currentY); // Line under headers
+      currentY += 10; // Space after line
+      return currentY;
     }
     
-    if (toOrderItems.length === 0) {
-      alert('No products need reordering for the selected supplier (pdf-lib).');
-      return;
-    }
-    // Data (`toOrderItems`) is already fetched and filtered.
-    // We just need to group it now.
-    const itemsBySupplier = toOrderItems.reduce((acc, item) => {
-      const supplierName = item.supplier || 'Supplier Not Assigned';
-      if (!acc[supplierName]) {
-        acc[supplierName] = [];
-      }
-      acc[supplierName].push(item);
-      return acc;
-    }, {});
-
-    const pdfDoc = await PDFDocument.create();
-    let page = pdfDoc.addPage(PageSizes.A4);
-    const { width, height } = page.getSize();
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-    const margin = 50;
-    const idColX = margin;
-    const nameColX = margin + 70; // X start for Name (gives ID 70 points width from margin)
-    const qtyColX = margin + 330; // X start for Qty (gives Name 330-70 = 260 points width)
-    const minQtyColX = margin + 380; // X start for Min Qty (gives Qty 50 points width)
-    const effectiveMaxNameWidth = qtyColX - nameColX - 10; // Max width for name text before it hits Qty col, with 10 points padding
-
-    let yPosition = height - margin;
-    const lineHeight = 14;
-    const titleFontSize = 18;
-    const headerFontSize = 14;
-    const regularFontSize = 10;
-
-    page.drawText('Watagan Dental Order Report (pdf-lib)', { 
-      x: margin, 
-      y: yPosition, 
-      font: boldFont, 
-      size: titleFontSize 
-    });
-    yPosition -= (titleFontSize + 10);
-
-    page.drawText(`Date: ${new Date().toLocaleDateString()}`, { 
-      x: margin, 
-      y: yPosition, 
-      font: font, 
-      size: regularFontSize 
-    });
-    yPosition -= (regularFontSize + 15);
-
+    const generationDate = new Date().toLocaleDateString();
     const supplierNames = Object.keys(itemsBySupplier).sort();
 
     for (const supplierName of supplierNames) {
       const items = itemsBySupplier[supplierName];
       if (items.length === 0) continue;
 
-      if (yPosition < margin + (headerFontSize + lineHeight * 2)) {
-        page = pdfDoc.addPage(PageSizes.A4);
-        yPosition = height - margin;
-         page.drawText(`Watagan Dental Order Report (pdf-lib) - Page ${pdfDoc.getPageCount()}`, { 
-            x: margin, y: yPosition, font: boldFont, size: titleFontSize 
-        });
-        yPosition -= (titleFontSize + 10);
-      }
-
-      page.drawText(supplierName, { 
-        x: margin, 
-        y: yPosition, 
-        font: boldFont, 
-        size: headerFontSize 
-      });
-      yPosition -= (headerFontSize + 5);
-
-      page.drawText("ID", { x: idColX, y: yPosition, font: boldFont, size: regularFontSize });
-      page.drawText("Name", { x: nameColX, y: yPosition, font: boldFont, size: regularFontSize });
-      page.drawText("Qty", { x: qtyColX, y: yPosition, font: boldFont, size: regularFontSize });
-      page.drawText("Min Qty", { x: minQtyColX, y: yPosition, font: boldFont, size: regularFontSize });
-      yPosition -= (lineHeight + 2);
-      page.drawLine({
-          start: { x: margin, y: yPosition },
-          end: { x: width - margin, y: yPosition },
-          thickness: 0.5,
-          color: rgb(0, 0, 0),
-      });
-      yPosition -= (lineHeight / 2);
-
-
-      for (const item of items) {
-        const itemName = item.name || 'Unnamed Product';
-        const nameLines = [];
-        const maxNameWidth = effectiveMaxNameWidth;
-        if (font.widthOfTextAtSize(itemName, regularFontSize) > maxNameWidth) {
-            let currentLine = '';
-            const words = itemName.split(' ');
-            for (const word of words) {
-                if (font.widthOfTextAtSize(currentLine + word, regularFontSize) > maxNameWidth) {
-                    if(currentLine.trim() !== '') nameLines.push(currentLine.trim());
-                    currentLine = word + ' ';
-                } else {
-                    currentLine += word + ' ';
-                }
-            }
-            if(currentLine.trim() !== '') nameLines.push(currentLine.trim());
-            if(nameLines.length === 0 && currentLine.trim() !== '') nameLines.push(currentLine.trim()); 
-        } else {
-            nameLines.push(itemName);
-        }
-
-        if (yPosition < margin + (lineHeight * nameLines.length)) { 
-          page = pdfDoc.addPage(PageSizes.A4);
-          yPosition = height - margin; 
-          page.drawText(`Watagan Dental Order Report (pdf-lib) - Page ${pdfDoc.getPageCount()} (cont.)`, { 
-            x: margin, y: yPosition, font: boldFont, size: titleFontSize 
-          });
-          yPosition -= (titleFontSize + 10);
-          page.drawText(`${supplierName} (continued)`, { 
-            x: margin, 
-            y: yPosition, 
-            font: boldFont, 
-            size: headerFontSize 
-          });
-          yPosition -= (headerFontSize + 5);
-          
-          page.drawText("ID", { x: idColX, y: yPosition, font: boldFont, size: regularFontSize });
-          page.drawText("Name", { x: nameColX, y: yPosition, font: boldFont, size: regularFontSize });
-          page.drawText("Qty", { x: qtyColX, y: yPosition, font: boldFont, size: regularFontSize });
-          page.drawText("Min Qty", { x: minQtyColX, y: yPosition, font: boldFont, size: regularFontSize });
-          yPosition -= (lineHeight + 2);
-           page.drawLine({
-              start: { x: margin, y: yPosition },
-              end: { x: width - margin, y: yPosition },
-              thickness: 0.5,
-              color: rgb(0, 0, 0),
-          });
-          yPosition -= (lineHeight/2);
-        }
-        
-        let currentLineY = yPosition;
-        page.drawText(item.id, { x: idColX, y: currentLineY, font: font, size: regularFontSize, maxWidth: nameColX - idColX - 5 }); // Added maxWidth for ID
-        nameLines.forEach((line, index) => {
-            page.drawText(line, { x: nameColX, y: currentLineY, font: font, size: regularFontSize, maxWidth: maxNameWidth }); // Use new x and maxWidth
-            if (index < nameLines.length -1) currentLineY -= lineHeight;
-        });
-        // yPosition for Qty and MinQty is correct as it's the top of the current item's row.
-        page.drawText(item.quantity.toString(), { x: qtyColX, y: yPosition, font: font, size: regularFontSize });
-        page.drawText(item.minQuantity.toString(), { x: minQtyColX, y: yPosition, font: font, size: regularFontSize });
-        
-        yPosition -= (lineHeight * nameLines.length); 
-        
-        if (nameLines.length > 1) {
-            yPosition -= (lineHeight / 2); 
-        }
-      }
-      yPosition -= (lineHeight); 
-    }
-
-    const pdfBytes = await pdfDoc.save();
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'Watagan_Dental_Order_Report_Alternative.pdf';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
-
-  } catch (error) {
-    console.error('Failed to generate Order Report PDF with pdf-lib:', error.message, error.stack);
-    alert('Failed to generate Fast Order Report PDF: ' + error.message);
-  }
-}
-
-async function generateSupplierOrderQRCodePDF() {
-  console.log('generateSupplierOrderQRCodePDF() called');
-  try {
-    await ensureQRCodeIsAvailable();
-    const JsPDF = await waitForJsPDF();
-
-    const supplierDropdown = document.getElementById('filterOrderSupplierDropdown');
-    const selectedSupplier = supplierDropdown ? supplierDropdown.value : "";
-
-    console.log(`Selected supplier for PDF: '${selectedSupplier}'`);
-
-    const inventorySnapshot = await db.collection('inventory').get();
-    let filteredProducts = inventorySnapshot.docs.map(doc => doc.data());
-
-    if (selectedSupplier) {
-      filteredProducts = filteredProducts.filter(p => p.supplier === selectedSupplier);
-    }
-
-    // New filtering logic
-    const productsToRender = filteredProducts.filter(item =>
-      ((item.quantity || 0) <= (item.minQuantity || 0)) ||
-      ((item.minQuantity || 0) === 0 && (item.quantity || 0) === 0)
-    );
-
-    if (productsToRender.length === 0) {
-      alert('No products found for the selected supplier that meet the reordering criteria.');
-      return;
-    }
-
-    // Sort products by name for consistent report generation
-    // Ensure sorting happens on productsToRender, which is the list being used for the PDF
-    productsToRender.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
-    const doc = new JsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 30;
-    const bottomMargin = 40; // For page number
-    let y = margin;
-    const lineHeight = 18; // Increased line height for readability
-    const qrCodeSize = 40; // QR code size in PDF units
-    const fontSize = 9;
-    const titleFontSize = 16;
-    const headerFontSize = 10;
-
-    // Function to add headers and manage page breaks
-    const addHeaders = (docInstance, startY) => {
-      docInstance.setFontSize(titleFontSize);
-      docInstance.setFont('helvetica', 'bold');
-      docInstance.text('Watagan Dental - Supplier Order QR Codes', margin, startY);
-      startY += titleFontSize + 5;
-
-      docInstance.setFontSize(fontSize);
-      docInstance.setFont('helvetica', 'normal');
-      docInstance.text(`Generated: ${new Date().toLocaleDateString()}`, margin, startY);
-
-      if (selectedSupplier) {
-        startY += lineHeight;
-        docInstance.setFont('helvetica', 'italic');
-        docInstance.text(`Filtered by Supplier: ${selectedSupplier}`, margin, startY);
-      }
-      startY += lineHeight * 1.5; // Extra space before table headers
-
-      // Define column X positions
-      const colPositions = {
-        qr: margin,
-        product: margin + qrCodeSize + 10,
-        onHand: margin + qrCodeSize + 150, // Increased width for product name
-        toOrder: margin + qrCodeSize + 210,
-        backordered: margin + qrCodeSize + 270,
-        cost: margin + qrCodeSize + 340,
-        totalCost: margin + qrCodeSize + 400,
-        supplier: margin + qrCodeSize + 470
-      };
-
-      docInstance.setFontSize(headerFontSize);
-      docInstance.setFont('helvetica', 'bold');
-      docInstance.text("QR", colPositions.qr, startY);
-      docInstance.text("Product", colPositions.product, startY);
-      docInstance.text("On Hand", colPositions.onHand, startY, {align: 'right'});
-      docInstance.text("To Order", colPositions.toOrder, startY, {align: 'right'});
-      docInstance.text("Backorder", colPositions.backordered, startY, {align: 'right'});
-      docInstance.text("Unit Cost", colPositions.cost, startY, {align: 'right'});
-      docInstance.text("Total Cost", colPositions.totalCost, startY, {align: 'right'});
-      docInstance.text("Supplier", colPositions.supplier, startY);
-      startY += headerFontSize + 5;
-      docInstance.setDrawColor(0);
-      docInstance.line(margin, startY, pageWidth - margin, startY); // Horizontal line
-      startY += 5;
-      docInstance.setFontSize(fontSize);
-      docInstance.setFont('helvetica', 'normal');
-      return startY;
-    };
-
-    y = addHeaders(doc, y);
-    let pageNumber = 1;
-    doc.setFontSize(fontSize); // Reset font size for content
-
-    for (const product of productsToRender) { // Changed products to productsToRender
-      let qtyToOrder;
-      let qtyToOrderText;
-      let numericQtyToOrderForCostCalc = 0;
-
-      if (!product.reorderQuantity || product.reorderQuantity <= 0) {
-        qtyToOrderText = "custom"; // Placeholder for custom reorder
-        numericQtyToOrderForCostCalc = 0; // For cost calculation, custom means 0 for now
-      } else {
-        qtyToOrder = Math.max(0, (product.reorderQuantity || 0) - (product.quantity || 0));
-        qtyToOrderText = qtyToOrder.toString();
-        numericQtyToOrderForCostCalc = qtyToOrder;
-      }
-
-      const totalCost = numericQtyToOrderForCostCalc * (product.cost || 0);
-
-      // Check for page break
-      // Estimate row height: QR code size is largest element, add some padding
-      const estimatedRowHeight = qrCodeSize + 10;
-      if (y + estimatedRowHeight > pageHeight - bottomMargin) {
+      if (yPosition + 20 + (items.length * ROW_HEIGHT) > pageHeight - bottomMargin) {
         doc.setFontSize(8);
         doc.text(`Page ${pageNumber}`, pageWidth / 2, pageHeight - (bottomMargin / 2), { align: 'center' });
         doc.addPage();
         pageNumber++;
-        y = addHeaders(doc, margin); // Reset y and draw headers on new page
+        yPosition = drawPageHeaders(doc, margin + 30); // Reset Y to top after headers
         doc.setFontSize(fontSize); // Reset font size for content
       }
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(SUPPLIER_HEADER_FONT_SIZE);
+      doc.text(supplierName, margin, yPosition);
+      yPosition += SUPPLIER_HEADER_FONT_SIZE; 
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(TEXT_FONT_SIZE);
 
-      // QR Code generation
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px'; // Off-screen
-      document.body.appendChild(tempDiv);
-      let qrImageData = '';
-      try {
-        new window.QRCode(tempDiv, {
-          text: product.id,
-          width: qrCodeSize * 2, // Generate larger QR for better quality when scaled down
-          height: qrCodeSize * 2,
-          correctLevel: window.QRCode.CorrectLevel.M
-        });
-        const canvas = tempDiv.querySelector('canvas');
-        if (canvas) {
-          qrImageData = canvas.toDataURL('image/png');
+      for (const item of items) {
+        const tempDivId = `temp-qr-order-${item.id}`;
+        const tempDiv = document.createElement('div');
+        tempDiv.id = tempDivId;
+        // Make it invisible but attach to DOM for QRCode.js to work reliably
+        // For now, just ensure it's removed after use
+        document.body.appendChild(tempDiv);
+
+        let qrImageFromCanvas = '';
+        try {
+            const qrOptions = {
+                text: item.id,
+                width: QR_CODE_SIZE_IN_PDF, // QR_CODE_SIZE_IN_PDF is a variable in the existing code
+                height: QR_CODE_SIZE_IN_PDF,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: window.QRCode.CorrectLevel.L
+            };
+
+            new window.QRCode(tempDiv, qrOptions); // QRCode will append a canvas or img to tempDiv
+
+            const qrCanvas = tempDiv.querySelector('canvas');
+            if (qrCanvas) {
+                qrImageFromCanvas = qrCanvas.toDataURL('image/png');
+            } else {
+                const qrImgTag = tempDiv.querySelector('img');
+                if (qrImgTag) {
+                    // If it's an img, we might need to draw it to a temporary canvas to get a data URL
+                    // if jsPDF cannot directly use the img.src (e.g. if src is also a data URL but jsPDF has issues)
+                    // For now, assume qrImgTag.src is usable or can be made usable.
+                    // jsPDF's addImage can often handle data URLs directly from img.src.
+                    qrImageFromCanvas = qrImgTag.src;
+                } else {
+                    console.error('QRCode.js did not create a canvas or img in temp div for product: ' + item.id);
+                    // continue; // Or handle error appropriately
+                }
+            }
+
+            if (qrImageFromCanvas) {
+              doc.addImage(qrImageFromCanvas, 'PNG', xQr, yPosition, QR_CODE_SIZE_IN_PDF, QR_CODE_SIZE_IN_PDF);
+            } else {
+              console.warn(`Skipping addImage for product ${item.id} due to missing QR image data (temp div method).`);
+            }
+
+        } catch (qrError) {
+            console.error('Error generating QR code for product ID', item.id, ' (temp div method):', qrError);
+            doc.setFontSize(8);
+            doc.text('QR Error', xQr + QR_CODE_SIZE_IN_PDF / 2, yPosition + QR_CODE_SIZE_IN_PDF / 2, { align: 'center' });
+        } finally {
+            // Clean up the temporary div
+            if (document.getElementById(tempDivId)) {
+                document.body.removeChild(tempDiv);
+                console.log(`[QR Order Report] Temporary div for QR code removed for item ${item.id}`);
+            }
         }
-      } catch (qrError) {
-        console.error(`Error generating QR for product ${product.id}:`, qrError);
-        qrImageData = ''; // Handle error, maybe draw placeholder text
-      } finally {
-        document.body.removeChild(tempDiv);
+        
+        doc.setFontSize(NAME_FONT_SIZE);
+        const textYPosition = yPosition + QR_CODE_SIZE_IN_PDF + (TEXT_AREA_HEIGHT + NAME_FONT_SIZE) / 2; // y for product name
+        doc.text(item.name, xName, textYPosition, {
+            align: 'left',
+            maxWidth: xQty - xName - 10
+        });
+
+        // Adjust Y position for quantity columns
+        const qtyTextY = yPosition + (lineHeight / 2);
+        doc.text((item.quantity || 0).toString(), xQty, qtyTextY, { align: 'right' });
+        doc.text(qtyToOrderText, xQtyOrdered, qtyTextY, { align: 'right' });
+        doc.text((item.quantityBackordered || 0).toString(), xQtyBackordered, qtyTextY, { align: 'right' });
+        doc.text((item.cost || 0).toFixed(2), xReorderQty, qtyTextY, { align: 'right' });
+        doc.text(totalCost.toFixed(2), xSupplier, qtyTextY, { align: 'right' });
+
+        yPosition += ROW_HEIGHT;
       }
-
-      const colPositions = { // Redefine here for access if needed, or pass as param
-        qr: margin,
-        product: margin + qrCodeSize + 10,
-        onHand: margin + qrCodeSize + 150,
-        toOrder: margin + qrCodeSize + 210,
-        backordered: margin + qrCodeSize + 270,
-        cost: margin + qrCodeSize + 340,
-        totalCost: margin + qrCodeSize + 400,
-        supplier: margin + qrCodeSize + 470
-      };
-      const textYAlign = y + (qrCodeSize / 2) + (fontSize / 2) - 2; // Try to vertically center text with QR
-
-      if (qrImageData) {
-        doc.addImage(qrImageData, 'PNG', colPositions.qr, y, qrCodeSize, qrCodeSize);
-      } else {
-        doc.text("QR Err", colPositions.qr + qrCodeSize/2, textYAlign, {align: 'center'});
-      }
-
-      // Product Name with wrapping (basic)
-      const productNameLines = doc.splitTextToSize(product.name || 'N/A', colPositions.onHand - colPositions.product - 5);
-      let textYOffset = 0;
-      if (productNameLines.length > 1) {
-         // Adjust Y for multi-line text to keep QR centered, or adjust QR's Y
-         // For simplicity, we'll let the text flow down.
-         doc.text(productNameLines, colPositions.product, y + fontSize); // Start text lower for multi-line
-      } else {
-         doc.text(productNameLines, colPositions.product, textYAlign);
-      }
-
-
-      doc.text((product.quantity || 0).toString(), colPositions.onHand, textYAlign, {align: 'right'});
-      doc.text(qtyToOrderText, colPositions.toOrder, textYAlign, {align: 'right'});
-      doc.text((product.quantityBackordered || 0).toString(), colPositions.backordered, textYAlign, {align: 'right'});
-      doc.text((product.cost || 0).toFixed(2), colPositions.cost, textYAlign, {align: 'right'});
-      doc.text(totalCost.toFixed(2), colPositions.totalCost, textYAlign, {align: 'right'});
-
-      // Supplier Name with wrapping
-      const supplierNameLines = doc.splitTextToSize(product.supplier || 'N/A', pageWidth - colPositions.supplier - margin);
-      doc.text(supplierNameLines, colPositions.supplier, y + fontSize);
-
-
-      y += qrCodeSize + 10; // Move Y for next row (QR size + padding)
+      yPosition += 10; // Extra space between supplier groups
     }
 
     // Add final page number
@@ -2927,6 +2474,7 @@ async function startUpdateScanner() {
       });
 
       if (code && code.data) {
+        console.log('[UpdateScanner] QR code detected:', code);
         document.getElementById('updateScanResult').textContent = `Scanned Code: ${code.data}`;
         
         if (batchUpdates.length > 0) {
@@ -3312,7 +2860,7 @@ function switchQuickUpdateTab(selectedTabId) {
     }
 
     const activeSpecificClasses = ['border-blue-600', 'text-blue-600', 'dark:border-blue-500', 'dark:text-blue-500', 'font-semibold'];
-    const inactiveSpecificClasses = ['border-transparent', 'text-gray-500', 'dark:text-gray-400'];
+    const inactiveSpecificClasses = ['border-transparent', 'text-gray-500', 'dark:text-gray-400', 'hover:border-gray-300', 'dark:hover:border-gray-600'];
     const hoverClasses = ['hover:text-gray-700', 'hover:border-gray-300', 'dark:hover:text-gray-300', 'dark:hover:border-gray-600'];
 
     if (selectedTabId === 'manualBatchModeTab' || selectedTabId === 'manualBatchModeContent') {
@@ -3960,7 +3508,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!productSnapshot.exists) {
           throw new Error(`Product with ID ${productId} not found in inventory.`);
         }
-        let { quantity: invQty, quantityOrdered: invQtyOrdered, productQuantityBackordered: invQtyBackordered = 0 } = productSnapshot.data();
+        let { quantity: invQty, quantityOrdered: invQtyOrdered, productQuantityBackordered: invQtyBackordered } = productSnapshot.data();
 
         // Logic for inventory adjustment based on status transitions
         if (newStatusSelected === 'Fulfilled' || newStatusSelected === 'fulfilled') {
@@ -3984,7 +3532,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             invQtyBackordered -= orderQuantity;
           }
         }
-        // Note: If an order is manually set to 'Backordered' (e.g. "Backordered (Manual)" option),
+        // Note: If an order is manually set to 'Backordered' (e.g., "Backordered (Manual)" option),
         // this function currently doesn't create a new backorder or adjust inventory in the same way as partial receipt.
         // It would just change the status. If manual "Backordered" status implies inventory changes,
         // that would need specific logic here. For now, assuming "Backordered (Manual)" is just a status tag
