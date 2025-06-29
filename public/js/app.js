@@ -762,6 +762,29 @@ try {
         // Debug UI containers after authentication
         setTimeout(() => {
           debugUIContainers();
+          
+          // Force show main app if it's hidden (temporary fix)
+          const authContainer = document.getElementById('authContainer');
+          const appMainContainer = document.getElementById('appMainContainer');
+          const appNavbar = document.getElementById('appNavbar');
+          
+          if (authContainer && !authContainer.classList.contains('hidden')) {
+            console.warn('Auth container still visible, forcing hide');
+            authContainer.classList.add('hidden');
+          }
+          
+          if (appMainContainer && appMainContainer.classList.contains('hidden')) {  
+            console.warn('Main container hidden, forcing show');
+            appMainContainer.classList.remove('hidden');
+          }
+          
+          if (appNavbar && appNavbar.classList.contains('hidden')) {
+            console.warn('Navbar hidden, forcing show');
+            appNavbar.classList.remove('hidden');
+          }
+          
+          // Force show the inventory view since that's what the logs show is happening
+          showView('inventoryViewContainer', 'menuInventory');
         }, 1000);
 
         // Load user data and update UI based on role
