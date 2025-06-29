@@ -177,6 +177,7 @@ export class UIEnhancementManager {
         const minQuantity = parseInt(item.minQuantity) || 0;
         const stockStatus = this.getStockStatus(quantity, minQuantity);
         const stockBadge = this.getStockBadge(stockStatus);
+        const placeholderImage = "data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D'48'%20height%3D'48'%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2048%2048'%20preserveAspectRatio%3D'none'%3E%3Crect%20width%3D'48'%20height%3D'48'%20fill%3D'%23ddd'%2F%3E%3Ctext%20x%3D'50%25'%20y%3D'50%25'%20font-family%3D'Arial%2Csans-serif'%20font-size%3D'10px'%20fill%3D'%23aaa'%20dominant-baseline%3D'middle'%20text-anchor%3D'middle'%3ENo%20Img%3C%2Ftext%3E%3C%2Fsvg%3E"; // Simple SVG placeholder
 
         return `
             <tr class="hover:bg-base-200 transition-colors">
@@ -185,9 +186,13 @@ export class UIEnhancementManager {
                 </td>
                 <td>
                     <div class="flex items-center gap-3">
-                        <div class="avatar placeholder">
-                            <div class="bg-neutral text-neutral-content rounded-full w-12 h-12">
-                                <span class="text-xs">${(item.name || 'N/A').substring(0, 2).toUpperCase()}</span>
+                        <div class="avatar">
+                            <div class="mask mask-squircle w-12 h-12">
+                                <img src="${placeholderImage}"
+                                     data-src="${item.photo || placeholderImage}"
+                                     alt="${item.name || 'Product Image'}"
+                                     class="lazy-load-image object-cover w-full h-full"
+                                     onerror="this.onerror=null; this.src='${placeholderImage}';"/>
                             </div>
                         </div>
                         <div>
