@@ -659,6 +659,147 @@ const initialDarkModeCheck = () => {
 
 initialDarkModeCheck();
 
+// Stub functions for missing functionalities to prevent ReferenceErrors
+function toggleSidebar() {
+    console.log('[toggleSidebar] Called - Not fully implemented.');
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent'); // Assuming this is the main content area that needs to adjust
+    const sidebarToggleIcon = document.getElementById('sidebarToggleIcon');
+
+    if (sidebar && mainContent && sidebarToggleIcon) {
+        sidebar.classList.toggle('w-64'); // Full width
+        sidebar.classList.toggle('w-16'); // Minimized width (example)
+        mainContent.classList.toggle('ml-64');
+        mainContent.classList.toggle('ml-16'); // Adjust margin based on sidebar width
+
+        // Toggle menu text visibility
+        const menuTexts = sidebar.querySelectorAll('.menu-text');
+        menuTexts.forEach(text => {
+            text.classList.toggle('hidden'); // Or more sophisticated animation
+        });
+
+        // Change icon
+        if (sidebar.classList.contains('w-16')) { // Minimized
+            sidebarToggleIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />`; // Hamburger
+            localStorage.setItem(SIDEBAR_STATE_KEY, 'true');
+        } else { // Maximized
+            sidebarToggleIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5" />`; // Chevron left (original)
+            localStorage.setItem(SIDEBAR_STATE_KEY, 'false');
+        }
+        console.log('[toggleSidebar] Sidebar toggled. Minimized:', sidebar.classList.contains('w-16'));
+    } else {
+        console.error('[toggleSidebar] Sidebar, mainContent, or toggleIcon element not found.');
+    }
+}
+
+function minimizeSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const sidebarToggleIcon = document.getElementById('sidebarToggleIcon');
+    if (sidebar && mainContent && sidebarToggleIcon && !sidebar.classList.contains('w-16')) {
+        sidebar.classList.add('w-16');
+        sidebar.classList.remove('w-64');
+        mainContent.classList.add('ml-16');
+        mainContent.classList.remove('ml-64');
+        sidebar.querySelectorAll('.menu-text').forEach(text => text.classList.add('hidden'));
+        sidebarToggleIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />`; // Hamburger
+    }
+}
+
+function maximizeSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const sidebarToggleIcon = document.getElementById('sidebarToggleIcon');
+     if (sidebar && mainContent && sidebarToggleIcon && sidebar.classList.contains('w-16')) {
+        sidebar.classList.remove('w-16');
+        sidebar.classList.add('w-64');
+        mainContent.classList.remove('ml-16');
+        mainContent.classList.add('ml-64');
+        sidebar.querySelectorAll('.menu-text').forEach(text => text.classList.remove('hidden'));
+        sidebarToggleIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5" />`; // Chevron
+    }
+}
+
+
+function startEditScanner() {
+    console.log('[startEditScanner] Called - Not implemented.');
+    // Basic placeholder:
+    const editVideo = document.getElementById('editVideo');
+    const scanResultEl = document.getElementById('editScanResult');
+    if(editVideo) editVideo.classList.remove('hidden');
+    if(scanResultEl) scanResultEl.textContent = 'Edit scanner started (feature not fully implemented).';
+    // In a real scenario, this would involve QuaggaJS or similar to use the camera.
+}
+
+function stopEditScanner() {
+    console.log('[stopEditScanner] Called - Not implemented (related to startEditScanner).');
+    const editVideo = document.getElementById('editVideo');
+    if(editVideo) editVideo.classList.add('hidden');
+    // Stop camera stream if active
+}
+
+
+function emailReport() {
+    console.log('[emailReport] Called - Not implemented.');
+    alert('Email report functionality is not yet implemented.');
+}
+
+function initiateImageModalVars() {
+    console.log('[initiateImageModalVars] Called.');
+    imageModal = document.getElementById('imageModal');
+    modalImage = document.getElementById('modalImage');
+    closeImageModalBtn = document.getElementById('closeImageModalBtn'); // Listener for this is in DOMContentLoaded
+    if (!imageModal || !modalImage || !closeImageModalBtn) {
+        console.warn('[initiateImageModalVars] One or more image modal elements not found.');
+    }
+}
+
+function openImageModal(imageUrl) {
+    console.log('[openImageModal] Called with URL:', imageUrl);
+    if (imageModal && modalImage) {
+        modalImage.src = imageUrl;
+        imageModal.classList.remove('hidden');
+        imageModal.classList.add('flex'); // Assuming flex is used to center it
+    } else {
+        console.error('[openImageModal] Modal elements not initialized or found.');
+    }
+}
+
+function closeImageModal() {
+    console.log('[closeImageModal] Called.');
+    if (imageModal) {
+        imageModal.classList.add('hidden');
+        imageModal.classList.remove('flex');
+        if(modalImage) modalImage.src = ''; // Clear image
+    } else {
+        console.error('[closeImageModal] imageModal element not found.');
+    }
+}
+
+function updateEnhancedDashboard() {
+    console.log('[updateEnhancedDashboard] Called.');
+    // This is a stub. A real implementation would update:
+    // dashboardTotalProducts, dashboardLowStockItems, dashboardOutOfStockItems, dashboardTotalValue, recentActivityList
+    const dashboardTotalProductsEl = document.getElementById('dashboardTotalProducts');
+    const dashboardLowStockItemsEl = document.getElementById('dashboardLowStockItems');
+    const dashboardOutOfStockItemsEl = document.getElementById('dashboardOutOfStockItems');
+    const dashboardTotalValueEl = document.getElementById('dashboardTotalValue');
+    const recentActivityListEl = document.getElementById('recentActivityList');
+
+    if (dashboardTotalProductsEl) dashboardTotalProductsEl.textContent = inventory ? inventory.length : '0';
+    if (dashboardLowStockItemsEl) dashboardLowStockItemsEl.textContent = inventory ? inventory.filter(item => item.quantity <= item.minQuantity && item.minQuantity > 0).length : '0';
+    if (dashboardOutOfStockItemsEl) dashboardOutOfStockItemsEl.textContent = inventory ? inventory.filter(item => item.quantity === 0).length : '0';
+    if (dashboardTotalValueEl) {
+        const totalVal = inventory ? inventory.reduce((sum, item) => sum + (item.quantity * (item.cost || 0)), 0) : 0;
+        dashboardTotalValueEl.textContent = `$${totalVal.toFixed(2)}`;
+    }
+    if (recentActivityListEl) {
+        recentActivityListEl.innerHTML = '<div>No recent activity (stub).</div>'; // Placeholder
+    }
+    console.log('[updateEnhancedDashboard] Stub updated dashboard elements.');
+}
+
+
 // Firebase Initialization
 const firebaseConfig = {
   apiKey: "AIzaSyC4I5X1Gca4VEvqRspnitNFSLu8C0jH7sQ",
