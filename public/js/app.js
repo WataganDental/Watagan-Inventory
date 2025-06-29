@@ -1897,6 +1897,12 @@ function updatePaginationControls() {
   }
 }
 
+// Stub for updateToOrderTable to prevent ReferenceError
+function updateToOrderTable() {
+    // TODO: Implement actual logic to update the 'To Order' table
+    console.log('updateToOrderTable called - function stub');
+}
+
 // Missing Scanner Functions (Stubs for now)
 async function startUpdateScanner() {
   try {
