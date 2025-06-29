@@ -1956,20 +1956,3 @@ async function generateProductUsageChart(productId) {
     console.error('Error in generateProductUsageChart:', error);
   }
 }
-
-// Batch entry functions
-function removeBatchEntry(entryId) {
-  try {
-    const entryElement = document.querySelector(`[data-entry-id="${entryId}"]`)?.closest('div');
-    if (entryElement) {
-      entryElement.remove();
-      // Remove from batchUpdates array
-      const index = batchUpdates.indexOf(entryId);
-      if (index > -1) {
-        batchUpdates.splice(index, 1);
-      }
-    }
-  } catch (error) {
-    console.error('Error in removeBatchEntry:', error);
-  }
-}
