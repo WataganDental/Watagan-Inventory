@@ -1604,8 +1604,8 @@ async function loadInventory() {
     displayInventory();
     updateToOrderTable();
   } catch (error) {
-    console.error('Error loading inventory:', error);
-    alert('Failed to load inventory: ' + error.message);
+    console.error('Error loading inventory:', error, error && error.stack ? error.stack : '');
+    alert('Failed to load inventory: ' + (error && error.message ? error.message : error));
   }
 }
 
