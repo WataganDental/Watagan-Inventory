@@ -1,63 +1,20 @@
 /* Custom styles for mobile responsiveness */
+/* Minimal custom CSS. Relying on DaisyUI drawer and Tailwind utilities. */
+
+/* Ensure sections within mainContent behave on very small screens if needed.
+   Most DaisyUI/Tailwind components should be responsive by default.
+   This is a common override if direct children of a flex/grid container
+   don't shrink properly or if they have fixed widths.
+   The cards used in index.html are `w-full` or responsive via grid,
+   so this might not be strictly necessary.
+   Keeping it commented out for now, can be reinstated if layout issues appear.
+*/
+/*
 @media (max-width: 767px) {
-  #sidebar {
-    display: none !important; /* Ensure sidebar is hidden */
-  }
-  #mainContent {
-    margin-left: 0 !important; /* Ensure no left margin */
-    padding-left: 1rem !important; /* Ensure padding is consistent if container class is overridden */
-    padding-right: 1rem !important;
-    max-width: 100% !important; /* Allow main content to use full width */
-    width: 100% !important; /* Explicitly set width */
-    box-sizing: border-box !important; /* Ensure padding doesn't add to width */
-  }
-  /* If #mainContent has Tailwind's 'container' class, it sets max-width at breakpoints.
-     The 'max-width: 100% !important;' above aims to override this for very small screens.
-     We also need to ensure sections within mainContent behave. */
-  #mainContent > section { /* Target direct children sections */
-    width: 100% !important;
-    max-width: 100% !important; /* Or a more specific max-width like 'none' or 'calc(100% - 2rem)' if issues persist */
-    box-sizing: border-box !important;
-  }
-
-  #mobileMenuBtn {
-    display: block !important; /* Or 'inline-block', 'flex', etc. */
-  }
-}
-
-/* Reinforce for portrait orientation specifically if needed, though max-width should cover it */
-@media (max-width: 767px) and (orientation: portrait) {
-  #sidebar {
-    display: none !important;
-  }
-  #mainContent {
-    margin-left: 0 !important;
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
   #mainContent > section {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
   }
-  #mobileMenuBtn {
-    display: block !important;
-  }
 }
-
-@media (min-width: 768px) { /* Styles for 'md' screens and up */
-  #sidebar {
-    display: block !important; /* Ensure sidebar is visible on larger screens */
-  }
-  #mainContent {
-    /* Revert max-width if it was changed for smaller screens, allow Tailwind 'container' to work */
-    /* The md:ml-64 class on mainContent in HTML handles margin. */
-    /* max-width: needs to be what Tailwind's container expects or remove this if not needed */
-  }
-  #mobileMenuBtn {
-    display: none !important;
-  }
-}
+*/

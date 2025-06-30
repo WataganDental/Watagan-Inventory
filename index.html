@@ -16,7 +16,7 @@
 
     <div class="navbar bg-base-100 shadow-lg">
         <div class="navbar-start">
-            <a class="btn btn-ghost text-xl">Watagan Dental Inventory</a>
+            <a class="btn btn-ghost text-xl font-semibold text-primary">Watagan Dental Inventory</a>
         </div>
         <div class="navbar-end">
             <label for="sidebar-drawer" class="btn btn-square btn-ghost md:hidden">
@@ -39,10 +39,10 @@
                 <!-- Product Management Section -->
                 <section id="productManagement" class="card bg-base-100 shadow-xl mb-8">
                     <div class="card-body">
-                        <h2 class="card-title">Product Management</h2>
+                        <h2 class="card-title text-primary">Product Management</h2>
                         <div class="collapse collapse-arrow border border-base-300 bg-base-100">
                             <input type="checkbox" id="toggleProductFormCheckbox" />
-                            <div id="productFormTitle" class="collapse-title text-xl font-medium">
+                            <div id="productFormTitle" class="collapse-title text-lg font-medium">
                                 Add New Product
                             </div>
                             <div id="productFormContent" class="collapse-content space-y-4">
@@ -57,17 +57,17 @@
                                 <select id="productLocation" class="select select-bordered w-full">
                                     <option value="">Select Location</option>
                                 </select>
-                                <div class="flex space-x-2">
-                                    <button id="capturePhotoBtn" class="btn btn-info">Capture Photo</button>
-                                    <button id="takePhotoBtn" class="btn btn-success hidden">Take Photo</button>
-                                    <button id="cancelPhotoBtn" class="btn btn-error hidden">Cancel Photo</button>
+                                <div class="join">
+                                    <button id="capturePhotoBtn" class="btn btn-info join-item">Capture Photo</button>
+                                    <button id="takePhotoBtn" class="btn btn-success hidden join-item">Take Photo</button>
+                                    <button id="cancelPhotoBtn" class="btn btn-error hidden join-item">Cancel Photo</button>
                                 </div>
                                 <video id="photoVideo" class="hidden w-full rounded border mt-2"></video>
                                 <canvas id="photoCanvas" class="hidden"></canvas>
                                 <img id="productPhotoPreview" class="hidden w-32 h-32 object-cover rounded border mt-2" alt="Product Preview">
-                                <div class="flex space-x-2 mt-4">
-                                    <button id="productSubmitBtn" class="btn btn-success">Add Product</button>
-                                    <button id="cancelEditBtn" class="btn btn-ghost hidden">Cancel Edit</button>
+                                <div class="join mt-4">
+                                    <button id="productSubmitBtn" class="btn btn-primary join-item">Add Product</button>
+                                    <button id="cancelEditBtn" class="btn btn-ghost hidden join-item">Cancel Edit</button>
                                 </div>
                             </div>
                         </div>
@@ -78,7 +78,7 @@
                 <section id="inventoryDisplaySection" class="card bg-base-100 shadow-xl mb-8">
                     <div class="card-body">
                         <div class="flex justify-between items-center">
-                             <h2 class="card-title">Current Inventory</h2>
+                             <h2 class="card-title text-primary">Current Inventory</h2>
                              <button id="toggleInventoryTableBtn" class="btn btn-ghost btn-sm">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                             </button>
@@ -95,7 +95,7 @@
                                 <button id="clearInventoryFiltersBtn" class="btn btn-neutral">Clear Filters</button>
                             </div>
                             <div class="overflow-x-auto">
-                                <table class="table table-zebra w-full">
+                                <table class="table table-sm table-zebra w-full">
                                     <thead>
                                         <tr>
                                             <th>ID</th>
@@ -122,7 +122,7 @@
                 <!-- Batch Update & Move Product Section (Part of Inventory View) -->
                 <section id="batchActions" class="card bg-base-100 shadow-xl mb-8">
                     <div class="card-body">
-                        <h2 class="card-title">Batch & Quick Actions</h2>
+                        <h2 class="card-title text-primary">Batch & Quick Actions</h2>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Batch Updates -->
                             <div id="batchUpdateContainer" class="card card-border">
@@ -174,10 +174,10 @@
             <!-- Suppliers Section (New Top-Level Section) -->
             <section id="suppliersSectionContainer" class="hidden card bg-base-100 shadow-xl mb-8">
                 <div class="card-body">
-                    <h2 class="card-title">Manage Suppliers</h2>
+                    <h2 class="card-title text-primary">Manage Suppliers</h2>
                     <div id="supplierManagementSectionContent" class="collapse collapse-arrow border border-base-300 bg-base-100">
                         <input type="checkbox" id="toggleSupplierFormCheckbox" />
-                        <div class="collapse-title text-xl font-medium">
+                        <div class="collapse-title text-lg font-medium">
                             Supplier List & Form
                         </div>
                         <div id="supplierFormContent" class="collapse-content">
@@ -194,10 +194,10 @@
             <!-- Locations Admin Section (New Top-Level Section) -->
             <section id="locationsAdminSectionContainer" class="hidden card bg-base-100 shadow-xl mb-8">
                 <div class="card-body">
-                    <h2 class="card-title">Manage Locations</h2>
+                    <h2 class="card-title text-primary">Manage Locations</h2>
                      <div id="locationManagementSectionContent" class="collapse collapse-arrow border border-base-300 bg-base-100">
                         <input type="checkbox" id="toggleLocationFormCheckbox" />
-                        <div class="collapse-title text-xl font-medium">
+                        <div class="collapse-title text-lg font-medium">
                             Location List & Form
                         </div>
                         <div id="locationFormContent" class="collapse-content">
@@ -214,7 +214,7 @@
             <!-- Orders Section (Placeholder, initially hidden) -->
             <section id="ordersSectionContainer" class="hidden card bg-base-100 shadow-xl mb-8">
                  <div class="card-body">
-                    <h2 class="card-title">Orders</h2>
+                    <h2 class="card-title text-primary">Orders</h2>
                     <!-- Example button in Orders, if any actions are added later -->
                     <!-- <button class="btn btn-primary">New Order</button> -->
                     <p>Order management functionality will be here.</p>
@@ -224,7 +224,7 @@
             <!-- Reports Section (Combined, initially hidden or selectively shown by JS) -->
             <section id="reportsSectionContainer" class="hidden card bg-base-100 shadow-xl mb-8">
                 <div class="card-body">
-                    <h2 class="card-title">Reports</h2>
+                    <h2 class="card-title text-primary">Reports</h2>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div id="toOrderReportSection" class="card card-border">
                             <div class="card-body">
