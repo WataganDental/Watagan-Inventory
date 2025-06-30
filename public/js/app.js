@@ -711,8 +711,8 @@ let quickStockBarcodeBuffer = ""; // Used by Manual Batch (indirectly via keypre
 // Global State Variables for Barcode Scanner Mode (already defined above with qsuStream, qsuAnimationLoopId)
 // let currentBarcodeModeProductId = null;
 // let isBarcodeScannerModeActive = false;
-// let qsuStream = null;
-// let qsuAnimationLoopId = null;
+let qsuStream = null;
+let qsuAnimationLoopId = null;
 
 // Pagination Global Variables
 let currentPage = 1;
@@ -2385,7 +2385,8 @@ async function editProduct(id) {
     } else {
       originalPhotoUrlForEdit = '';
     }
-    document.getElementById('toggleProductFormBtn').textContent = 'Edit Product';
+    const productFormTitleEl = document.getElementById('productFormTitle');
+    if (productFormTitleEl) productFormTitleEl.textContent = 'Edit Product';
     document.getElementById('productSubmitBtn').textContent = 'Update Product';
     document.getElementById('cancelEditBtn').classList.remove('hidden');
   }
@@ -2405,7 +2406,8 @@ function resetProductForm() {
   document.getElementById('productPhotoPreview').src = '';
   document.getElementById('productPhotoPreview').classList.add('hidden');
   originalPhotoUrlForEdit = '';
-  document.getElementById('toggleProductFormBtn').textContent = 'Add New Product';
+  const productFormTitleEl = document.getElementById('productFormTitle');
+  if (productFormTitleEl) productFormTitleEl.textContent = 'Add New Product';
   document.getElementById('productSubmitBtn').textContent = 'Add Product';
   document.getElementById('cancelEditBtn').classList.add('hidden');
   cancelPhoto();
