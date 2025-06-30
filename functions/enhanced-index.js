@@ -93,15 +93,20 @@ exports.updateInventoryOnOrderCreation = onDocumentCreated(
 
 // Enhanced user management with better error handling
 exports.listUsersAndRoles = onRequest(
-  { region: "us-central1" }, // We will handle CORS manually
-  (req, res) => { // Changed to non-async to handle cors first
-    cors(req, res, async () => { // Wrap with cors middleware
-      // Ensure OPTIONS requests are handled correctly by cors middleware and finish
-      if (req.method === 'OPTIONS') {
-        res.status(204).send(''); // Respond to preflight request
-        return;
-      }
+  { region: "us-central1" },
+  (req, res) => {
+    // Aggressively handle OPTIONS requests first
+    if (req.method === 'OPTIONS') {
+      res.set('Access-Control-Allow-Origin', '*'); // Or specific origin
+      res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS'); // Adjust as needed
+      res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type'); // Adjust as needed
+      res.set('Access-Control-Max-Age', '3600');
+      res.status(204).send('');
+      return;
+    }
 
+    // For non-OPTIONS requests, proceed with CORS and then the main logic
+    cors(req, res, async () => {
       // Authentication
       let callerUid;
       let decodedIdToken;
