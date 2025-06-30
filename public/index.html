@@ -417,9 +417,9 @@
                 <div class="card-body">
                     <h2 class="card-title">Quick Stock Update</h2>
                     <div class="tabs tabs-boxed mb-4">
-                        <a id="manualBatchModeTab" class="tab tab-active">Manual/Batch</a>
-                        <a id="barcodeScannerModeTab" class="tab">Barcode Scanner</a>
-                        <a id="fileUploadModeTab" class="tab">File Upload</a>
+                        <a id="manualBatchModeTab" class="tab tab-active" data-tabs-target="#manualBatchModeContent">Manual/Batch</a>
+                        <a id="barcodeScannerModeTab" class="tab" data-tabs-target="#barcodeScannerModeContent">Barcode Scanner</a>
+                        <a id="fileUploadModeTab" class="tab" data-tabs-target="#fileUploadModeContent">File Upload</a>
                     </div>
                     <div id="manualBatchModeContent"><div id="qsuBatchEntriesContainer" class="space-y-3 mb-4 max-h-96 overflow-y-auto"></div><div class="flex gap-2 mb-4"><input type="text" id="qsuProductSearch" placeholder="Search Product by Name/ID" class="input input-bordered flex-grow"><button id="qsuAddManualEntryBtn" class="btn btn-info">Add Row</button></div><div id="qsuSearchResults" class="mb-4 max-h-40 overflow-y-auto"></div><button id="qsuSubmitBatchBtn" class="btn btn-success w-full">Submit Batch Update</button></div>
                     <div id="barcodeScannerModeContent" class="hidden space-y-4">
