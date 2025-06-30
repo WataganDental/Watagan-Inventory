@@ -93,7 +93,18 @@ function displayInventory(searchTerm = '', supplierFilter = '', locationFilter =
             }
             row.className = rowClass;
 
+            // Placeholder for photo - replace with actual logic if photo URL exists in item
+            const photoUrl = item.photo || 'https://picsum.photos/seed/' + item.id + '/40/40'; // Using picsum as placeholder
+            const placeholderSvg = `<svg class="w-full h-full text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`;
+
             row.innerHTML = `
+                <td class="p-1 align-middle">
+                    <div class="avatar">
+                        <div class="w-10 h-10 mask mask-circle">
+                            <img src="${photoUrl}" alt="${item.name || 'Product image'}" class="product-photo-thumb" data-img-url="${item.photo || ''}" onerror="this.onerror=null;this.parentElement.innerHTML='${placeholderSvg.replace(/"/g, '&quot;')}';"/>
+                        </div>
+                    </div>
+                </td>
                 <td class="px-2 py-1 text-xs align-middle id-column">${item.id}</td>
                 <td class="px-2 py-1 font-medium align-middle">${item.name}</td>
                 <td class="px-2 py-1 text-center align-middle">${item.quantity}</td>
@@ -103,11 +114,20 @@ function displayInventory(searchTerm = '', supplierFilter = '', locationFilter =
                 <td class="px-2 py-1 align-middle hidden lg:table-cell">${item.location || 'N/A'}</td>
                 <td class="px-2 py-1 text-center align-middle hidden xl:table-cell">${item.quantityOrdered || 0}</td>
                 <td class="px-2 py-1 text-center align-middle hidden xl:table-cell">${item.productQuantityBackordered || 0}</td>
-                <td class="px-2 py-1 text-center align-middle whitespace-nowrap">
-                    <button class="btn btn-xs btn-outline btn-primary edit-product-btn" data-product-id="${item.id}" title="Edit">Edit</button>
-                    <button class="btn btn-xs btn-outline btn-error delete-product-btn" data-product-id="${item.id}" title="Delete">Del</button>
-                    <button class="btn btn-xs btn-outline btn-info move-product-action-btn" data-product-id="${item.id}" title="Move">Move</button>
-                    <button class="btn btn-xs btn-outline view-qr-btn" data-product-id="${item.id}" title="View QR">QR</button>
+                <td class="p-1 align-middle text-center whitespace-nowrap">
+                    <div class="dropdown dropdown-end">
+                        <label tabindex="0" class="btn btn-ghost btn-xs m-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+                            </svg>
+                        </label>
+                        <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32 z-[1]">
+                            <li><button class="btn btn-xs btn-ghost justify-start w-full edit-product-btn" data-product-id="${item.id}">Edit</button></li>
+                            <li><button class="btn btn-xs btn-ghost justify-start w-full delete-product-btn" data-product-id="${item.id}">Delete</button></li>
+                            <li><button class="btn btn-xs btn-ghost justify-start w-full move-product-action-btn" data-product-id="${item.id}">Move</button></li>
+                            <li><button class="btn btn-xs btn-ghost justify-start w-full view-qr-btn" data-product-id="${item.id}">QR</button></li>
+                        </ul>
+                    </div>
                 </td>
             `;
         });

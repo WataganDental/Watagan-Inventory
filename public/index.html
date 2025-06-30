@@ -305,8 +305,22 @@
                             </section>
                             <!-- Actual Inventory Table from root index.html -->
                             <div class="overflow-x-auto">
-                                <table class="table table-zebra w-full">
-                                    <thead><tr><th>ID</th><th>Name</th><th class="text-center">Qty</th><th class="text-center">Min.Qty</th><th class="text-right">Cost</th><th>Supplier</th><th>Location</th><th class="text-center">Photo</th><th class="text-center">QR</th><th class="text-center">Actions</th></tr></thead>
+                                <table class="table table-zebra table-sm w-full">
+                                    <thead>
+                                        <tr>
+                                            <th class="p-1">Photo</th> <!-- New Photo column -->
+                                            <th>ID</th>
+                                            <th>Name</th>
+                                            <th class="text-center">Qty</th>
+                                            <th class="text-center hidden md:table-cell">Min/Reorder</th> <!-- Combined Min.Qty and Reorder Qty -->
+                                            <th class="text-right hidden lg:table-cell">Cost</th>
+                                            <th class="hidden md:table-cell">Supplier</th>
+                                            <th class="hidden lg:table-cell">Location</th>
+                                            <th class="text-center hidden xl:table-cell">Ordered</th> <!-- Abbreviated -->
+                                            <th class="text-center hidden xl:table-cell">Backordered</th> <!-- Abbreviated -->
+                                            <th class="text-center">Actions</th>
+                                        </tr>
+                                    </thead>
                                     <tbody id="inventoryTable"></tbody>
                                 </table>
                             </div>
