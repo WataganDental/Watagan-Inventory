@@ -122,9 +122,9 @@ function displayInventory(searchTerm = '', supplierFilter = '', locationFilter =
                         </label>
                         <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32 z-[1]">
                             <li><button class="btn btn-xs btn-ghost justify-start w-full edit-product-btn" data-product-id="${item.id}">Edit</button></li>
-                            <li><button class="btn btn-xs btn-ghost justify-start w-full delete-product-btn" data-product-id="${item.id}">Delete</button></li>
-                            <li><button class="btn btn-xs btn-ghost justify-start w-full move-product-action-btn" data-product-id="${item.id}">Move</button></li>
                             <li><button class="btn btn-xs btn-ghost justify-start w-full view-qr-btn" data-product-id="${item.id}">QR</button></li>
+                            <li><button class="btn btn-xs btn-ghost justify-start w-full move-product-action-btn" data-product-id="${item.id}">Move</button></li>
+                            <li><button class="btn btn-xs btn-ghost justify-start w-full delete-product-btn" data-product-id="${item.id}">Delete</button></li>
                         </ul>
                     </div>
                 </td>
@@ -428,11 +428,13 @@ async function adjustScannedProductQuantity(adjustmentType, quantityToAdjustStr)
             newQuantity = currentQuantity + quantityToAdjust;
             await productRef.update({ quantity: newQuantity });
             setLastActionFeedback(`Added ${quantityToAdjust} to ${productData.name}. New stock: ${newQuantity}`, false);
+            await logActivity('stock_adjusted_scan', `Product: ${productData.name} quantity increased by ${quantityToAdjust} (New: ${newQuantity})`, currentBarcodeModeProductId, productData.name);
         } else if (adjustmentType === 'decrement') {
             if (currentQuantity >= quantityToAdjust) {
                 newQuantity = currentQuantity - quantityToAdjust;
                 await productRef.update({ quantity: newQuantity });
                 setLastActionFeedback(`Removed ${quantityToAdjust} from ${productData.name}. New stock: ${newQuantity}`, false);
+                await logActivity('stock_adjusted_scan', `Product: ${productData.name} quantity decreased by ${quantityToAdjust} (New: ${newQuantity})`, currentBarcodeModeProductId, productData.name);
             } else {
                 setLastActionFeedback(`Cannot remove ${quantityToAdjust}. Only ${currentQuantity} in stock for ${productData.name}.`, true);
                 return;
@@ -469,7 +471,13 @@ function submitQuickStockBatch() { console.log('submitQuickStockBatch called - S
 function handleQuickStockProductSearch() { console.log('handleQuickStockProductSearch called - STUB'); }
 function handleQuickStockFileUpload() { console.log('handleQuickStockFileUpload called - STUB'); }
 function processQuickStockUploadedFile() { console.log('processQuickStockUploadedFile called - STUB'); }
-function handleAddOrder() { console.log('handleAddOrder called - STUB'); }
+async function handleAddOrder() { // Made async to allow await for logActivity
+    console.log('handleAddOrder called - STUB');
+    // Conceptual: If order creation was successful:
+    // const orderIdPlaceholder = 'mockOrderId123'; // Placeholder
+    // const productNamePlaceholder = 'Mock Product for Order'; // Placeholder
+    // await logActivity('order_created', `Order for ${productNamePlaceholder} created.`, orderIdPlaceholder, productNamePlaceholder);
+}
 
 function switchQuickUpdateTab(tabIdToActivate) {
     console.log(`switchQuickUpdateTab called for: ${tabIdToActivate}`);
@@ -563,6 +571,33 @@ function generateProductUsageChart(productId) { console.log(`generateProductUsag
 function viewOrderDetails(orderId) { console.log(`viewOrderDetails called for ${orderId} - STUB`); }
 function populateTrendProductSelect() { console.log('populateTrendProductSelect called - STUB'); }
 
+async function logActivity(actionType, details, itemId = null, itemName = null) {
+    try {
+        const user = firebase.auth().currentUser;
+        const logObject = {
+            actionType: actionType,
+            details: details,
+            itemId: itemId,
+            itemName: itemName,
+            userId: user ? user.uid : 'anonymous',
+            userEmail: user ? user.email : 'anonymous',
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        console.log('Activity Logged (stub):', logObject);
+
+        // Firestore write will be enabled in a later step
+        if (db) {
+            await db.collection('activity_log').add(logObject);
+            console.log('Activity written to Firestore.');
+        } else {
+            console.warn('Firestore db instance not available for logActivity.');
+        }
+    } catch (error) {
+        console.error('Error in logActivity:', error);
+    }
+}
+
 function updateEnhancedDashboard() {
     console.log('updateEnhancedDashboard called - IMPLEMENTING');
 
@@ -605,13 +640,49 @@ function updateEnhancedDashboard() {
     outOfStockItemsEl.textContent = outOfStockItems;
     totalValueEl.textContent = `$${totalValue.toFixed(2)}`;
 
-    // Placeholder for Recent Activity - actual implementation would fetch data
-    recentActivityListEl.innerHTML = `
-        <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            Recent activity feed is not yet implemented.
-        </div>`;
-    console.log('Dashboard stats updated.');
+    // Fetch and display Recent Activity
+    if (db) {
+        db.collection('activity_log').orderBy('timestamp', 'desc').limit(10).get()
+            .then(snapshot => {
+                if (snapshot.empty) {
+                    recentActivityListEl.innerHTML = `
+                        <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            No recent activity found.
+                        </div>`;
+                    return;
+                }
+                let activitiesHtml = '';
+                snapshot.docs.forEach(doc => {
+                    const activity = doc.data();
+                    const userDisplay = activity.userEmail || activity.userId || 'System';
+                    const timestamp = activity.timestamp ? activity.timestamp.toDate().toLocaleString() : 'N/A';
+                    const itemInfo = activity.itemName ? `${activity.details} for ${activity.itemName}` : activity.details;
+
+                    activitiesHtml += `
+                        <li class="py-1 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
+                            <p class="text-sm text-gray-700 dark:text-gray-300">${itemInfo}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">By: ${userDisplay} at ${timestamp}</p>
+                        </li>`;
+                });
+                recentActivityListEl.innerHTML = `<ul class="space-y-1">${activitiesHtml}</ul>`;
+            })
+            .catch(error => {
+                console.error("Error fetching recent activity:", error);
+                recentActivityListEl.innerHTML = `
+                    <div class="flex items-center text-sm text-red-500 dark:text-red-400">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                        Error loading recent activity.
+                    </div>`;
+            });
+    } else {
+        recentActivityListEl.innerHTML = `
+            <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Recent activity (DB not ready).
+            </div>`;
+    }
+    console.log('Dashboard stats updated, activity feed initiated.');
 }
 
 
@@ -2153,6 +2224,8 @@ async function submitProduct() {
       });
       resetProductForm();
       inventory = await inventoryManager.loadInventory();
+      // Log activity
+      await logActivity(productIdValue ? 'product_updated' : 'product_added', `Product: ${name}`, id);
     } catch (error) {
       console.error('Error submitting product:', error);
       alert('Failed to submit product: ' + error.message);
@@ -2218,8 +2291,12 @@ async function deleteProduct(id) {
       } catch (err) {
         console.log('No photo to delete:', err);
       }
+      // Find product name before it's removed from local inventory for logging
+      const productForLog = inventory.find(p => p.id === id);
       inventory = await inventoryManager.loadInventory();
       await updateToOrderTable();
+      // Log activity
+      await logActivity('product_deleted', `Product: ${productForLog ? productForLog.name : id}`, id);
     } catch (error) {
       console.error('Error deleting product:', error);
       alert('Failed to delete product: ' + error.message);
@@ -2353,11 +2430,13 @@ async function submitBatchUpdates() {
           const newQuantity = product.quantity + quantity;
           await db.collection('inventory').doc(productId).update({ quantity: newQuantity });
           messages.push(`Added ${quantity} to ${product.name}. New quantity: ${newQuantity}`);
+          await logActivity('batch_stock_update', `Product: ${product.name} quantity increased by ${quantity} (New: ${newQuantity})`, productId);
         } else if (action === 'remove') {
           if (product.quantity >= quantity) {
             const newQuantity = product.quantity - quantity;
             await db.collection('inventory').doc(productId).update({ quantity: newQuantity });
             messages.push(`Removed ${quantity} from ${product.name}. New quantity: ${newQuantity}`);
+            await logActivity('batch_stock_update', `Product: ${product.name} quantity decreased by ${quantity} (New: ${newQuantity})`, productId);
           } else {
             messages.push(`Cannot remove ${quantity} from ${product.name}. Only ${product.quantity} available.`);
           }
@@ -2392,6 +2471,7 @@ async function moveProduct() {
       inventory = await inventoryManager.loadInventory();
       await updateToOrderTable();
       document.getElementById('moveProductId').value = '';
+      await logActivity('product_moved', `Product: ${product.name} moved to ${newLocation}`, productId, product.name);
       uiEnhancementManager.showToast(`Product ${product.name} moved to ${newLocation}`, 'success');
     } catch (error) {
       console.error('Error moving product:', error);
