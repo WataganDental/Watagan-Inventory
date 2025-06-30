@@ -2,18 +2,18 @@
 import { uiEnhancementManager } from './modules/ui-enhancements.js';
 import { InventoryManager } from './modules/inventory.js';
 
-// +++++ START OF MOVED FUNCTIONS (displayInventory, attachTableEventListeners) +++++
+// +++++ START OF MOVED AND STUB FUNCTIONS +++++
 
 function displayInventory(searchTerm = '', supplierFilter = '', locationFilter = '') {
     const inventoryTableBody = document.getElementById('inventoryTable');
-    // Adjusted to use existing DaisyUI loading spinner and error display if possible
     const loadingEl = document.getElementById('inventoryLoading');
-    const errorEl = document.getElementById('inventoryError'); // General error display
-    const emptyStateEl = document.getElementById('inventoryEmptyState'); // From old root, might need to add to public/index.html if not present
+    const errorEl = document.getElementById('inventoryError');
+    const emptyStateEl = document.getElementById('inventoryEmptyState');
 
-    const currentPageDisplay = document.getElementById('currentPageDisplay'); // From public/index.html
-    const prevPageBtn = document.getElementById('prevPageBtn'); // From public/index.html
-    const nextPageBtn = document.getElementById('nextPageBtn'); // From public/index.html
+    const currentPageDisplay = document.getElementById('currentPageDisplay');
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
+    const pageInfo = document.getElementById('pageInfo');
 
     if (!inventoryTableBody) {
         console.error("displayInventory: inventoryTable body not found.");
@@ -26,11 +26,10 @@ function displayInventory(searchTerm = '', supplierFilter = '', locationFilter =
 
     if (loadingEl) loadingEl.classList.remove('hidden');
     if (errorEl) errorEl.classList.add('hidden');
-    if (emptyStateEl) emptyStateEl.classList.add('hidden'); // Hide empty state initially
-    inventoryTableBody.innerHTML = ''; // Clear previous items
+    if (emptyStateEl) emptyStateEl.classList.add('hidden');
+    inventoryTableBody.innerHTML = '';
 
-    // 1. Filter Data
-    let filteredInventory = inventory; // Use the global inventory array
+    let filteredInventory = inventory;
 
     if (!Array.isArray(inventory)) {
         console.error("Global inventory data is not loaded or not an array.");
@@ -61,7 +60,6 @@ function displayInventory(searchTerm = '', supplierFilter = '', locationFilter =
 
     totalFilteredItems = filteredInventory.length;
 
-    // 2. Paginate Data
     const totalPages = Math.ceil(totalFilteredItems / ITEMS_PER_PAGE) || 1;
     currentPage = Math.max(1, Math.min(currentPage, totalPages));
 
@@ -72,9 +70,11 @@ function displayInventory(searchTerm = '', supplierFilter = '', locationFilter =
     if (loadingEl) loadingEl.classList.add('hidden');
 
     if (paginatedItems.length === 0) {
-        if (emptyStateEl) { // Use dedicated empty state from public/index.html if available
+        if (emptyStateEl) {
             emptyStateEl.classList.remove('hidden');
-        } else { // Fallback to simple message in table
+            const emptyStateMessageContainer = emptyStateEl.querySelector('h3');
+            if (emptyStateMessageContainer) emptyStateMessageContainer.textContent = "No products found matching your criteria.";
+        } else {
             inventoryTableBody.innerHTML = `<tr><td colspan="10" class="text-center p-4">
                 <div role="alert" class="alert alert-info justify-center">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -85,64 +85,48 @@ function displayInventory(searchTerm = '', supplierFilter = '', locationFilter =
     } else {
         paginatedItems.forEach(item => {
             const row = inventoryTableBody.insertRow();
-            // Determine row class based on stock levels (similar to lowStockAlerts styling)
-            let rowClass = 'hover:bg-gray-50 dark:hover:bg-slate-750'; // Default hover
+            let rowClass = 'hover:bg-gray-50 dark:hover:bg-slate-750';
             if (item.quantity === 0) {
-                rowClass = 'bg-error/20 hover:bg-error/30'; // Out of stock
+                rowClass = 'bg-error/20 hover:bg-error/30';
             } else if (item.quantity <= item.minQuantity && item.minQuantity > 0) {
-                rowClass = 'bg-warning/20 hover:bg-warning/30'; // Low stock
+                rowClass = 'bg-warning/20 hover:bg-warning/30';
             }
             row.className = rowClass;
 
-            // Columns based on public/index.html thead for inventoryTable:
-            // ID, Name, Qty, Min.Qty, Cost, Supplier, Location, Photo, QR, Actions
             row.innerHTML = `
-                <td class="px-2 py-1 text-xs align-middle">${item.id}</td>
+                <td class="px-2 py-1 text-xs align-middle id-column">${item.id}</td>
                 <td class="px-2 py-1 font-medium align-middle">${item.name}</td>
                 <td class="px-2 py-1 text-center align-middle">${item.quantity}</td>
-                <td class="px-2 py-1 text-center align-middle">${item.minQuantity || 0}</td>
-                <td class="px-2 py-1 text-right align-middle">$${(item.cost || 0).toFixed(2)}</td>
-                <td class="px-2 py-1 align-middle">${item.supplier || 'N/A'}</td>
-                <td class="px-2 py-1 align-middle">${item.location || 'N/A'}</td>
-                <td class="px-2 py-1 text-center align-middle">
-                    ${item.photo ? `<img src="${item.photo}" alt="${item.name}" class="w-10 h-10 object-cover rounded cursor-pointer product-photo-thumb mx-auto" data-img-url="${item.photo}">` : '<span class="text-xs text-gray-400">No Photo</span>'}
-                </td>
-                <td class="px-2 py-1 text-center align-middle">
-                    <div id="qr-${item.id}" class="inline-block mx-auto" style="width:40px; height:40px;"></div>
-                </td>
+                <td class="px-2 py-1 text-center align-middle hidden md:table-cell">${item.minQuantity || 0} / ${item.reorderQuantity || 0}</td>
+                <td class="px-2 py-1 text-right align-middle hidden lg:table-cell">$${(item.cost || 0).toFixed(2)}</td>
+                <td class="px-2 py-1 align-middle hidden md:table-cell">${item.supplier || 'N/A'}</td>
+                <td class="px-2 py-1 align-middle hidden lg:table-cell">${item.location || 'N/A'}</td>
+                <td class="px-2 py-1 text-center align-middle hidden xl:table-cell">${item.quantityOrdered || 0}</td>
+                <td class="px-2 py-1 text-center align-middle hidden xl:table-cell">${item.productQuantityBackordered || 0}</td>
                 <td class="px-2 py-1 text-center align-middle whitespace-nowrap">
                     <button class="btn btn-xs btn-outline btn-primary edit-product-btn" data-product-id="${item.id}" title="Edit">Edit</button>
                     <button class="btn btn-xs btn-outline btn-error delete-product-btn" data-product-id="${item.id}" title="Delete">Del</button>
                     <button class="btn btn-xs btn-outline btn-info move-product-action-btn" data-product-id="${item.id}" title="Move">Move</button>
+                    <button class="btn btn-xs btn-outline view-qr-btn" data-product-id="${item.id}" title="View QR">QR</button>
                 </td>
             `;
-            const qrCellDiv = row.querySelector(`#qr-${item.id}`);
-            if (qrCellDiv && typeof QRCode !== 'undefined') {
-                new QRCode(qrCellDiv, {
-                    text: item.id,
-                    width: 40,
-                    height: 40,
-                    colorDark: document.documentElement.classList.contains('dark') ? "#FFFFFF" : "#000000",
-                    colorLight: document.documentElement.classList.contains('dark') ? "#334155" : "#FFFFFF", // slate-700 for dark bg
-                    correctLevel: QRCode.CorrectLevel.L
-                });
-            } else if (qrCellDiv) {
-                 qrCellDiv.innerHTML = `<span class="text-xs text-gray-400">QR Err</span>`;
-            }
         });
     }
 
-    // 3. Update Pagination Controls
     if (currentPageDisplay) currentPageDisplay.textContent = `${currentPage} / ${totalPages}`;
     if (prevPageBtn) prevPageBtn.disabled = currentPage === 1;
     if (nextPageBtn) nextPageBtn.disabled = currentPage === totalPages;
 
-    const pageInfo = document.getElementById('pageInfo');
     if(pageInfo) pageInfo.textContent = `Page ${currentPage} of ${totalPages}. Total items: ${totalFilteredItems}`;
 
-
-    // 4. Attach Event Listeners
     attachTableEventListeners();
+    const idColumnToggleBtn = document.getElementById('toggleInventoryIDColumnBtn');
+    const idCells = document.querySelectorAll('#inventoryTable .id-column');
+    if (idColumnToggleBtn && idColumnToggleBtn.classList.contains('active')) {
+        idCells.forEach(col => col.classList.remove('hidden'));
+    } else {
+        idCells.forEach(col => col.classList.add('hidden'));
+    }
 }
 
 function attachTableEventListeners() {
@@ -159,7 +143,10 @@ function attachTableEventListeners() {
 
             const formCheckbox = document.getElementById('toggleProductFormCheckbox');
             if (formCheckbox) formCheckbox.checked = true;
-
+            else {
+                const productFormContent = document.getElementById('productFormContent');
+                if(productFormContent) productFormContent.classList.remove('hidden');
+            }
             editProduct(productId);
         });
     });
@@ -175,20 +162,17 @@ function attachTableEventListeners() {
         button.parentNode.replaceChild(newButton, button);
         newButton.addEventListener('click', (e) => {
             const productId = e.currentTarget.dataset.productId;
-            console.log(`Move action for ${productId}`);
             const moveProductIdInput = document.getElementById('moveProductId');
-            const moveProductFormContent = document.getElementById('moveProductFormContent');
             const batchActionsSection = document.getElementById('batchActions');
             const toggleMoveProductFormCheckbox = document.getElementById('toggleMoveProductFormBtn');
 
-            if (moveProductIdInput && moveProductFormContent && batchActionsSection && toggleMoveProductFormCheckbox) {
+            if (moveProductIdInput && batchActionsSection && toggleMoveProductFormCheckbox) {
                 moveProductIdInput.value = productId;
                 batchActionsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 toggleMoveProductFormCheckbox.checked = true;
                 setTimeout(() => document.getElementById('newLocation')?.focus(), 150);
             } else {
                 uiEnhancementManager.showToast('Move product UI elements not found.', 'error');
-                console.error('Move product UI elements missing:', {moveProductIdInput, moveProductFormContent, batchActionsSection, toggleMoveProductFormCheckbox});
             }
         });
     });
@@ -200,8 +184,19 @@ function attachTableEventListeners() {
             const imageUrl = e.currentTarget.dataset.imgUrl;
             if (imageUrl && typeof openImageModal === 'function') {
                 openImageModal(imageUrl);
+            }
+        });
+    });
+    table.querySelectorAll('.view-qr-btn').forEach(button => {
+        const newButton = button.cloneNode(true);
+        button.parentNode.replaceChild(newButton, button);
+        newButton.addEventListener('click', (e) => {
+            const productId = e.currentTarget.dataset.productId;
+            if (typeof viewQRCode === 'function') {
+                viewQRCode(productId);
             } else {
-                console.warn("No image URL or openImageModal function not available for product photo.");
+                console.error('viewQRCode function is not defined.');
+                uiEnhancementManager.showToast('Error: QR Code function not available.', 'error');
             }
         });
     });
@@ -209,7 +204,7 @@ function attachTableEventListeners() {
 
 // +++++ END OF MOVED FUNCTIONS +++++
 
-// +++++ START OF STUB FUNCTIONS (MOVED EARLIER) +++++
+// +++++ START OF STUB AND OTHER FUNCTIONS (MOVED EARLIER) +++++
 
 function startUpdateScanner() { console.log('startUpdateScanner called - STUB'); }
 function stopUpdateScanner() { console.log('stopUpdateScanner called - STUB'); }
@@ -456,13 +451,100 @@ function handleQuickStockProductSearch() { console.log('handleQuickStockProductS
 function handleQuickStockFileUpload() { console.log('handleQuickStockFileUpload called - STUB'); }
 function processQuickStockUploadedFile() { console.log('processQuickStockUploadedFile called - STUB'); }
 function handleAddOrder() { console.log('handleAddOrder called - STUB'); }
-function switchQuickUpdateTab(tabId) { console.log(`switchQuickUpdateTab called for ${tabId} - STUB`); }
+
+function switchQuickUpdateTab(tabIdToActivate) {
+    console.log(`switchQuickUpdateTab called for: ${tabIdToActivate}`);
+
+    const tabButtons = [
+        document.getElementById('barcodeScannerModeTab'),
+        document.getElementById('manualBatchModeTab'),
+        // document.getElementById('fileUploadModeTab') // If you add this tab back
+    ].filter(btn => btn !== null);
+
+    const tabContents = [
+        document.getElementById('barcodeScannerModeContent'),
+        document.getElementById('manualBatchModeContent'),
+        // document.getElementById('fileUploadModeContent') // If you add this tab back
+    ].filter(content => content !== null);
+
+    let activeContentId = null;
+
+    // Classes for active/inactive tabs (Tailwind based on provided HTML)
+    const activeTabClasses = ['border-blue-600', 'text-blue-600', 'dark:border-blue-500', 'dark:text-blue-500'];
+    const inactiveTabClasses = ['border-transparent', 'hover:text-gray-600', 'hover:border-gray-300', 'dark:hover:text-gray-300'];
+
+    tabButtons.forEach(button => {
+        const contentId = button.getAttribute('data-tabs-target'); // e.g., "#barcodeScannerModeContent"
+        const contentElement = contentId ? document.querySelector(contentId) : null;
+
+        if (button.id === tabIdToActivate) {
+            // Activate this tab and content
+            button.setAttribute('aria-selected', 'true');
+            activeTabClasses.forEach(cls => button.classList.add(cls));
+            inactiveTabClasses.forEach(cls => button.classList.remove(cls));
+            if (contentElement) {
+                contentElement.classList.remove('hidden');
+                activeContentId = contentElement.id;
+                console.log(`Showing content: ${activeContentId}`);
+            } else {
+                console.warn(`Content panel for tab ${button.id} (target: ${contentId}) not found.`);
+            }
+        } else {
+            // Deactivate other tabs and content
+            button.setAttribute('aria-selected', 'false');
+            activeTabClasses.forEach(cls => button.classList.remove(cls));
+            inactiveTabClasses.forEach(cls => button.classList.add(cls));
+            if (contentElement) {
+                contentElement.classList.add('hidden');
+                console.log(`Hiding content: ${contentElement.id}`);
+
+                // If we are hiding a tab that might have an active scanner, stop it.
+                if (contentElement.id === 'barcodeScannerModeContent' && typeof stopQuickStockBarcodeScanner === 'function' && typeof isBarcodeScannerModeActive !== 'undefined' && isBarcodeScannerModeActive) {
+                    console.log('Switching away from Barcode Scanner Mode, stopping scanner.');
+                    stopQuickStockBarcodeScanner();
+                }
+                if (contentElement.id === 'manualBatchModeContent') { // Assuming manual batch might use scanners too
+                    if (typeof stopUpdateScanner === 'function' && document.getElementById('updateVideo') && !document.getElementById('updateVideo').classList.contains('hidden')) {
+                        console.log('Switching away from Manual Batch Mode with active update scanner, stopping it.');
+                        stopUpdateScanner();
+                    }
+                }
+            }
+        }
+    });
+
+    // Specific actions when a tab becomes active
+    if (activeContentId === 'barcodeScannerModeContent') {
+        console.log('Barcode Scanner Mode tab activated.');
+        // Optional: Reset the status message and last action feedback when tab is selected
+        setBarcodeStatus('Scan a Product QR Code to begin.', false);
+        setLastActionFeedback('---', false);
+        const scannedProductInfoEl = document.getElementById('qsuScannedProductInfo');
+        if(scannedProductInfoEl) scannedProductInfoEl.classList.add('hidden');
+
+    } else if (activeContentId === 'manualBatchModeContent') {
+        console.log('Manual Batch Entry tab activated.');
+        const updateScanResultEl = document.getElementById('updateScanResult');
+        if(updateScanResultEl) updateScanResultEl.textContent = '';
+        // Potentially focus first input or clear previous batch entries if desired
+    }
+    // Add more else if blocks for other tabs like fileUploadModeContent if re-enabled
+
+    if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+        uiEnhancementManager.showToast(`Switched to ${document.getElementById(tabIdToActivate)?.textContent || tabIdToActivate} tab.`, 'info');
+    } else {
+        console.warn('uiEnhancementManager or showToast not available for tab switch notification.');
+    }
+}
+
 function generateFastOrderReportPDF() { console.log('generateFastOrderReportPDF called - STUB'); }
 function generateOrderReportPDFWithQRCodes() { console.log('generateOrderReportPDFWithQRCodes called - STUB'); }
 function generateAllQRCodesPDF() { console.log('generateAllQRCodesPDF called - STUB'); }
 function generateProductUsageChart(productId) { console.log(`generateProductUsageChart called for ${productId} - STUB`); }
 function viewOrderDetails(orderId) { console.log(`viewOrderDetails called for ${orderId} - STUB`); }
 function populateTrendProductSelect() { console.log('populateTrendProductSelect called - STUB'); }
+function updateEnhancedDashboard() { console.log('updateEnhancedDashboard called - STUB'); }
+
 
 // +++++ END OF STUB FUNCTIONS +++++
 
@@ -486,11 +568,11 @@ let originalPhotoUrlForEdit = ''; // Stores the original photo URL when editing 
 // Global variables for Quick Stock Update
 let quickStockBarcodeBuffer = ""; // Used by Manual Batch (indirectly via keypress), and Barcode Scanner modes
 
-// Global State Variables for Barcode Scanner Mode
-let currentBarcodeModeProductId = null;
-let isBarcodeScannerModeActive = false;
-let qsuStream = null; // Stream for the Quick Stock Update QR Scanner
-let qsuAnimationLoopId = null; // For controlling the requestAnimationFrame loop of QR scanner
+// Global State Variables for Barcode Scanner Mode (already defined above with qsuStream, qsuAnimationLoopId)
+// let currentBarcodeModeProductId = null;
+// let isBarcodeScannerModeActive = false;
+// let qsuStream = null;
+// let qsuAnimationLoopId = null;
 
 // Pagination Global Variables
 let currentPage = 1;
