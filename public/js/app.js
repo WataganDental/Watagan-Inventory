@@ -4,6 +4,97 @@ import { InventoryManager } from './modules/inventory.js';
 
 // +++++ START OF MOVED AND STUB FUNCTIONS +++++
 
+// Function to create HTML for a single product row
+function createProductRowHtml(item) {
+    let rowClass = 'hover:bg-gray-50 dark:hover:bg-slate-750'; // Base classes
+    if (item.quantity === 0) {
+        rowClass = 'bg-error/20 hover:bg-error/30'; // Out of stock
+    } else if (item.quantity <= item.minQuantity && item.minQuantity > 0) {
+        rowClass = 'bg-warning/20 hover:bg-warning/30'; // Low stock
+    }
+
+    const photoUrl = item.photo || `https://picsum.photos/seed/${item.id}/40/40`; // Placeholder
+    const placeholderSvg = `<svg class="w-full h-full text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`;
+
+    // Ensure values are not null/undefined before calling methods like toFixed() or using them in template literals
+    const itemName = item.name || 'N/A';
+    const itemQuantity = item.quantity !== undefined ? item.quantity : 'N/A';
+    const itemMinQuantity = item.minQuantity !== undefined ? item.minQuantity : 0;
+    const itemReorderQuantity = item.reorderQuantity !== undefined ? item.reorderQuantity : 0;
+    const itemCost = item.cost !== undefined ? item.cost : 0;
+    const itemSupplier = item.supplier || 'N/A';
+    const itemLocation = item.location || 'N/A';
+    const itemQuantityOrdered = item.quantityOrdered !== undefined ? item.quantityOrdered : 0;
+    const itemProductQuantityBackordered = item.productQuantityBackordered !== undefined ? item.productQuantityBackordered : 0;
+
+    return `
+        <tr class="${rowClass}" data-product-id="${item.id}">
+            <td class="p-1 align-middle">
+                <div class="avatar">
+                    <div class="w-10 h-10 mask mask-circle">
+                        <img src="${photoUrl}" alt="${itemName}" class="product-photo-thumb" data-img-url="${item.photo || ''}" onerror="this.onerror=null;this.parentElement.innerHTML='${placeholderSvg.replace(/"/g, '&quot;')}';"/>
+                    </div>
+                </div>
+            </td>
+            <td class="px-2 py-1 font-medium align-middle">${itemName}</td>
+            <td class="px-2 py-1 text-center align-middle">${itemQuantity}</td>
+            <td class="px-2 py-1 text-center align-middle hidden md:table-cell">${itemMinQuantity} / ${itemReorderQuantity}</td>
+            <td class="px-2 py-1 text-right align-middle hidden lg:table-cell">$${itemCost.toFixed(2)}</td>
+            <td class="px-2 py-1 align-middle hidden md:table-cell">${itemSupplier}</td>
+            <td class="px-2 py-1 align-middle hidden lg:table-cell">${itemLocation}</td>
+            <td class="px-2 py-1 text-center align-middle hidden xl:table-cell">${itemQuantityOrdered}</td>
+            <td class="px-2 py-1 text-center align-middle hidden xl:table-cell">${itemProductQuantityBackordered}</td>
+            <td class="p-1 align-middle text-center whitespace-nowrap">
+                <div class="dropdown dropdown-end">
+                    <label tabindex="0" class="btn btn-ghost btn-xs m-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+                        </svg>
+                    </label>
+                    <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32 z-[1]">
+                        <li><button class="btn btn-xs btn-ghost justify-start w-full edit-product-btn" data-product-id="${item.id}">Edit</button></li>
+                        <li><button class="btn btn-xs btn-ghost justify-start w-full view-qr-btn" data-product-id="${item.id}">QR</button></li>
+                        <li><button class="btn btn-xs btn-ghost justify-start w-full move-product-action-btn" data-product-id="${item.id}">Move</button></li>
+                        <li><button class="btn btn-xs btn-ghost justify-start w-full delete-product-btn" data-product-id="${item.id}">Delete</button></li>
+                    </ul>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+// Function to update a single product row in the table
+function updateProductRowInTable(productId) {
+    console.log(`Attempting to update row for product ID: ${productId}`);
+    const product = inventory.find(item => item.id === productId);
+
+    if (!product) {
+        console.warn(`Product with ID ${productId} not found in local inventory. Triggering full table refresh.`);
+        displayInventory(); // Fallback to full refresh
+        return;
+    }
+
+    const newRowHtml = createProductRowHtml(product);
+    const rowElement = document.querySelector(`#inventoryTable tr[data-product-id='${productId}']`);
+
+    if (rowElement) {
+        console.log(`Found row for product ID: ${productId}. Updating its HTML.`);
+        rowElement.outerHTML = newRowHtml;
+        // Re-attach event listeners for the updated row if they were specific to the row's content
+        // For now, assuming global event listeners or event delegation handles this.
+        // If not, we'd need to call something like attachSingleRowEventListeners(newlyReplacedRowElement)
+        // For simplicity, the current attachTableEventListeners is called after displayInventory,
+        // which might need adjustment if we frequently update single rows without full refresh.
+        // However, the buttons use data-attributes and event delegation should ideally be used or re-init after edits.
+        // The current attachTableEventListeners re-queries all buttons.
+        // Let's call attachTableEventListeners to be safe for now, though it's less efficient.
+        attachTableEventListeners(); // Make sure this handles re-attaching to new/modified rows.
+    } else {
+        console.warn(`Row for product ID ${productId} not found in DOM. Triggering full table refresh.`);
+        displayInventory(); // Fallback to full refresh if row isn't visible (e.g., different page, filtered out)
+    }
+}
+
 function displayInventory(searchTerm = '', supplierFilter = '', locationFilter = '') {
     const inventoryTableBody = document.getElementById('inventoryTable');
     const loadingEl = document.getElementById('inventoryLoading');
@@ -11,9 +102,9 @@ function displayInventory(searchTerm = '', supplierFilter = '', locationFilter =
     const emptyStateEl = document.getElementById('inventoryEmptyState');
 
     const currentPageDisplay = document.getElementById('currentPageDisplay');
-    const prevPageBtn = document.getElementById('prevPageBtn');
-    const nextPageBtn = document.getElementById('nextPageBtn');
-    const pageInfo = document.getElementById('pageInfo');
+    // const prevPageBtn = document.getElementById('prevPageBtn'); // Referenced later
+    // const nextPageBtn = document.getElementById('nextPageBtn'); // Referenced later
+    // const pageInfo = document.getElementById('pageInfo'); // Referenced later
 
     if (!inventoryTableBody) {
         console.error("displayInventory: inventoryTable body not found.");
@@ -84,51 +175,9 @@ function displayInventory(searchTerm = '', supplierFilter = '', locationFilter =
         }
     } else {
         paginatedItems.forEach(item => {
-            const row = inventoryTableBody.insertRow();
-            let rowClass = 'hover:bg-gray-50 dark:hover:bg-slate-750';
-            if (item.quantity === 0) {
-                rowClass = 'bg-error/20 hover:bg-error/30';
-            } else if (item.quantity <= item.minQuantity && item.minQuantity > 0) {
-                rowClass = 'bg-warning/20 hover:bg-warning/30';
-            }
-            row.className = rowClass;
-
-            // Placeholder for photo - replace with actual logic if photo URL exists in item
-            const photoUrl = item.photo || 'https://picsum.photos/seed/' + item.id + '/40/40'; // Using picsum as placeholder
-            const placeholderSvg = `<svg class="w-full h-full text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`;
-
-            row.innerHTML = `
-                <td class="p-1 align-middle">
-                    <div class="avatar">
-                        <div class="w-10 h-10 mask mask-circle">
-                            <img src="${photoUrl}" alt="${item.name || 'Product image'}" class="product-photo-thumb" data-img-url="${item.photo || ''}" onerror="this.onerror=null;this.parentElement.innerHTML='${placeholderSvg.replace(/"/g, '&quot;')}';"/>
-                        </div>
-                    </div>
-                </td>
-                <td class="px-2 py-1 font-medium align-middle">${item.name}</td>
-                <td class="px-2 py-1 text-center align-middle">${item.quantity}</td>
-                <td class="px-2 py-1 text-center align-middle hidden md:table-cell">${item.minQuantity || 0} / ${item.reorderQuantity || 0}</td>
-                <td class="px-2 py-1 text-right align-middle hidden lg:table-cell">$${(item.cost || 0).toFixed(2)}</td>
-                <td class="px-2 py-1 align-middle hidden md:table-cell">${item.supplier || 'N/A'}</td>
-                <td class="px-2 py-1 align-middle hidden lg:table-cell">${item.location || 'N/A'}</td>
-                <td class="px-2 py-1 text-center align-middle hidden xl:table-cell">${item.quantityOrdered || 0}</td>
-                <td class="px-2 py-1 text-center align-middle hidden xl:table-cell">${item.productQuantityBackordered || 0}</td>
-                <td class="p-1 align-middle text-center whitespace-nowrap">
-                    <div class="dropdown dropdown-end">
-                        <label tabindex="0" class="btn btn-ghost btn-xs m-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
-                            </svg>
-                        </label>
-                        <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-32 z-[1]">
-                            <li><button class="btn btn-xs btn-ghost justify-start w-full edit-product-btn" data-product-id="${item.id}">Edit</button></li>
-                            <li><button class="btn btn-xs btn-ghost justify-start w-full view-qr-btn" data-product-id="${item.id}">QR</button></li>
-                            <li><button class="btn btn-xs btn-ghost justify-start w-full move-product-action-btn" data-product-id="${item.id}">Move</button></li>
-                            <li><button class="btn btn-xs btn-ghost justify-start w-full delete-product-btn" data-product-id="${item.id}">Delete</button></li>
-                        </ul>
-                    </div>
-                </td>
-            `;
+            // const row = inventoryTableBody.insertRow(); // We don't need to insert a blank row first
+            // row.className and row.innerHTML are handled by createProductRowHtml
+            inventoryTableBody.innerHTML += createProductRowHtml(item); // Append the full HTML string of the row
         });
     }
 
@@ -2352,9 +2401,20 @@ async function submitProduct() {
         photo: photoUrlToSave
       });
       resetProductForm();
-      inventory = await inventoryManager.loadInventory();
+      inventory = await inventoryManager.loadInventory(); // Refresh local inventory
+
       // Log activity
       await logActivity(productIdValue ? 'product_updated' : 'product_added', `Product: ${name}`, id);
+
+      if (productIdValue) { // If it was an update (edit)
+        updateProductRowInTable(id);
+      } else { // If it was a new product addition
+        displayInventory();
+      }
+      // Ensure dashboard and to-order tables are also updated
+      updateInventoryDashboard();
+      updateToOrderTable();
+
     } catch (error) {
       console.error('Error submitting product:', error);
       alert('Failed to submit product: ' + error.message);
@@ -2425,7 +2485,9 @@ async function deleteProduct(id) {
       // Find product name before it's removed from local inventory for logging
       const productForLog = inventory.find(p => p.id === id);
       inventory = await inventoryManager.loadInventory();
-      await updateToOrderTable();
+      displayInventory(); // Refresh main inventory table
+      updateInventoryDashboard(); // Refresh dashboard stats
+      await updateToOrderTable(); // Refresh to-order table
       // Log activity
       await logActivity('product_deleted', `Product: ${productForLog ? productForLog.name : id}`, id);
     } catch (error) {
@@ -2581,7 +2643,9 @@ async function submitBatchUpdates() {
   }
   if (messages.length > 0) {
     inventory = await inventoryManager.loadInventory();
-    await updateToOrderTable();
+    displayInventory(); // Refresh main inventory table
+    updateInventoryDashboard(); // Refresh dashboard stats
+    await updateToOrderTable(); // Refresh to-order table
     document.getElementById('batchUpdates').innerHTML = '';
     batchUpdates = [];
     alert(messages.join('\n'));
