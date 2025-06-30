@@ -63,38 +63,6 @@ function createProductRowHtml(item) {
     `;
 }
 
-// Function to update a single product row in the table
-function updateProductRowInTable(productId) {
-    console.log(`Attempting to update row for product ID: ${productId}`);
-    const product = inventory.find(item => item.id === productId);
-
-    if (!product) {
-        console.warn(`Product with ID ${productId} not found in local inventory. Triggering full table refresh.`);
-        displayInventory(); // Fallback to full refresh
-        return;
-    }
-
-    const newRowHtml = createProductRowHtml(product);
-    const rowElement = document.querySelector(`#inventoryTable tr[data-product-id='${productId}']`);
-
-    if (rowElement) {
-        console.log(`Found row for product ID: ${productId}. Updating its HTML.`);
-        rowElement.outerHTML = newRowHtml;
-        // Re-attach event listeners for the updated row if they were specific to the row's content
-        // For now, assuming global event listeners or event delegation handles this.
-        // If not, we'd need to call something like attachSingleRowEventListeners(newlyReplacedRowElement)
-        // For simplicity, the current attachTableEventListeners is called after displayInventory,
-        // which might need adjustment if we frequently update single rows without full refresh.
-        // However, the buttons use data-attributes and event delegation should ideally be used or re-init after edits.
-        // The current attachTableEventListeners re-queries all buttons.
-        // Let's call attachTableEventListeners to be safe for now, though it's less efficient.
-        attachTableEventListeners(); // Make sure this handles re-attaching to new/modified rows.
-    } else {
-        console.warn(`Row for product ID ${productId} not found in DOM. Triggering full table refresh.`);
-        displayInventory(); // Fallback to full refresh if row isn't visible (e.g., different page, filtered out)
-    }
-}
-
 function displayInventory(searchTerm = '', supplierFilter = '', locationFilter = '') {
     const inventoryTableBody = document.getElementById('inventoryTable');
     const loadingEl = document.getElementById('inventoryLoading');
@@ -1308,6 +1276,38 @@ async function loadAndDisplayOrders() {
 }
 // END - Placeholder functions for Orders section
 
+async function handleRefreshInventory() {
+    console.log('Refreshing inventory manually...');
+    const refreshBtn = document.getElementById('refreshInventoryBtn');
+    if (refreshBtn) {
+        refreshBtn.disabled = true;
+        refreshBtn.classList.add('loading'); // DaisyUI loading class
+    }
+    if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+        uiEnhancementManager.showToast('Refreshing inventory data...', 'info', 3000);
+    }
+
+    try {
+        inventory = await inventoryManager.loadInventory(); // Fetch latest data
+        displayInventory(); // Re-render table (current page)
+        updateInventoryDashboard(); // Update dashboard stats
+        updateToOrderTable(); // Update 'to order' list
+        if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+            uiEnhancementManager.showToast('Inventory refreshed successfully!', 'success');
+        }
+    } catch (error) {
+        console.error('Error refreshing inventory:', error);
+        if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+            uiEnhancementManager.showToast('Error refreshing inventory: ' + error.message, 'error');
+        }
+    } finally {
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.classList.remove('loading');
+        }
+    }
+}
+
 async function displayUserRoleManagement() {
   const tableBody = document.getElementById('userRolesTableBody');
   const selectAllCheckbox = document.getElementById('selectAllUsersCheckbox');
@@ -2406,12 +2406,8 @@ async function submitProduct() {
       // Log activity
       await logActivity(productIdValue ? 'product_updated' : 'product_added', `Product: ${name}`, id);
 
-      if (productIdValue) { // If it was an update (edit)
-        updateProductRowInTable(id);
-      } else { // If it was a new product addition
-        displayInventory();
-      }
-      // Ensure dashboard and to-order tables are also updated
+      // Always refresh the display from the newly loaded inventory
+      displayInventory();
       updateInventoryDashboard();
       updateToOrderTable();
 
@@ -3517,6 +3513,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (currentPage < totalPages) { currentPage++; displayInventory(); }
             });
             else console.warn("[DOMContentLoaded] nextPageBtn not found");
+
+            const refreshInventoryBtn = document.getElementById('refreshInventoryBtn');
+            if (refreshInventoryBtn) {
+                refreshInventoryBtn.addEventListener('click', handleRefreshInventory);
+            } else { console.warn("[DOMContentLoaded] refreshInventoryBtn not found"); }
 
             console.log('[DOMContentLoaded] Inventory filter/search/pagination listeners attached.');
         } catch (e) {
