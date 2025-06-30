@@ -93,9 +93,15 @@ exports.updateInventoryOnOrderCreation = onDocumentCreated(
 
 // Enhanced user management with better error handling
 exports.listUsersAndRoles = onRequest(
-  { region: "us-central1", cors: true }, // Enable CORS at the function level, or use the cors middleware
-  async (req, res) => {
+  { region: "us-central1" }, // We will handle CORS manually
+  (req, res) => { // Changed to non-async to handle cors first
     cors(req, res, async () => { // Wrap with cors middleware
+      // Ensure OPTIONS requests are handled correctly by cors middleware and finish
+      if (req.method === 'OPTIONS') {
+        res.status(204).send(''); // Respond to preflight request
+        return;
+      }
+
       // Authentication
       let callerUid;
       let decodedIdToken;
@@ -195,9 +201,13 @@ exports.listUsersAndRoles = onRequest(
 // For now, keeping it as onCall as per original structure, assuming client uses Firebase SDK.
 // If it's also called via direct HTTP, it will need conversion to onRequest + CORS.
 exports.updateUserRole = onRequest( // Changed to onRequest for consistency if client calls directly
-  { region: "us-central1", cors: true },
-  async (req, res) => {
+  { region: "us-central1" }, // Manual CORS handling
+  (req, res) => { // Non-async for initial CORS handling
     cors(req, res, async () => {
+      if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+      }
       let callerUid;
       let decodedIdToken;
       const idToken = req.headers.authorization?.split("Bearer ")[1];
@@ -280,9 +290,13 @@ exports.updateUserRole = onRequest( // Changed to onRequest for consistency if c
 // For now, keeping it as onCall, assuming it's triggered by other means (e.g. PubSub scheduler, another function).
 // For consistency and if there's any chance of direct HTTP call, converting it too.
 exports.cleanupAuditLogs = onRequest(
-  { region: "us-central1", cors: true },
-  async (req, res) => {
+  { region: "us-central1" }, // Manual CORS handling
+  (req, res) => { // Non-async for initial CORS handling
     cors(req, res, async () => {
+      if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+      }
       let callerUid;
       let decodedIdToken;
       const idToken = req.headers.authorization?.split("Bearer ")[1];
