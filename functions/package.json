@@ -18,7 +18,8 @@
     "firebase-functions": "^6.3.2",
     "glob": "^11.0.3",
     "google-gax": "^5.0.0",
-    "protobufjs": "^7.5.3"
+    "protobufjs": "^7.5.3",
+    "cors": "^2.8.5"
   },
   "private": true
 }

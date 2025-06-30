@@ -1,14 +1,16 @@
 // Enhanced Firebase functions with better error handling and performance
 const { onDocumentCreated, onDocumentUpdated, onDocumentDeleted } = require("firebase-functions/v2/firestore");
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onRequest } = require("firebase-functions/v2/https"); // Changed onCall to onRequest
+const { HttpsError } = require("firebase-functions/v2/https"); // HttpsError is still useful
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getAuth } = require("firebase-admin/auth");
+const cors = require("cors")({ origin: true }); // Import and configure cors
 
 initializeApp();
 
 // Audit logging function
-async function logAuditEvent(eventType, collection, documentId, data, userId) {
+async function logAuditEvent(eventType, collection, documentId, data, userId, ipAddress = null) {
   try {
     await getFirestore().collection('audit_logs').add({
       eventType,
@@ -17,7 +19,7 @@ async function logAuditEvent(eventType, collection, documentId, data, userId) {
       data: data || null,
       userId,
       timestamp: FieldValue.serverTimestamp(),
-      ip: null // Would need to be passed from client context in real scenario
+      ip: ipAddress
     });
   } catch (error) {
     console.error('Failed to log audit event:', error);
@@ -90,97 +92,133 @@ exports.updateInventoryOnOrderCreation = onDocumentCreated(
 );
 
 // Enhanced user management with better error handling
-exports.listUsersAndRoles = onCall(
-  { region: "us-central1" },
-  async (context) => {
-    // Validate authentication
-    if (!context.auth) {
-      throw new HttpsError("unauthenticated", "Authentication required.");
-    }
+exports.listUsersAndRoles = onRequest(
+  { region: "us-central1", cors: true }, // Enable CORS at the function level, or use the cors middleware
+  async (req, res) => {
+    cors(req, res, async () => { // Wrap with cors middleware
+      // Authentication
+      let callerUid;
+      let decodedIdToken;
+      const idToken = req.headers.authorization?.split("Bearer ")[1];
 
-    const callerUid = context.auth.uid;
-
-    try {
-      // Check caller permissions
-      const userRoleDoc = await getFirestore().collection("user_roles").doc(callerUid).get();
-      
-      if (!userRoleDoc.exists || userRoleDoc.data().role !== "admin") {
-        console.warn(`Unauthorized access attempt by user ${callerUid}`);
-        await logAuditEvent('unauthorized_access_attempt', 'user_roles', callerUid, {
-          action: 'list_users_and_roles',
-          currentRole: userRoleDoc.exists ? userRoleDoc.data().role : 'no_role'
-        }, callerUid);
-        throw new HttpsError("permission-denied", "Admin privileges required.");
+      if (!idToken) {
+        console.warn("No ID token provided.");
+        res.status(401).send({ error: "Unauthorized", message: "Authentication token required." });
+        return;
       }
 
-      // List users with pagination for better performance
-      const listUsersResult = await getAuth().listUsers(1000);
+      try {
+        decodedIdToken = await getAuth().verifyIdToken(idToken);
+        callerUid = decodedIdToken.uid;
+      } catch (error) {
+        console.error("Error verifying ID token:", error);
+        res.status(401).send({ error: "Unauthorized", message: "Invalid authentication token." });
+        return;
+      }
       
-      // Batch fetch user roles for efficiency
-      const roleRefs = listUsersResult.users.map(user => 
-        getFirestore().collection("user_roles").doc(user.uid)
-      );
-      
-      const roleDocs = await getFirestore().getAll(...roleRefs);
-      const roleMap = new Map();
-      
-      roleDocs.forEach(doc => {
-        if (doc.exists) {
-          roleMap.set(doc.id, doc.data().role);
+      const userIpAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+      try {
+        // Check caller permissions
+        const userRoleDoc = await getFirestore().collection("user_roles").doc(callerUid).get();
+
+        if (!userRoleDoc.exists || userRoleDoc.data().role !== "admin") {
+          console.warn(`Unauthorized access attempt by user ${callerUid}`);
+          await logAuditEvent('unauthorized_access_attempt', 'user_roles', callerUid, {
+            action: 'list_users_and_roles',
+            currentRole: userRoleDoc.exists ? userRoleDoc.data().role : 'no_role'
+          }, callerUid, userIpAddress);
+          res.status(403).send({ error: "Forbidden", message: "Admin privileges required." });
+          return;
         }
-      });
 
-      const usersWithRoles = listUsersResult.users.map(userRecord => ({
-        uid: userRecord.uid,
-        email: userRecord.email,
-        displayName: userRecord.displayName,
-        currentRole: roleMap.get(userRecord.uid) || 'staff',
-        disabled: userRecord.disabled,
-        emailVerified: userRecord.emailVerified,
-        creationTime: userRecord.metadata.creationTime,
-        lastSignInTime: userRecord.metadata.lastSignInTime
-      }));
+        // List users with pagination for better performance
+        const listUsersResult = await getAuth().listUsers(1000);
 
-      // Log successful admin action
-      await logAuditEvent('admin_action', 'users', 'list_all', {
-        userCount: usersWithRoles.length,
-        action: 'list_users_and_roles'
-      }, callerUid);
+        // Batch fetch user roles for efficiency
+        const roleRefs = listUsersResult.users.map(user =>
+          getFirestore().collection("user_roles").doc(user.uid)
+        );
 
-      return { 
-        users: usersWithRoles,
-        hasNextPage: !!listUsersResult.pageToken
-      };
-      
-    } catch (error) {
-      console.error("Error in listUsersAndRoles:", error);
-      
-      // Log the error
-      await logAuditEvent('function_error', 'users', 'list_all', {
-        error: error.message,
-        function: 'listUsersAndRoles'
-      }, callerUid);
+        const roleDocs = await getFirestore().getAll(...roleRefs);
+        const roleMap = new Map();
 
-      // Re-throw HttpsErrors as-is, wrap other errors
-      if (error instanceof HttpsError) {
-        throw error;
+        roleDocs.forEach(doc => {
+          if (doc.exists) {
+            roleMap.set(doc.id, doc.data().role);
+          }
+        });
+
+        const usersWithRoles = listUsersResult.users.map(userRecord => ({
+          uid: userRecord.uid,
+          email: userRecord.email,
+          displayName: userRecord.displayName,
+          currentRole: roleMap.get(userRecord.uid) || 'staff',
+          disabled: userRecord.disabled,
+          emailVerified: userRecord.emailVerified,
+          creationTime: userRecord.metadata.creationTime,
+          lastSignInTime: userRecord.metadata.lastSignInTime
+        }));
+
+        // Log successful admin action
+        await logAuditEvent('admin_action', 'users', 'list_all', {
+          userCount: usersWithRoles.length,
+          action: 'list_users_and_roles'
+        }, callerUid, userIpAddress);
+
+        res.status(200).send({
+          users: usersWithRoles,
+          hasNextPage: !!listUsersResult.pageToken
+        });
+
+      } catch (error) {
+        console.error("Error in listUsersAndRoles:", error);
+
+        // Log the error
+        await logAuditEvent('function_error', 'users', 'list_all', {
+          error: error.message,
+          function: 'listUsersAndRoles'
+        }, callerUid, userIpAddress);
+
+        if (error.code === 'auth/insufficient-permission' || (error.message && error.message.toLowerCase().includes('permission denied'))) {
+            res.status(500).send({ error: "Internal Server Error", message: "The function's service account has insufficient permission to list users." });
+        } else {
+            res.status(500).send({ error: "Internal Server Error", message: `Failed to list users: ${error.message}` });
+        }
       }
-      
-      throw new HttpsError('internal', `Failed to list users: ${error.message}`);
-    }
+    });
   }
 );
 
 // New function for updating user roles with validation
-exports.updateUserRole = onCall(
-  { region: "us-central1" },
-  async (context) => {
-    if (!context.auth) {
-      throw new HttpsError("unauthenticated", "Authentication required.");
-    }
+// Note: If this function is called from the client, it might also need CORS.
+// For now, keeping it as onCall as per original structure, assuming client uses Firebase SDK.
+// If it's also called via direct HTTP, it will need conversion to onRequest + CORS.
+exports.updateUserRole = onRequest( // Changed to onRequest for consistency if client calls directly
+  { region: "us-central1", cors: true },
+  async (req, res) => {
+    cors(req, res, async () => {
+      let callerUid;
+      let decodedIdToken;
+      const idToken = req.headers.authorization?.split("Bearer ")[1];
 
-    const { targetUserId, newRole } = context.data;
-    const callerUid = context.auth.uid;
+      if (!idToken) {
+        console.warn("No ID token provided for updateUserRole.");
+        res.status(401).send({ error: "Unauthorized", message: "Authentication token required." });
+        return;
+      }
+
+      try {
+        decodedIdToken = await getAuth().verifyIdToken(idToken);
+        callerUid = decodedIdToken.uid;
+      } catch (error) {
+        console.error("Error verifying ID token for updateUserRole:", error);
+        res.status(401).send({ error: "Unauthorized", message: "Invalid authentication token." });
+        return;
+      }
+
+      const { targetUserId, newRole } = req.body.data || req.body; // onRequest uses req.body
+      const userIpAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
     // Validate input
     if (!targetUserId || !newRole) {
@@ -188,7 +226,8 @@ exports.updateUserRole = onCall(
     }
 
     if (!['admin', 'staff'].includes(newRole)) {
-      throw new HttpsError("invalid-argument", "Role must be 'admin' or 'staff'.");
+      res.status(400).send({ error: "Invalid Argument", message: "Role must be 'admin' or 'staff'." });
+      return;
     }
 
     try {
@@ -196,12 +235,20 @@ exports.updateUserRole = onCall(
       const userRoleDoc = await getFirestore().collection("user_roles").doc(callerUid).get();
       
       if (!userRoleDoc.exists || userRoleDoc.data().role !== "admin") {
-        throw new HttpsError("permission-denied", "Admin privileges required.");
+        await logAuditEvent('unauthorized_role_change_attempt', 'user_roles', targetUserId, {
+          attemptedRole: newRole, attemptedBy: callerUid, reason: 'Caller not admin'
+        }, callerUid, userIpAddress);
+        res.status(403).send({ error: "Forbidden", message: "Admin privileges required." });
+        return;
       }
 
       // Prevent self-demotion from admin
       if (callerUid === targetUserId && newRole !== 'admin') {
-        throw new HttpsError("permission-denied", "Cannot remove your own admin privileges.");
+         await logAuditEvent('self_demotion_attempt', 'user_roles', targetUserId, {
+          attemptedRole: newRole
+        }, callerUid, userIpAddress);
+        res.status(403).send({ error: "Forbidden", message: "Cannot remove your own admin privileges." });
+        return;
       }
 
       // Update the role
@@ -212,38 +259,60 @@ exports.updateUserRole = onCall(
       await logAuditEvent('role_change', 'user_roles', targetUserId, {
         newRole,
         changedBy: callerUid
-      }, callerUid);
+      }, callerUid, userIpAddress);
 
-      return { success: true, message: `User role updated to ${newRole}` };
+      res.status(200).send({ success: true, message: `User role updated to ${newRole}` });
       
     } catch (error) {
       console.error("Error updating user role:", error);
-      
-      if (error instanceof HttpsError) {
-        throw error;
-      }
-      
-      throw new HttpsError('internal', `Failed to update user role: ${error.message}`);
+       await logAuditEvent('update_role_error', 'user_roles', targetUserId, {
+        error: error.message, newRole, changedBy: callerUid
+      }, callerUid, userIpAddress);
+      res.status(500).send({ error: "Internal Server Error", message: `Failed to update user role: ${error.message}` });
     }
+    });
   }
 );
 
 // Function to clean up old audit logs (run periodically)
-exports.cleanupAuditLogs = onCall(
-  { region: "us-central1" },
-  async (context) => {
-    if (!context.auth) {
-      throw new HttpsError("unauthenticated", "Authentication required.");
-    }
+// This function is likely called via a scheduler or manually, not direct client HTTP.
+// If it were to be called via HTTP by a client, it would also need conversion to onRequest + CORS.
+// For now, keeping it as onCall, assuming it's triggered by other means (e.g. PubSub scheduler, another function).
+// For consistency and if there's any chance of direct HTTP call, converting it too.
+exports.cleanupAuditLogs = onRequest(
+  { region: "us-central1", cors: true },
+  async (req, res) => {
+    cors(req, res, async () => {
+      let callerUid;
+      let decodedIdToken;
+      const idToken = req.headers.authorization?.split("Bearer ")[1];
 
-    const callerUid = context.auth.uid;
+      if (!idToken) {
+        console.warn("No ID token provided for cleanupAuditLogs.");
+        res.status(401).send({ error: "Unauthorized", message: "Authentication token required." });
+        return;
+      }
+
+      try {
+        decodedIdToken = await getAuth().verifyIdToken(idToken);
+        callerUid = decodedIdToken.uid;
+      } catch (error) {
+        console.error("Error verifying ID token for cleanupAuditLogs:", error);
+        res.status(401).send({ error: "Unauthorized", message: "Invalid authentication token." });
+        return;
+      }
+      const userIpAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     
     try {
       // Check caller permissions
       const userRoleDoc = await getFirestore().collection("user_roles").doc(callerUid).get();
       
       if (!userRoleDoc.exists || userRoleDoc.data().role !== "admin") {
-        throw new HttpsError("permission-denied", "Admin privileges required.");
+        await logAuditEvent('unauthorized_cleanup_attempt', 'audit_logs', 'all', {
+            attemptedBy: callerUid
+          }, callerUid, userIpAddress);
+        res.status(403).send({ error: "Forbidden", message: "Admin privileges required." });
+        return;
       }
 
       // Delete audit logs older than 90 days
@@ -258,7 +327,8 @@ exports.cleanupAuditLogs = onCall(
       const snapshot = await oldLogsQuery.get();
       
       if (snapshot.empty) {
-        return { success: true, deletedCount: 0, message: 'No old logs to delete' };
+        res.status(200).send({ success: true, deletedCount: 0, message: 'No old logs to delete' });
+        return;
       }
 
       const batch = getFirestore().batch();
@@ -271,22 +341,21 @@ exports.cleanupAuditLogs = onCall(
       await logAuditEvent('audit_cleanup', 'audit_logs', 'batch_delete', {
         deletedCount: snapshot.size,
         cutoffDate: cutoffDate.toISOString()
-      }, callerUid);
+      }, callerUid, userIpAddress);
 
-      return { 
+      res.status(200).send({
         success: true, 
         deletedCount: snapshot.size,
         message: `Deleted ${snapshot.size} old audit logs`
-      };
+      });
       
     } catch (error) {
       console.error("Error cleaning up audit logs:", error);
-      
-      if (error instanceof HttpsError) {
-        throw error;
-      }
-      
-      throw new HttpsError('internal', `Failed to cleanup audit logs: ${error.message}`);
+      await logAuditEvent('cleanup_logs_error', 'audit_logs', 'batch_delete', {
+         error: error.message
+        }, callerUid, userIpAddress);
+      res.status(500).send({ error: "Internal Server Error", message: `Failed to cleanup audit logs: ${error.message}` });
     }
+    });
   }
 );
