@@ -109,14 +109,22 @@
     </div>
   </div>
 
-  <nav id="appNavbar" class="hidden bg-blue-600 dark:bg-slate-800 p-4 shadow-md fixed top-0 left-0 right-0 z-40 h-16">
+  <!-- appNavbar: Converted to daisyUI navbar structure -->
+  <nav id="appNavbar" class="navbar hidden bg-primary text-primary-content shadow-lg fixed top-0 left-0 right-0 z-40">
     <div class="container mx-auto flex justify-between items-center">
-        <h1 class="text-xl font-semibold text-white">Watagan Dental Inventory</h1>
-        <div class="flex items-center space-x-3"> <!-- Flex container for right-side items -->
-            <img id="userProfileImage" src="#" alt="User" class="hidden w-8 h-8 rounded-full border-2 border-white dark:border-gray-400 object-cover">
-            <button id="darkModeToggle" class="text-white p-2 rounded hover:bg-blue-700 dark:hover:bg-slate-700">Toggle Dark Mode</button>
-            <button id="logoutButton" class="hidden text-white p-2 bg-red-500 hover:bg-red-600 rounded dark:bg-red-700 dark:hover:bg-red-600">Logout</button>
-        </div>
+      <div class="navbar-start">
+        <a class="btn btn-ghost text-xl normal-case">Watagan Dental Inventory</a>
+      </div>
+      <div class="navbar-end space-x-2">
+        <img id="userProfileImage" src="#" alt="User" class="hidden avatar w-8 h-8 rounded-full border-2 border-primary-content object-cover">
+        <!-- Assuming darkModeToggle is handled by app.js to toggle a data-theme attribute on <html> or body -->
+        <!-- For daisyUI theme controlling, a theme-controller input is typical, but here we style the existing button -->
+        <button id="darkModeToggle" class="btn btn-ghost">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21c3.736 0 6.98-1.739 8.998-4.498z" /></svg>
+            <span class="sr-only">Toggle Dark Mode</span>
+        </button>
+        <button id="logoutButton" class="btn btn-error btn-sm hidden">Logout</button>
+      </div>
     </div>
   </nav>
 
