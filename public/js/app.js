@@ -563,7 +563,57 @@ function generateAllQRCodesPDF() { console.log('generateAllQRCodesPDF called - S
 function generateProductUsageChart(productId) { console.log(`generateProductUsageChart called for ${productId} - STUB`); }
 function viewOrderDetails(orderId) { console.log(`viewOrderDetails called for ${orderId} - STUB`); }
 function populateTrendProductSelect() { console.log('populateTrendProductSelect called - STUB'); }
-function updateEnhancedDashboard() { console.log('updateEnhancedDashboard called - STUB'); }
+
+function updateEnhancedDashboard() {
+    console.log('updateEnhancedDashboard called - IMPLEMENTING');
+
+    const totalProductsEl = document.getElementById('dashboardTotalProducts');
+    const lowStockItemsEl = document.getElementById('dashboardLowStockItems');
+    const outOfStockItemsEl = document.getElementById('dashboardOutOfStockItems');
+    const totalValueEl = document.getElementById('dashboardTotalValue');
+    const recentActivityListEl = document.getElementById('recentActivityList');
+
+    if (!totalProductsEl || !lowStockItemsEl || !outOfStockItemsEl || !totalValueEl || !recentActivityListEl) {
+        console.error('Dashboard elements not found. Aborting updateEnhancedDashboard.');
+        return;
+    }
+
+    if (!inventory || inventory.length === 0) {
+        console.warn('Inventory data is not available for dashboard update.');
+        totalProductsEl.textContent = '0';
+        lowStockItemsEl.textContent = '0';
+        outOfStockItemsEl.textContent = '0';
+        totalValueEl.textContent = '$0.00';
+        recentActivityListEl.innerHTML = `
+            <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                No inventory data to display stats.
+            </div>`;
+        return;
+    }
+
+    const totalProducts = inventory.length;
+    const lowStockItems = inventory.filter(item => item.quantity <= item.minQuantity && item.minQuantity > 0).length;
+    const outOfStockItems = inventory.filter(item => item.quantity === 0).length;
+    const totalValue = inventory.reduce((sum, item) => {
+        const cost = parseFloat(item.cost) || 0;
+        const quantity = parseInt(item.quantity) || 0;
+        return sum + (quantity * cost);
+    }, 0);
+
+    totalProductsEl.textContent = totalProducts;
+    lowStockItemsEl.textContent = lowStockItems;
+    outOfStockItemsEl.textContent = outOfStockItems;
+    totalValueEl.textContent = `$${totalValue.toFixed(2)}`;
+
+    // Placeholder for Recent Activity - actual implementation would fetch data
+    recentActivityListEl.innerHTML = `
+        <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            Recent activity feed is not yet implemented.
+        </div>`;
+    console.log('Dashboard stats updated.');
+}
 
 
 // +++++ END OF STUB FUNCTIONS +++++
