@@ -1583,13 +1583,19 @@ try {
           updateUserInterfaceForRole(currentUserRole);
 
           // Data loaded, now show the specific view
-          const menuInventoryEl = document.getElementById('menuInventory');
-          if (menuInventoryEl) {
-            showView('inventoryViewContainer', menuInventoryEl.id);
+          // Default to Dashboard view
+          const menuDashboardEl = document.getElementById('menuDashboard');
+          if (menuDashboardEl) {
+            showView('dashboardViewContainer', menuDashboardEl.id);
           } else {
-            console.warn("Default menu item 'menuInventory' not found after login.");
-            // Fallback: Attempt to show dashboard or a generic welcome view if inventory menu is missing
-            // For now, just log it. Could also try: showView('dashboardViewContainer', 'menuDashboard');
+            console.warn("Default menu item 'menuDashboard' not found after login. Falling back to inventory view.");
+            // Fallback to inventory view if dashboard menu item is somehow missing
+            const menuInventoryEl = document.getElementById('menuInventory');
+            if (menuInventoryEl) {
+              showView('inventoryViewContainer', menuInventoryEl.id);
+            } else {
+              console.error("Fallback menu item 'menuInventory' also not found. No default view can be set.");
+            }
           }
         }).catch(error => {
           console.error("Error during post-login data loading or UI setup:", error);
