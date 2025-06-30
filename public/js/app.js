@@ -1462,7 +1462,7 @@ let closeImageModalBtn = null;
 
 // Dark Mode Toggle Functionality
 const LIGHT_THEME_NAME = 'nord'; // Based on output.css analysis
-const DARK_THEME_NAME = 'sunset'; // Based on output.css analysis
+const DARK_THEME_NAME = 'nord-dark'; // Changed from 'sunset'
 const THEME_STORAGE_KEY = 'theme'; // Changed from 'darkMode' to store theme name
 
 const applyDarkMode = () => {

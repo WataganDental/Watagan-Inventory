@@ -18,12 +18,48 @@ export class UIEnhancementManager {
      * Initialize toast notification container
      */
     initializeToastContainer() {
-        if (!document.getElementById('toast-container')) {
+        let existingContainer = document.getElementById('toast-container-navbar');
+        if (existingContainer) {
+            this.toastContainer = existingContainer;
+            return;
+        }
+
+        const appNavbar = document.getElementById('appNavbar');
+        if (appNavbar) {
+            // Ensure appNavbar can serve as a positioning context if not already fixed/absolute
+            const navbarPosition = window.getComputedStyle(appNavbar).position;
+            if (navbarPosition !== 'fixed' && navbarPosition !== 'absolute' && navbarPosition !== 'relative') {
+                appNavbar.style.position = 'relative';
+            }
+
             const toastContainer = document.createElement('div');
-            toastContainer.id = 'toast-container';
-            toastContainer.className = 'toast toast-top toast-end z-50';
-            document.body.appendChild(toastContainer);
+            toastContainer.id = 'toast-container-navbar';
+            // Use daisyUI classes for the toast stack, and add custom styles for centering the container
+            toastContainer.className = 'toast toast-center z-[100]'; // z-[100] to be above navbar's z-40. toast-center stacks toasts centrally.
+
+            // Custom styling for centering the container itself within the navbar
+            toastContainer.style.position = 'absolute';
+            toastContainer.style.left = '50%';
+            toastContainer.style.top = '50%'; // Position top of container at navbar's vertical center
+            toastContainer.style.transform = 'translate(-50%, -50%)';
+            toastContainer.style.width = 'auto'; // Fit content
+            toastContainer.style.maxWidth = '80%'; // Max width relative to navbar or viewport
+
+            appNavbar.appendChild(toastContainer);
             this.toastContainer = toastContainer;
+            console.log('Toast container initialized in appNavbar center.');
+        } else {
+            // Fallback: If appNavbar isn't found, use the old body-appended method or log error
+            console.warn('appNavbar not found. Toast container will be appended to body (top-end).');
+            if (!document.getElementById('toast-container-body')) { // Use different ID for fallback
+                const toastContainer = document.createElement('div');
+                toastContainer.id = 'toast-container-body';
+                toastContainer.className = 'toast toast-top toast-end z-[100]';
+                document.body.appendChild(toastContainer);
+                this.toastContainer = toastContainer;
+            } else {
+                this.toastContainer = document.getElementById('toast-container-body');
+            }
         }
     }
 
