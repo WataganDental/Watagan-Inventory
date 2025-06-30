@@ -1255,43 +1255,48 @@ async function loadAndDisplayOrders() {
 
 async function displayUserRoleManagement() {
   const tableBody = document.getElementById('userRolesTableBody');
-  if (!tableBody) return;
+  const selectAllCheckbox = document.getElementById('selectAllUsersCheckbox');
+  if (!tableBody || !selectAllCheckbox) return;
 
-  tableBody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Loading users...</td></tr>';
+  tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4">Loading users...</td></tr>'; // Colspan is 6 now
 
   try {
-    // IMPORTANT: This will call a Cloud Function that needs to be created in a later step.
-    // For now, we define the call. The Cloud Function will be named 'listUsersAndRoles'.
     const listUsersAndRolesCallable = firebase.functions().httpsCallable('listUsersAndRoles');
-    const result = await listUsersAndRolesCallable(); // Call the function
-    const users = result.data.users; // Assuming CF returns { users: [...] }
+    const result = await listUsersAndRolesCallable();
+    const users = result.data.users;
 
-    tableBody.innerHTML = ''; // Clear loading message
+    tableBody.innerHTML = '';
 
     if (!users || users.length === 0) {
-      tableBody.innerHTML = '<tr><td colspan="5" class="text-center p-4">No users found.</td></tr>';
+      tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4">No users found.</td></tr>';
+      selectAllCheckbox.disabled = true;
       return;
     }
+    selectAllCheckbox.disabled = false;
+    selectAllCheckbox.checked = false; // Reset select all
 
     users.forEach(user => {
       const row = tableBody.insertRow();
+      row.setAttribute('data-uid', user.uid); // Store UID on the row
       row.innerHTML = `
+        <td class="px-6 py-4 text-center">
+          <input type="checkbox" class="user-checkbox checkbox checkbox-sm" data-uid="${user.uid}">
+        </td>
         <td class="px-6 py-4 whitespace-nowrap">${user.email || 'N/A'}</td>
         <td class="px-6 py-4 whitespace-nowrap text-xs">${user.uid}</td>
         <td class="px-6 py-4 whitespace-nowrap">${user.currentRole || 'No Role Assigned'}</td>
         <td class="px-6 py-4 whitespace-nowrap">
-          <select id="roleSelect-${user.uid}" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200">
+          <select id="roleSelect-${user.uid}" class="role-select-dropdown border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 text-xs">
             <option value="staff" ${(user.currentRole === 'staff' || !user.currentRole) ? 'selected' : ''}>Staff</option>
             <option value="admin" ${user.currentRole === 'admin' ? 'selected' : ''}>Admin</option>
           </select>
         </td>
         <td class="px-6 py-4 text-center">
-          <button data-uid="${user.uid}" class="save-role-btn bg-blue-500 hover:bg-blue-600 text-white p-2 rounded text-xs">Save Role</button>
+          <button data-uid="${user.uid}" class="save-role-btn btn btn-xs btn-info">Save Role</button>
         </td>
       `;
     });
 
-    // Add event listeners to new "Save Role" buttons
     document.querySelectorAll('.save-role-btn').forEach(button => {
       button.addEventListener('click', async (event) => {
         const userId = event.target.dataset.uid;
@@ -1300,11 +1305,123 @@ async function displayUserRoleManagement() {
       });
     });
 
+    // Add event listeners for row checkboxes
+    document.querySelectorAll('.user-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+            const allChecked = Array.from(document.querySelectorAll('.user-checkbox')).every(cb => cb.checked);
+            const someChecked = Array.from(document.querySelectorAll('.user-checkbox')).some(cb => cb.checked);
+            selectAllCheckbox.checked = allChecked;
+            selectAllCheckbox.indeterminate = !allChecked && someChecked;
+            updateSelectedUsers();
+        });
+    });
+
+
   } catch (error) {
     console.error("Error fetching or displaying users for role management:", error);
-    tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-red-500">Error loading users: ${error.message}</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-red-500">Error loading users: ${error.message}</td></tr>`;
+    selectAllCheckbox.disabled = true;
   }
 }
+
+let selectedUserUIDs = [];
+
+function updateSelectedUsers() {
+    selectedUserUIDs = Array.from(document.querySelectorAll('.user-checkbox:checked'))
+                             .map(checkbox => checkbox.dataset.uid);
+    console.log("Selected UIDs:", selectedUserUIDs);
+    // Enable/disable bulk action buttons based on selection
+    const deleteBtn = document.getElementById('deleteSelectedUsersBtn');
+    const updateRoleBtn = document.getElementById('updateRoleForSelectedUsersBtn');
+    if (deleteBtn) deleteBtn.disabled = selectedUserUIDs.length === 0;
+    if (updateRoleBtn) updateRoleBtn.disabled = selectedUserUIDs.length === 0;
+}
+
+function handleSelectAllUsers(event) {
+    const isChecked = event.target.checked;
+    document.querySelectorAll('.user-checkbox').forEach(checkbox => {
+        checkbox.checked = isChecked;
+    });
+    updateSelectedUsers();
+}
+
+async function handleDeleteSelectedUsers() {
+    if (selectedUserUIDs.length === 0) {
+        uiEnhancementManager.showToast('No users selected for deletion.', 'warning');
+        return;
+    }
+    if (!confirm(`Are you sure you want to delete ${selectedUserUIDs.length} selected user(s)? This action cannot be undone.`)) {
+        return;
+    }
+
+    uiEnhancementManager.showToast('Deleting selected users...', 'info', 5000);
+    try {
+        const bulkDeleteUsersCallable = firebase.functions().httpsCallable('bulkDeleteUsers');
+        const response = await bulkDeleteUsersCallable({ uids: selectedUserUIDs });
+
+        console.log("Bulk delete response:", response.data);
+        let successCount = response.data.successCount || 0;
+        let failureCount = response.data.failureCount || 0;
+        let message = `${successCount} user(s) deleted successfully.`;
+        if (failureCount > 0) {
+            message += ` ${failureCount} user(s) failed to delete. Check console for details.`;
+            // Log detailed errors if provided by the function
+            if (response.data.errors && response.data.errors.length > 0) {
+                response.data.errors.forEach(err => console.error("Bulk delete error detail:", err));
+            }
+        }
+        uiEnhancementManager.showToast(message, failureCount > 0 ? 'warning' : 'success', 7000);
+        displayUserRoleManagement(); // Refresh the list
+        selectedUserUIDs = []; // Clear selection
+        updateSelectedUsers(); // Update button states
+    } catch (error) {
+        console.error("Error calling bulkDeleteUsers function:", error);
+        uiEnhancementManager.showToast(`Error deleting users: ${error.message}. Check console.`, 'error', 7000);
+    }
+}
+
+async function handleUpdateRoleForSelectedUsers() {
+    if (selectedUserUIDs.length === 0) {
+        uiEnhancementManager.showToast('No users selected for role update.', 'warning');
+        return;
+    }
+
+    // Simple prompt for role selection. A modal would be better for UX.
+    const newRole = prompt(`Enter new role for ${selectedUserUIDs.length} selected user(s) (e.g., "admin" or "staff"):`);
+    if (!newRole || (newRole.toLowerCase() !== 'admin' && newRole.toLowerCase() !== 'staff')) {
+        uiEnhancementManager.showToast('Invalid role entered or action cancelled.', 'info');
+        return;
+    }
+
+    if (!confirm(`Are you sure you want to update the role to "${newRole}" for ${selectedUserUIDs.length} selected user(s)?`)) {
+        return;
+    }
+
+    uiEnhancementManager.showToast('Updating roles for selected users...', 'info', 5000);
+    try {
+        const bulkUpdateUserRolesCallable = firebase.functions().httpsCallable('bulkUpdateUserRoles');
+        const response = await bulkUpdateUserRolesCallable({ uids: selectedUserUIDs, newRole: newRole.toLowerCase() });
+
+        console.log("Bulk role update response:", response.data);
+        let successCount = response.data.successCount || 0;
+        let failureCount = response.data.failureCount || 0;
+        let message = `${successCount} user role(s) updated successfully to "${newRole}".`;
+        if (failureCount > 0) {
+            message += ` ${failureCount} user role(s) failed to update. Check console for details.`;
+             if (response.data.errors && response.data.errors.length > 0) {
+                response.data.errors.forEach(err => console.error("Bulk role update error detail:", err));
+            }
+        }
+        uiEnhancementManager.showToast(message, failureCount > 0 ? 'warning' : 'success', 7000);
+        displayUserRoleManagement(); // Refresh the list
+        selectedUserUIDs = []; // Clear selection
+        updateSelectedUsers(); // Update button states
+    } catch (error) {
+        console.error("Error calling bulkUpdateUserRoles function:", error);
+        uiEnhancementManager.showToast(`Error updating roles: ${error.message}. Check console.`, 'error', 7000);
+    }
+}
+
 
 async function handleSaveUserRole(userId, newRole) {
   if (!userId || !newRole) {
@@ -3526,6 +3643,29 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('[DOMContentLoaded] Orders view listeners attached.');
         } catch (e) {
             console.error('[DOMContentLoaded] Error attaching Orders view listeners:', e);
+        }
+
+        // Block 11: User Management specific buttons
+        try {
+            const selectAllUsersCheckbox = document.getElementById('selectAllUsersCheckbox');
+            if (selectAllUsersCheckbox) selectAllUsersCheckbox.addEventListener('change', handleSelectAllUsers);
+            else console.warn("[DOMContentLoaded] selectAllUsersCheckbox not found");
+
+            const deleteSelectedUsersBtn = document.getElementById('deleteSelectedUsersBtn');
+            if (deleteSelectedUsersBtn) {
+                deleteSelectedUsersBtn.addEventListener('click', handleDeleteSelectedUsers);
+                deleteSelectedUsersBtn.disabled = true; // Initially disable
+            } else console.warn("[DOMContentLoaded] deleteSelectedUsersBtn not found");
+
+            const updateRoleForSelectedUsersBtn = document.getElementById('updateRoleForSelectedUsersBtn');
+            if (updateRoleForSelectedUsersBtn) {
+                updateRoleForSelectedUsersBtn.addEventListener('click', handleUpdateRoleForSelectedUsers);
+                updateRoleForSelectedUsersBtn.disabled = true; // Initially disable
+            } else console.warn("[DOMContentLoaded] updateRoleForSelectedUsersBtn not found");
+
+            console.log('[DOMContentLoaded] User Management bulk action listeners attached.');
+        } catch (e) {
+            console.error('[DOMContentLoaded] Error attaching User Management bulk action listeners:', e);
         }
 
         // Initialize other things that don't involve listeners but need DOM ready

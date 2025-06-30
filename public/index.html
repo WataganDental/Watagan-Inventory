@@ -480,9 +480,29 @@
             <!-- User Management Section (from public/index.html) -->
             <section id="userManagementSectionContainer" class="hidden mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
               <h2 class="text-2xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">User Role Management</h2>
-              <div class="overflow-x-auto shadow-md rounded-lg"><table id="userRolesTable" class="min-w-full w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                  <thead class="text-xs text-gray-700 uppercase bg-gray-200 dark:bg-slate-700 dark:text-gray-300"><tr><th scope="col" class="px-6 py-3">User Email</th><th scope="col" class="px-6 py-3">User UID</th><th scope="col" class="px-6 py-3">Current Role</th><th scope="col" class="px-6 py-3">New Role</th><th scope="col" class="px-6 py-3 text-center">Action</th></tr></thead>
-                  <tbody id="userRolesTableBody" class="divide-y dark:divide-slate-700"><tr><td colspan="5" class="text-center p-4">Loading users...</td></tr></tbody></table></div>
+              <div class="mb-4 flex space-x-2">
+                <button id="deleteSelectedUsersBtn" class="btn btn-sm btn-error">Delete Selected</button>
+                <button id="updateRoleForSelectedUsersBtn" class="btn btn-sm btn-warning">Update Role for Selected</button>
+              </div>
+              <div class="overflow-x-auto shadow-md rounded-lg">
+                <table id="userRolesTable" class="min-w-full w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                  <thead class="text-xs text-gray-700 uppercase bg-gray-200 dark:bg-slate-700 dark:text-gray-300">
+                    <tr>
+                      <th scope="col" class="px-6 py-3 text-center">
+                        <input type="checkbox" id="selectAllUsersCheckbox" class="checkbox checkbox-sm">
+                      </th>
+                      <th scope="col" class="px-6 py-3">User Email</th>
+                      <th scope="col" class="px-6 py-3">User UID</th>
+                      <th scope="col" class="px-6 py-3">Current Role</th>
+                      <th scope="col" class="px-6 py-3">New Role</th>
+                      <th scope="col" class="px-6 py-3 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="userRolesTableBody" class="divide-y dark:divide-slate-700">
+                    <tr><td colspan="6" class="text-center p-4">Loading users...</td></tr>
+                  </tbody>
+                </table>
+              </div>
             </section>
     </main>
   </div> 
