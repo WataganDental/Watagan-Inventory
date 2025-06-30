@@ -70,10 +70,11 @@ async function ensureAdmin(context) {
 exports.bulkDeleteUsers = onCall(
   { region: "us-central1" },
   async (request) => {
-    await ensureAdmin(request); // Check for admin privileges
+    try { // Added top-level try-catch
+      await ensureAdmin(request); // Check for admin privileges
 
-    const uids = request.data.uids;
-    if (!uids || !Array.isArray(uids) || uids.length === 0) {
+      const uids = request.data.uids;
+      if (!uids || !Array.isArray(uids) || uids.length === 0) {
       throw new HttpsError("invalid-argument", "UIDs must be a non-empty array.");
     }
     if (uids.length > 100) { // Firebase deleteUsers limit
@@ -136,16 +137,24 @@ exports.bulkDeleteUsers = onCall(
       failureCount: failureCount, // Auth failure
       errors: errors,
     };
+    } catch (error) {
+      console.error("Unhandled error in bulkDeleteUsers:", error);
+      if (error instanceof HttpsError) {
+        throw error; // Re-throw HttpsError instances directly
+      }
+      throw new HttpsError("internal", `An unexpected error occurred: ${error.message}`);
+    }
   }
 );
 
 exports.bulkUpdateUserRoles = onCall(
   { region: "us-central1" },
   async (request) => {
-    await ensureAdmin(request); // Check for admin privileges
+    try { // Added top-level try-catch
+      await ensureAdmin(request); // Check for admin privileges
 
-    const uids = request.data.uids;
-    const newRole = request.data.newRole;
+      const uids = request.data.uids;
+      const newRole = request.data.newRole;
 
     if (!uids || !Array.isArray(uids) || uids.length === 0) {
       throw new HttpsError("invalid-argument", "UIDs must be a non-empty array.");
@@ -199,6 +208,13 @@ exports.bulkUpdateUserRoles = onCall(
       failureCount: failureCount,
       errors: errors,
     };
+    } catch (error) {
+      console.error("Unhandled error in bulkUpdateUserRoles:", error);
+      if (error instanceof HttpsError) {
+        throw error; // Re-throw HttpsError instances directly
+      }
+      throw new HttpsError("internal", `An unexpected error occurred: ${error.message}`);
+    }
   }
 );
 
