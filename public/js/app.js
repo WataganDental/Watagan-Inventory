@@ -105,7 +105,6 @@ function displayInventory(searchTerm = '', supplierFilter = '', locationFilter =
                         </div>
                     </div>
                 </td>
-                <td class="px-2 py-1 text-xs align-middle id-column">${item.id}</td>
                 <td class="px-2 py-1 font-medium align-middle">${item.name}</td>
                 <td class="px-2 py-1 text-center align-middle">${item.quantity}</td>
                 <td class="px-2 py-1 text-center align-middle hidden md:table-cell">${item.minQuantity || 0} / ${item.reorderQuantity || 0}</td>
