@@ -927,8 +927,6 @@ function showView(viewIdToShow, clickedMenuId) {
   });
 
   if (viewFound) {
-      // setActiveMenuItem needs to be globally available or passed.
-      // This is a simplified version assuming menuItems are queryable here.
       const menuItems = [
           document.getElementById('menuDashboard'),
           document.getElementById('menuInventory'),
@@ -936,27 +934,35 @@ function showView(viewIdToShow, clickedMenuId) {
           document.getElementById('menuOrders'),
           document.getElementById('menuReports'),
           document.getElementById('menuQuickStockUpdate'),
-          document.getElementById('menuUserManagement') // Added User Management
+          document.getElementById('menuUserManagement')
       ].filter(item => item !== null);
-      const activeMenuClasses = ['bg-gray-300', 'dark:bg-slate-700', 'font-semibold', 'text-gray-900', 'dark:text-white'];
-      const inactiveMenuClasses = ['text-gray-700', 'dark:text-gray-300', 'hover:bg-gray-300', 'dark:hover:bg-slate-700'];
+
+      // Updated classes for active/inactive states to be more theme-agnostic
+      const activeMenuClasses = ['bg-base-300', 'text-base-content', 'font-semibold'];
+      const inactiveMenuClasses = ['text-base-content', 'hover:bg-base-300/50']; // Use base-content for text, and a slightly opaque bg-base-300 for hover
 
       menuItems.forEach(item => {
+          // Remove all potentially conflicting classes first
+          item.classList.remove(...activeMenuClasses, ...inactiveMenuClasses, 'bg-gray-300', 'dark:bg-slate-700', 'text-gray-900', 'dark:text-white', 'text-gray-700', 'dark:text-gray-300', 'hover:bg-gray-300', 'dark:hover:bg-slate-700');
+
+          const icon = item.querySelector('svg');
+          if (icon) {
+              icon.classList.remove('text-gray-500', 'dark:text-gray-400', 'group-hover:text-gray-700', 'dark:group-hover:text-gray-200', 'text-gray-700', 'dark:text-gray-100');
+          }
+
           if (item.id === clickedMenuId) {
-              inactiveMenuClasses.forEach(cls => item.classList.remove(cls));
               activeMenuClasses.forEach(cls => item.classList.add(cls));
-              const icon = item.querySelector('svg');
               if (icon) {
-                  icon.classList.remove('text-gray-500', 'dark:text-gray-400', 'group-hover:text-gray-700', 'dark:group-hover:text-gray-200');
-                  icon.classList.add('text-gray-700', 'dark:text-gray-100');
+                  // For active items, ensure icon color contrasts with bg-base-300.
+                  // text-base-content should generally work well.
+                  icon.classList.add('text-base-content');
               }
           } else {
-              activeMenuClasses.forEach(cls => item.classList.remove(cls));
               inactiveMenuClasses.forEach(cls => item.classList.add(cls));
-              const icon = item.querySelector('svg');
               if (icon) {
-                  icon.classList.remove('text-gray-700', 'dark:text-gray-100');
-                  icon.classList.add('text-gray-500', 'dark:text-gray-400', 'group-hover:text-gray-700', 'dark:group-hover:text-gray-200');
+                  // For inactive items, icon color can be base-content or a slightly muted version.
+                  // text-base-content is fine.
+                  icon.classList.add('text-base-content');
               }
           }
       });
