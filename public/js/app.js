@@ -1198,28 +1198,34 @@ let modalImage = null;
 let closeImageModalBtn = null;
 
 // Dark Mode Toggle Functionality
-const userPreference = localStorage.getItem('darkMode');
-const systemPreference = window.matchMedia('(prefers-color-scheme: dark)').matches;
+const LIGHT_THEME_NAME = 'nord'; // Based on output.css analysis
+const DARK_THEME_NAME = 'sunset'; // Based on output.css analysis
+const THEME_STORAGE_KEY = 'theme'; // Changed from 'darkMode' to store theme name
 
 const applyDarkMode = () => {
-  document.documentElement.classList.add('dark');
-  localStorage.setItem('darkMode', 'enabled');
+  document.documentElement.setAttribute('data-theme', DARK_THEME_NAME);
+  localStorage.setItem(THEME_STORAGE_KEY, DARK_THEME_NAME);
+  console.log('Dark mode applied, data-theme set to:', DARK_THEME_NAME);
 };
 
-const removeDarkMode = () => {
-  document.documentElement.classList.remove('dark');
-  localStorage.setItem('darkMode', 'disabled');
+const removeDarkMode = () => { // This function now applies the light theme
+  document.documentElement.setAttribute('data-theme', LIGHT_THEME_NAME);
+  localStorage.setItem(THEME_STORAGE_KEY, LIGHT_THEME_NAME);
+  console.log('Light mode applied, data-theme set to:', LIGHT_THEME_NAME);
 };
 
 const initialDarkModeCheck = () => {
-  if (userPreference === 'enabled') {
+  const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+  const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+  if (storedTheme === DARK_THEME_NAME) {
     applyDarkMode();
-  } else if (userPreference === 'disabled') {
-    removeDarkMode();
-  } else if (systemPreference) {
-    applyDarkMode();
+  } else if (storedTheme === LIGHT_THEME_NAME) {
+    removeDarkMode(); // Apply light theme
+  } else if (systemPrefersDark) {
+    applyDarkMode(); // Default to dark if system prefers and no user choice
   } else {
-    removeDarkMode();
+    removeDarkMode(); // Default to light
   }
 };
 
@@ -2851,37 +2857,56 @@ function setupEnhancedDarkMode() {
     if (darkModeToggle) {
         // Update button text based on current mode
         function updateDarkModeButton() {
-            const isDark = document.documentElement.classList.contains('dark');
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const isDark = currentTheme === DARK_THEME_NAME;
             darkModeToggle.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
             darkModeToggle.setAttribute('title', isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode');
         }
         
-        // Initial button update
+        // Initial button update - this will be called after initialDarkModeCheck sets the theme
         updateDarkModeButton();
         
-        darkModeToggle.addEventListener('click', (e) => {
-            e.preventDefault();
-            const isDark = document.documentElement.classList.contains('dark');
-            
-            if (isDark) {
-                removeDarkMode();
-                updateDarkModeButton();
-                if (typeof uiEnhancementManager !== 'undefined') {
-                    uiEnhancementManager.showToast('Light mode enabled', 'info');
-                }
-                console.log('Switched to light mode');
-            } else {
-                applyDarkMode();
-                updateDarkModeButton();
-                if (typeof uiEnhancementManager !== 'undefined') {
-                    uiEnhancementManager.showToast('Dark mode enabled', 'info');
-                }
-                console.log('Switched to dark mode');
-            }
-        });
-        console.log('Enhanced dark mode toggle setup complete');
+        // The main event listener is already set up in DOMContentLoaded.
+        // This function might be redundant if DOMContentLoaded always runs first and sets up the listener.
+        // However, if it's called independently, it needs its own listener or ensure the one in DOMContentLoaded is robust.
+        // For safety and to ensure it works if called separately, let's ensure it has its own,
+        // but be mindful of potential duplicate listeners if not managed carefully.
+        // The one in DOMContentLoaded should be sufficient. We can simplify this function
+        // to mainly handle the toast if the listener is reliably set elsewhere.
+
+        // If the listener in DOMContentLoaded is the primary one, this function might only be for the toast
+        // or can be removed if the DOMContentLoaded listener handles the toast as well.
+        // Let's assume the DOMContentLoaded listener is the primary one.
+        // This function can be simplified or its logic merged.
+
+        // The 'click' listener logic is now primarily in DOMContentLoaded.
+        // This function, if still called by initializeAllEnhancements,
+        // will re-run updateDarkModeButton which is fine.
+        // The event listener itself should ideally be attached only once.
+        // The current DOMContentLoaded code adds the listener correctly.
+        // So, this function's listener part is duplicative if initializeAllEnhancements is called after DOMContentLoaded.
+
+        // To avoid issues with duplicate listeners, we can ensure this only updates the button text,
+        // assuming the event listener is already in place from DOMContentLoaded.
+        // Or, ensure this function is self-contained if it might be called when the DOMContentLoaded one isn't.
+
+        // Given the current structure, let's ensure this only updates the button if it exists
+        // and let the DOMContentLoaded handle the event listener.
+        // The toast logic is also in the DOMContentLoaded listener now (implicitly, it calls the same functions).
+
+        // If this function is still being called by initializeAllEnhancements,
+        // ensure it doesn't add a *new* event listener each time.
+        // The current setup in DOMContentLoaded already handles the click.
+        // So, this function could potentially be simplified or removed if setupEnhancedDarkMode
+        // is only meant to be called once.
+
+        // The `uiEnhancementManager.showToast` is now part of the main listener in DOMContentLoaded.
+        // Let's adjust this function to mainly log and ensure button text is correct,
+        // assuming the primary event listener is in DOMContentLoaded.
+
+        console.log('Enhanced dark mode toggle setup (button text update part) complete.');
     } else {
-        console.error('darkModeToggle element not found');
+        console.error('darkModeToggle element not found during setupEnhancedDarkMode call.');
     }
 }
 
@@ -2988,18 +3013,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const darkModeToggle = document.getElementById('darkModeToggle');
             if (darkModeToggle) {
-                // Logic from setupEnhancedDarkMode integrated here or ensure setupEnhancedDarkMode is called
                 function updateDarkModeButtonText() {
-                    const isDark = document.documentElement.classList.contains('dark');
+                    const currentTheme = document.documentElement.getAttribute('data-theme');
+                    const isDark = currentTheme === DARK_THEME_NAME;
                     darkModeToggle.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
                     darkModeToggle.setAttribute('title', isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode');
                 }
-                updateDarkModeButtonText(); // Initial text
+                updateDarkModeButtonText(); // Initial text based on initialDarkModeCheck
+
                 darkModeToggle.addEventListener('click', (e) => {
                     e.preventDefault();
-                    const isDark = document.documentElement.classList.contains('dark');
-                    if (isDark) removeDarkMode(); else applyDarkMode();
+                    const currentTheme = document.documentElement.getAttribute('data-theme');
+                    if (currentTheme === DARK_THEME_NAME) {
+                        removeDarkMode(); // This now applies LIGHT_THEME_NAME
+                    } else {
+                        applyDarkMode(); // This applies DARK_THEME_NAME
+                    }
                     updateDarkModeButtonText(); // Update text after change
+                    // The toast notification is handled by the setupEnhancedDarkMode function if it's also called.
+                    // To avoid duplicate toasts if both run, we might only call showToast in one place.
+                    // For now, let's assume setupEnhancedDarkMode handles its own toast.
+                    // UPDATE: Adding toast here as setupEnhancedDarkMode was simplified.
+                    if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                        uiEnhancementManager.showToast(currentTheme === DARK_THEME_NAME ? 'Light mode enabled' : 'Dark mode enabled', 'info');
+                    }
                 });
             } else { console.warn('[DOMContentLoaded] darkModeToggle not found'); }
 
