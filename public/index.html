@@ -422,7 +422,27 @@
                         <a id="fileUploadModeTab" class="tab">File Upload</a>
                     </div>
                     <div id="manualBatchModeContent"><div id="qsuBatchEntriesContainer" class="space-y-3 mb-4 max-h-96 overflow-y-auto"></div><div class="flex gap-2 mb-4"><input type="text" id="qsuProductSearch" placeholder="Search Product by Name/ID" class="input input-bordered flex-grow"><button id="qsuAddManualEntryBtn" class="btn btn-info">Add Row</button></div><div id="qsuSearchResults" class="mb-4 max-h-40 overflow-y-auto"></div><button id="qsuSubmitBatchBtn" class="btn btn-success w-full">Submit Batch Update</button></div>
-                    <div id="barcodeScannerModeContent" class="hidden space-y-4"><div><button id="qsuScanProductBtn" class="btn btn-accent mr-2">Scan Product QR</button><button id="qsuStopScanBtn" class="btn btn-error hidden">Stop Scanner</button></div><video id="qsuVideo" class="w-full max-w-md mx-auto hidden rounded-lg border bg-gray-200"></video><p id="qsuScanResult" class="text-center font-medium"></p><div id="qsuScannedProductInfo" class="hidden text-center p-4 border rounded-md"><h4 id="qsuProductName" class="text-lg font-semibold"></h4><p>Current Stock: <span id="qsuCurrentStock"></span></p><div class="form-control w-full max-w-xs mx-auto mt-2"><label class="label"><span class="label-text">Adjust Quantity By:</span></label><input type="number" id="qsuAdjustQuantity" value="1" class="input input-bordered"></div><div class="flex gap-2 justify-center mt-3"><button id="qsuAdjustIncrementBtn" class="btn btn-success">Add to Stock</button><button id="qsuAdjustDecrementBtn" class="btn btn-warning">Remove from Stock</button></div></div><div id="barcodeModeActionQRCodesContainer" class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4"></div><p id="barcodeScannerStatus" class="p-2 rounded-md bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200 text-sm"></p><p id="barcodeLastActionFeedback" class="text-sm"></p></div>
+                    <div id="barcodeScannerModeContent" class="hidden space-y-4">
+                        <div><button id="qsuScanProductBtn" class="btn btn-accent mr-2">Scan Product QR</button><button id="qsuStopScanBtn" class="btn btn-error hidden">Stop Scanner</button></div>
+                        <video id="qsuVideo" class="w-full max-w-md mx-auto hidden rounded-lg border bg-gray-200 dark:bg-slate-700" playsinline></video>
+                        <canvas id="qsuCanvas" class="hidden" style="width: 100%; max-width: 400px; margin: auto; display: block;"></canvas>
+                        <p id="qsuScanResult" class="text-center font-medium"></p>
+                        <div id="qsuScannedProductInfo" class="hidden text-center p-4 border rounded-md">
+                            <h4 id="qsuProductName" class="text-lg font-semibold"></h4>
+                            <p>Current Stock: <span id="qsuCurrentStock"></span></p>
+                            <div class="form-control w-full max-w-xs mx-auto mt-2">
+                                <label class="label"><span class="label-text">Adjust Quantity By:</span></label>
+                                <input type="number" id="qsuAdjustQuantity" value="1" class="input input-bordered">
+                            </div>
+                            <div class="flex gap-2 justify-center mt-3">
+                                <button id="qsuAdjustIncrementBtn" class="btn btn-success">Add to Stock</button>
+                                <button id="qsuAdjustDecrementBtn" class="btn btn-warning">Remove from Stock</button>
+                            </div>
+                        </div>
+                        <div id="barcodeModeActionQRCodesContainer" class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4"></div>
+                        <p id="barcodeScannerStatus" class="p-2 rounded-md bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200 text-sm"></p>
+                        <p id="barcodeLastActionFeedback" class="text-sm"></p>
+                    </div>
                     <div id="fileUploadModeContent" class="hidden space-y-4"><p class="text-sm">Upload a CSV or TXT file... Format: `ProductID,Quantity` or `ProductName,Quantity` per line.</p><input type="file" id="qsuFileUpload" accept=".csv,.txt" class="file-input file-input-bordered w-full"><button id="qsuProcessFileBtn" class="btn btn-primary">Process File</button><div id="qsuFileFeedback" class="mt-2 text-sm"></div></div>
                 </div>
             </section>
