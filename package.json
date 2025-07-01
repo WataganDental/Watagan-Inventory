@@ -7,7 +7,7 @@
   "scripts": {
     "start": "http-server public -p 8081 -c-1",
     "dev": "concurrently \"npm run build:css\" \"npm run start\"",
-    "build": "npm run build:css:prod",
+    "build": "rimraf dist && node --max_old_space_size=8192 ./node_modules/@angular/cli/bin/ng build",
     "build:css": "npx @tailwindcss/cli -i ./input.css -o ./public/css/output.css --watch",
     "build:css:prod": "npx @tailwindcss/cli -i ./input.css -o ./public/css/output.css --minify",
     "test": "jest",

@@ -3659,6 +3659,479 @@ function initializeAllEnhancements() {
     console.log('All enhancements initialized');
 }
 
+// START: Add Product Modal Functions
+function openAddProductModal() {
+    const modal = document.getElementById('addProductModal');
+    if (!modal) {
+        console.error("Add Product Modal element not found.");
+        return;
+    }
+
+    // Populate supplier and location dropdowns in the modal
+    // These should ideally use the same functions as the main form if the structure is identical
+    // For simplicity, directly populating here, assuming `suppliers` and `locations` arrays are globally available and loaded.
+
+    const modalSupplierDropdown = document.getElementById('modalProductSupplier');
+    if (modalSupplierDropdown) {
+        modalSupplierDropdown.innerHTML = '<option value="">Select Supplier</option>'; // Reset
+        suppliers.forEach(supplier => {
+            const option = document.createElement('option');
+            option.value = supplier;
+            option.textContent = supplier;
+            modalSupplierDropdown.appendChild(option);
+        });
+    } else {
+        console.warn("Modal supplier dropdown not found.");
+    }
+
+    const modalLocationDropdown = document.getElementById('modalProductLocation');
+    if (modalLocationDropdown) {
+        modalLocationDropdown.innerHTML = '<option value="">Select Location</option>'; // Reset
+        locations.forEach(location => {
+            const option = document.createElement('option');
+            option.value = location.name; // Assuming location objects have a 'name' property
+            option.textContent = location.name;
+            modalLocationDropdown.appendChild(option);
+        });
+    } else {
+        console.warn("Modal location dropdown not found.");
+    }
+
+    // Reset form fields in the modal
+    document.getElementById('modalProductId').value = '';
+    document.getElementById('modalProductName').value = '';
+    document.getElementById('modalProductQuantity').value = '';
+    document.getElementById('modalProductCost').value = '';
+    document.getElementById('modalProductMinQuantity').value = '';
+    document.getElementById('modalProductReorderQuantity').value = '';
+    document.getElementById('modalProductQuantityOrdered').value = '';
+    document.getElementById('modalProductQuantityBackordered').value = '';
+    document.getElementById('modalProductSupplier').value = '';
+    document.getElementById('modalProductLocation').value = '';
+    document.getElementById('modalProductPhotoPreview').src = '';
+    document.getElementById('modalProductPhotoPreview').classList.add('hidden');
+    // Reset photo capture elements if they are part of the modal
+    // This assumes similar photo capture logic setup for modal elements
+    cancelModalPhoto(); // Call a modal-specific cancel photo function
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex'); // Assuming flex is used for centering
+    document.getElementById('modalProductName').focus(); // Focus on the first input
+}
+
+function closeAddProductModal() {
+    const modal = document.getElementById('addProductModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+    cancelModalPhoto(); // Ensure camera is off if it was on
+}
+
+async function submitModalProduct() {
+    const id = document.getElementById('modalProductId').value || generateUUID();
+    const name = document.getElementById('modalProductName').value.trim();
+    const quantity = parseInt(document.getElementById('modalProductQuantity').value) || 0;
+    const cost = parseFloat(document.getElementById('modalProductCost').value) || 0;
+    const minQuantity = parseInt(document.getElementById('modalProductMinQuantity').value) || 0;
+    const reorderQuantity = parseInt(document.getElementById('modalProductReorderQuantity').value) || 0;
+    const quantityOrdered = parseInt(document.getElementById('modalProductQuantityOrdered').value) || 0;
+    const quantityBackordered = parseInt(document.getElementById('modalProductQuantityBackordered').value) || 0;
+    const supplier = document.getElementById('modalProductSupplier').value;
+    const location = document.getElementById('modalProductLocation').value;
+    const currentPhotoSrc = document.getElementById('modalProductPhotoPreview').src;
+
+    if (name && quantity >= 0 && cost >= 0 && minQuantity >= 0 && supplier && location) {
+        const name_lowercase = name.toLowerCase();
+        const name_words_lc = name_lowercase.split(' ').filter(word => word.length > 0);
+        try {
+            let photoUrlToSave = '';
+            if (currentPhotoSrc && currentPhotoSrc.startsWith('data:image')) { // New photo captured
+                photoUrlToSave = await uploadPhoto(id, currentPhotoSrc); // Use existing uploadPhoto function
+            }
+            // Note: This modal is for ADDING only, so no "editing existing photo" logic needed here.
+
+            await db.collection('inventory').doc(id).set({
+                id, name, name_lowercase, name_words_lc, quantity, cost, minQuantity,
+                reorderQuantity, quantityOrdered, productQuantityBackordered: quantityBackordered, // Ensure field name matches Firestore
+                supplier, location, photo: photoUrlToSave
+            });
+
+            closeAddProductModal();
+            inventory = await inventoryManager.loadInventory(); // Refresh local inventory
+
+            await logActivity('product_added_modal', `Product: ${name} added via dashboard modal.`, id);
+
+            displayInventory();
+            updateInventoryDashboard();
+            updateToOrderTable();
+            updateEnhancedDashboard(); // Also update the main dashboard stats
+
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast(`Product "${name}" added successfully!`, 'success');
+            }
+
+        } catch (error) {
+            console.error('Error submitting product from modal:', error);
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast('Failed to add product: ' + error.message, 'error');
+            } else {
+                alert('Failed to add product: ' + error.message);
+            }
+        }
+    } else {
+        if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+            uiEnhancementManager.showToast('Please fill all required fields with valid values.', 'warning');
+        } else {
+            alert('Please fill all required fields with valid values.');
+        }
+    }
+}
+
+// Photo functions specific to the modal to avoid ID conflicts
+let modalPhotoStream = null;
+async function startModalPhotoCapture() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('Camera access not supported by this browser.');
+    return;
+  }
+  try {
+    modalPhotoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const video = document.getElementById('modalPhotoVideo');
+    video.srcObject = modalPhotoStream;
+    video.classList.remove('hidden');
+    document.getElementById('modalCapturePhotoBtn').classList.add('hidden');
+    document.getElementById('modalTakePhotoBtn').classList.remove('hidden');
+    document.getElementById('modalCancelPhotoBtn').classList.remove('hidden');
+  } catch (err) {
+    console.error('Error accessing camera for modal:', err);
+    alert('Error accessing camera: ' + err.message);
+  }
+}
+
+async function takeModalPhoto() {
+  const video = document.getElementById('modalPhotoVideo');
+  const canvas = document.getElementById('modalPhotoCanvas');
+  const context = canvas.getContext('2d');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const photoData = canvas.toDataURL('image/jpeg', 0.5);
+  document.getElementById('modalProductPhotoPreview').src = photoData;
+  document.getElementById('modalProductPhotoPreview').classList.remove('hidden');
+  cancelModalPhoto();
+}
+
+function cancelModalPhoto() {
+  if (modalPhotoStream) {
+    modalPhotoStream.getTracks().forEach(track => track.stop());
+    modalPhotoStream = null;
+  }
+  const video = document.getElementById('modalPhotoVideo');
+  if(video) {
+    video.srcObject = null;
+    video.classList.add('hidden');
+  }
+  const captureBtn = document.getElementById('modalCapturePhotoBtn');
+  if(captureBtn) captureBtn.classList.remove('hidden');
+  const takeBtn = document.getElementById('modalTakePhotoBtn');
+  if(takeBtn) takeBtn.classList.add('hidden');
+  const cancelBtn = document.getElementById('modalCancelPhotoBtn');
+  if(cancelBtn) cancelBtn.classList.add('hidden');
+}
+// END: Add Product Modal Functions
+
+// START: Update Stock Modal Functions
+let currentUpdateStockModalProductId = null;
+
+function openUpdateStockModal() {
+    const modal = document.getElementById('updateStockModal');
+    if (!modal) {
+        console.error("Update Stock Modal element not found.");
+        return;
+    }
+    console.log("Opening Update Stock Modal");
+
+    // Reset fields
+    document.getElementById('updateStockProductIdInput').value = '';
+    document.getElementById('updateStockScanResult').textContent = '';
+    document.getElementById('updateStockScannedProductInfo').classList.add('hidden');
+    document.getElementById('updateStockProductName').textContent = '';
+    document.getElementById('updateStockCurrentStock').textContent = '';
+    document.getElementById('updateStockAdjustQuantity').value = '1';
+    document.getElementById('updateStockProductSpecificQR').innerHTML = '';
+    document.getElementById('updateStockProductSpecificImage').classList.add('hidden');
+    setUpdateStockModalStatus('Ready for Product ID input.', false);
+    setUpdateStockModalLastActionFeedback('---', false);
+    currentUpdateStockModalProductId = null;
+
+    // Populate action QR codes
+    displayUpdateStockModalActionQRCodes();
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.getElementById('updateStockProductIdInput').focus();
+}
+
+function closeUpdateStockModal() {
+    const modal = document.getElementById('updateStockModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+    currentUpdateStockModalProductId = null; // Clear context
+    console.log("Update Stock Modal closed");
+}
+
+async function handleUpdateStockModalScan(productId) {
+    console.log("Update Stock Modal: Processing Product ID:", productId);
+    setUpdateStockModalStatus(`Processing ID: ${productId}...`, false);
+    currentUpdateStockModalProductId = productId;
+
+    const product = inventory.find(p => p.id === productId);
+
+    const productNameEl = document.getElementById('updateStockProductName');
+    const currentStockEl = document.getElementById('updateStockCurrentStock');
+    const scannedProductInfoEl = document.getElementById('updateStockScannedProductInfo');
+    const productSpecificQREl = document.getElementById('updateStockProductSpecificQR');
+    const productSpecificImageEl = document.getElementById('updateStockProductSpecificImage');
+
+    if (!productNameEl || !currentStockEl || !scannedProductInfoEl || !productSpecificQREl || !productSpecificImageEl) {
+        console.error("Update Stock Modal: One or more UI elements for displaying product info are missing.");
+        setUpdateStockModalStatus("UI error displaying product info.", true);
+        return;
+    }
+
+    if (product) {
+        productNameEl.textContent = product.name;
+        currentStockEl.textContent = product.quantity;
+        scannedProductInfoEl.classList.remove('hidden');
+
+        setUpdateStockModalStatus(`Product: ${product.name}. Adjust quantity or scan action.`, false);
+        setUpdateStockModalLastActionFeedback("Product identified.", false);
+
+        productSpecificQREl.innerHTML = '';
+        if (typeof QRCode !== 'undefined') {
+            new QRCode(productSpecificQREl, {
+                text: product.id, width: 80, height: 80,
+                colorDark: document.documentElement.classList.contains('dark') ? "#FFFFFF" : "#000000",
+                colorLight: document.documentElement.classList.contains('dark') ? "#4A5568" : "#FFFFFF",
+            });
+        }
+        if (product.photo) {
+            productSpecificImageEl.src = product.photo;
+            productSpecificImageEl.classList.remove('hidden');
+        } else {
+            productSpecificImageEl.classList.add('hidden');
+        }
+    } else {
+        productNameEl.textContent = 'N/A';
+        currentStockEl.textContent = 'N/A';
+        scannedProductInfoEl.classList.add('hidden');
+        productSpecificQREl.innerHTML = '<span class="text-xs">N/A</span>';
+        productSpecificImageEl.classList.add('hidden');
+        setUpdateStockModalStatus(`Product ID "${productId}" not found in inventory.`, true);
+        setUpdateStockModalLastActionFeedback(`Failed to find product: ${productId}`, true);
+        currentUpdateStockModalProductId = null;
+    }
+}
+
+async function adjustUpdateStockModalQuantity(adjustmentType) {
+    const quantityToAdjustStr = document.getElementById('updateStockAdjustQuantity').value;
+    const quantityToAdjust = parseInt(quantityToAdjustStr);
+
+    const showToast = (message, type = 'info') => {
+        if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+            uiEnhancementManager.showToast(message, type);
+        } else {
+            setUpdateStockModalLastActionFeedback(message, type === 'error' || type === 'warning');
+        }
+    };
+
+    if (!currentUpdateStockModalProductId) {
+        showToast("No active product selected for quantity adjustment.", 'error');
+        return;
+    }
+    if (isNaN(quantityToAdjust) || quantityToAdjust <= 0) {
+        showToast("Invalid quantity for adjustment. Must be a positive number.", 'error');
+        return;
+    }
+
+    try {
+        const productRef = db.collection('inventory').doc(currentUpdateStockModalProductId);
+        const productDoc = await productRef.get();
+
+        if (!productDoc.exists) {
+            showToast(`Product ${currentUpdateStockModalProductId} not found.`, 'error');
+            return;
+        }
+
+        const productData = productDoc.data();
+        let currentQuantity = productData.quantity;
+        let newQuantity;
+
+        if (adjustmentType === 'increment') {
+            newQuantity = currentQuantity + quantityToAdjust;
+            await productRef.update({ quantity: newQuantity });
+            showToast(`Added ${quantityToAdjust} to ${productData.name}. New stock: ${newQuantity}`, 'success');
+            await logActivity('stock_adjusted_modal', `Product: ${productData.name} quantity increased by ${quantityToAdjust} (New: ${newQuantity}) via modal`, currentUpdateStockModalProductId, productData.name);
+        } else if (adjustmentType === 'decrement') {
+            if (currentQuantity >= quantityToAdjust) {
+                newQuantity = currentQuantity - quantityToAdjust;
+                await productRef.update({ quantity: newQuantity });
+                showToast(`Removed ${quantityToAdjust} from ${productData.name}. New stock: ${newQuantity}`, 'success');
+                await logActivity('stock_adjusted_modal', `Product: ${productData.name} quantity decreased by ${quantityToAdjust} (New: ${newQuantity}) via modal`, currentUpdateStockModalProductId, productData.name);
+            } else {
+                showToast(`Cannot remove ${quantityToAdjust}. Only ${currentQuantity} in stock for ${productData.name}.`, 'warning');
+                return;
+            }
+        } else {
+            showToast("Invalid adjustment type.", 'error');
+            return;
+        }
+
+        // Update local inventory and UI
+        const inventoryIndex = inventory.findIndex(p => p.id === currentUpdateStockModalProductId);
+        if (inventoryIndex !== -1) {
+            inventory[inventoryIndex].quantity = newQuantity;
+        }
+        document.getElementById('updateStockCurrentStock').textContent = newQuantity; // Update modal UI
+        displayInventory(); // Refresh main inventory table if visible
+        updateInventoryDashboard();
+        updateToOrderTable();
+        updateEnhancedDashboard(); // Update main dashboard stats
+
+    } catch (error) {
+        console.error("Error adjusting product quantity in modal:", error);
+        showToast(`Error updating stock: ${error.message}`, 'error');
+    }
+}
+
+
+async function displayUpdateStockModalActionQRCodes() {
+  const container = document.getElementById('updateStockActionQRCodesContainer');
+  if (!container) {
+    console.error('Update Stock Modal Action QR Codes container not found.');
+    return;
+  }
+  container.innerHTML = ''; // Clear previous QRs
+
+  const actions = [
+    { label: '+10', data: 'ACTION_ADD_10', type: 'add' }, { label: '+1', data: 'ACTION_ADD_1', type: 'add' },
+    { label: '-10', data: 'ACTION_SUB_10', type: 'sub' }, { label: '-1', data: 'ACTION_SUB_1', type: 'sub' }
+    // Add more actions as needed, e.g. +5, -5
+  ];
+
+  if (typeof QRCode === 'undefined') {
+    container.innerHTML = '<p class="text-red-500 dark:text-red-400 col-span-full text-xs">Error: QRCode lib missing.</p>';
+    return;
+  }
+
+  actions.forEach(action => {
+    const actionDiv = document.createElement('div');
+    actionDiv.className = `flex flex-col items-center p-1 border dark:border-slate-600 rounded-md shadow-sm
+                           ${action.type === 'add' ? 'bg-green-50 hover:bg-green-100 dark:bg-green-800 dark:hover:bg-green-700' : 'bg-red-50 hover:bg-red-100 dark:bg-red-800 dark:hover:bg-red-700'}
+                           transition-colors duration-150 cursor-pointer`;
+    actionDiv.title = `Scan to ${action.label} units`;
+
+    const qrCodeElem = document.createElement('div');
+    actionDiv.appendChild(qrCodeElem);
+
+    const labelElem = document.createElement('p');
+    labelElem.textContent = action.label;
+    labelElem.className = 'text-xs mt-1 dark:text-gray-200';
+    actionDiv.appendChild(labelElem);
+
+    actionDiv.addEventListener('click', async () => {
+        // Simulate scanning this action QR code
+        await processUpdateStockModalAction(action.data);
+    });
+
+    container.appendChild(actionDiv);
+
+    try {
+      new QRCode(qrCodeElem, {
+        text: action.data, width: 60, height: 60, // Smaller QRs for modal
+        colorDark: document.documentElement.classList.contains('dark') ? "#E2E8F0" : "#1E293B", // Adapting colors
+        colorLight: document.documentElement.classList.contains('dark') ? "#334155" : "#F8FAFC",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } catch (e) {
+      qrCodeElem.textContent = 'Error';
+    }
+  });
+}
+
+async function processUpdateStockModalAction(actionData) {
+    if (!currentUpdateStockModalProductId) {
+        setUpdateStockModalStatus('Please scan a product ID first.', true);
+        if (typeof uiEnhancementManager !== 'undefined') uiEnhancementManager.showToast('Scan product ID first.', 'warning');
+        return;
+    }
+    if (!actionData.startsWith('ACTION_')) {
+        setUpdateStockModalStatus(`Invalid action data: ${actionData}`, true);
+        return;
+    }
+
+    const parts = actionData.split('_'); // e.g., ACTION_ADD_10
+    if (parts.length === 3) {
+        const operation = parts[1].toLowerCase(); // 'add' or 'sub'
+        const quantity = parseInt(parts[2]);
+
+        if (isNaN(quantity)) {
+            setUpdateStockModalStatus(`Invalid quantity in action: ${actionData}`, true);
+            return;
+        }
+
+        let adjustmentType;
+        if (operation === 'add') adjustmentType = 'increment';
+        else if (operation === 'sub') adjustmentType = 'decrement';
+        else {
+            setUpdateStockModalStatus(`Unknown operation in action: ${actionData}`, true);
+            return;
+        }
+
+        // Temporarily set the modal's adjust quantity input to the action's quantity
+        const originalAdjustQty = document.getElementById('updateStockAdjustQuantity').value;
+        document.getElementById('updateStockAdjustQuantity').value = quantity.toString();
+
+        await adjustUpdateStockModalQuantity(adjustmentType);
+
+        // Restore original adjust quantity (or keep it as is, depending on desired UX)
+        // For now, let's restore it. Or perhaps better, keep the scanned action's quantity.
+        // Let's keep it, as it might be what the user wants for subsequent manual clicks.
+        // document.getElementById('updateStockAdjustQuantity').value = originalAdjustQty;
+
+        // Refocus on the Product ID input for the next scan
+        document.getElementById('updateStockProductIdInput').focus();
+        document.getElementById('updateStockProductIdInput').select();
+
+
+    } else {
+        setUpdateStockModalStatus(`Malformed action QR code: ${actionData}`, true);
+    }
+}
+
+
+function setUpdateStockModalStatus(message, isError = false) {
+    const statusEl = document.getElementById('updateStockScannerStatus');
+    if (statusEl) {
+        statusEl.textContent = message;
+        statusEl.className = `p-2 rounded-md text-sm min-h-[36px] ${isError ? 'bg-red-100 dark:bg-red-700 text-red-700 dark:text-red-200' : 'bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200'}`;
+    }
+}
+
+function setUpdateStockModalLastActionFeedback(message, isError = false) {
+    const feedbackEl = document.getElementById('updateStockLastActionFeedback');
+    if (feedbackEl) {
+        feedbackEl.textContent = message;
+        feedbackEl.className = `text-sm min-h-[20px] ${isError ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`;
+    }
+}
+
+// END: Update Stock Modal Functions
+
+
 // Call initialization on DOM ready
 document.addEventListener('DOMContentLoaded', function() {
     console.log('[DOMContentLoaded] Starting setup...');
@@ -4264,19 +4737,99 @@ document.addEventListener('DOMContentLoaded', function() {
             if(refreshDashboardBtn) refreshDashboardBtn.addEventListener('click', updateEnhancedDashboard);
             else console.warn("[DOMContentLoaded] refreshDashboardBtn not found");
 
-            const quickAddProductBtn = document.getElementById('quickAddProductBtn');
-            if(quickAddProductBtn) quickAddProductBtn.addEventListener('click', () => {
-                showView('inventoryViewContainer', 'menuInventory'); // Switch to inventory view
-                setTimeout(() => { // Ensure form is visible
-                    document.getElementById('productName').focus(); // Focus on product name
-                    resetProductForm(); // Clear form for new product
-                }, 100); // Small delay to ensure view switch
-            });
-            else console.warn("[DOMContentLoaded] quickAddProductBtn not found");
+            const quickAddProductBtn = document.getElementById('quickAddProductBtn'); // This ID is for the original button that switches view
+            if (quickAddProductBtn) {
+                quickAddProductBtn.addEventListener('click', () => {
+                    showView('inventoryViewContainer', 'menuInventory'); // Switch to inventory view
+                    setTimeout(() => { // Ensure form is visible
+                        const productFormCheckbox = document.getElementById('toggleProductFormCheckbox');
+                        if (productFormCheckbox) productFormCheckbox.checked = true; // Open the collapsible form
+                        document.getElementById('productName').focus(); // Focus on product name
+                        resetProductForm(); // Clear form for new product
+                    }, 100); // Small delay to ensure view switch
+                });
+            } else console.warn("[DOMContentLoaded] quickAddProductBtn (view switcher) not found");
 
-            const quickStockUpdateBtn = document.getElementById('quickStockUpdateBtn');
-            if(quickStockUpdateBtn) quickStockUpdateBtn.addEventListener('click', () => showView('quickStockUpdateContainer', 'menuQuickStockUpdate'));
-            else console.warn("[DOMContentLoaded] quickStockUpdateBtn not found");
+
+            const dashboardAddProductBtn = document.getElementById('dashboardAddProductBtn'); // New button for the modal
+            if (dashboardAddProductBtn) {
+                dashboardAddProductBtn.addEventListener('click', () => {
+                    openAddProductModal();
+                });
+            } else console.warn("[DOMContentLoaded] dashboardAddProductBtn (modal opener) not found");
+
+            // Event listeners for the new Add Product Modal
+            const closeAddProductModalBtn = document.getElementById('closeAddProductModalBtn');
+            if (closeAddProductModalBtn) closeAddProductModalBtn.addEventListener('click', closeAddProductModal);
+            else console.warn("[DOMContentLoaded] closeAddProductModalBtn not found");
+
+            const modalProductSubmitBtn = document.getElementById('modalProductSubmitBtn');
+            if (modalProductSubmitBtn) modalProductSubmitBtn.addEventListener('click', submitModalProduct);
+            else console.warn("[DOMContentLoaded] modalProductSubmitBtn not found");
+
+            const modalCancelProductBtn = document.getElementById('modalCancelProductBtn');
+            if (modalCancelProductBtn) modalCancelProductBtn.addEventListener('click', closeAddProductModal);
+            else console.warn("[DOMContentLoaded] modalCancelProductBtn not found");
+
+            // Photo capture buttons for the modal
+            const modalCapturePhotoBtn = document.getElementById('modalCapturePhotoBtn');
+            if (modalCapturePhotoBtn) modalCapturePhotoBtn.addEventListener('click', startModalPhotoCapture);
+            else console.warn("[DOMContentLoaded] modalCapturePhotoBtn not found");
+
+            const modalTakePhotoBtn = document.getElementById('modalTakePhotoBtn');
+            if (modalTakePhotoBtn) modalTakePhotoBtn.addEventListener('click', takeModalPhoto);
+            else console.warn("[DOMContentLoaded] modalTakePhotoBtn not found");
+
+            const modalCancelPhotoBtn = document.getElementById('modalCancelPhotoBtn');
+            if (modalCancelPhotoBtn) modalCancelPhotoBtn.addEventListener('click', cancelModalPhoto);
+            else console.warn("[DOMContentLoaded] modalCancelPhotoBtn not found");
+
+
+            const quickStockUpdateBtn = document.getElementById('quickStockUpdateBtn'); // Button on dashboard
+            if (quickStockUpdateBtn) {
+                quickStockUpdateBtn.addEventListener('click', () => {
+                    openUpdateStockModal();
+                });
+            } else console.warn("[DOMContentLoaded] quickStockUpdateBtn (dashboard modal opener) not found");
+
+            // Event listeners for the new Update Stock Modal
+            const closeUpdateStockModalBtn = document.getElementById('closeUpdateStockModalBtn');
+            if (closeUpdateStockModalBtn) closeUpdateStockModalBtn.addEventListener('click', closeUpdateStockModal);
+            else console.warn("[DOMContentLoaded] closeUpdateStockModalBtn not found");
+
+            const updateStockDoneBtn = document.getElementById('updateStockDoneBtn');
+            if (updateStockDoneBtn) updateStockDoneBtn.addEventListener('click', closeUpdateStockModal);
+            else console.warn("[DOMContentLoaded] updateStockDoneBtn not found");
+
+            const updateStockProductIdInput = document.getElementById('updateStockProductIdInput');
+            if (updateStockProductIdInput) {
+                updateStockProductIdInput.addEventListener('keypress', async (event) => {
+                    if (event.key === 'Enter' || event.keyCode === 13) {
+                        event.preventDefault();
+                        const scannedValue = updateStockProductIdInput.value.trim();
+                        updateStockProductIdInput.value = ''; // Clear input
+                        if (scannedValue) {
+                            if (scannedValue.startsWith('ACTION_')) {
+                                await processUpdateStockModalAction(scannedValue);
+                            } else {
+                                await handleUpdateStockModalScan(scannedValue);
+                            }
+                        } else {
+                            setUpdateStockModalStatus('Please enter or scan a Product ID or Action Code.', true);
+                        }
+                        updateStockProductIdInput.focus(); // Keep focus for next scan
+                    }
+                });
+            } else console.warn("[DOMContentLoaded] updateStockProductIdInput not found");
+
+            const updateStockAdjustIncrementBtn = document.getElementById('updateStockAdjustIncrementBtn');
+            if (updateStockAdjustIncrementBtn) updateStockAdjustIncrementBtn.addEventListener('click', () => adjustUpdateStockModalQuantity('increment'));
+            else console.warn("[DOMContentLoaded] updateStockAdjustIncrementBtn not found");
+
+            const updateStockAdjustDecrementBtn = document.getElementById('updateStockAdjustDecrementBtn');
+            if (updateStockAdjustDecrementBtn) updateStockAdjustDecrementBtn.addEventListener('click', () => adjustUpdateStockModalQuantity('decrement'));
+            else console.warn("[DOMContentLoaded] updateStockAdjustDecrementBtn not found");
+
 
             const quickViewReportsBtn = document.getElementById('quickViewReportsBtn');
             if(quickViewReportsBtn) quickViewReportsBtn.addEventListener('click', () => showView('reportsSectionContainer', 'menuReports'));
