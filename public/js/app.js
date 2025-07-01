@@ -1036,178 +1036,123 @@ function debugUIContainers() {
 // Add debug function to window for console access
 window.debugUIContainers = debugUIContainers;
 
-// Moved showView function here to ensure it's defined before being called by onAuthStateChanged
+// Corrected showView function
 function showView(viewIdToShow, clickedMenuId) {
-  // This function relies on allViewContainers and setActiveMenuItem (which uses menuItems)
-  // being initialized. If this is called before DOMContentLoaded completes and these variables are set,
-  // it will cause errors. The ReferenceError for showView itself is fixed by this move,
-  // but dependency errors might arise if not called at the right time.
-  console.log(`Attempting to show view: ${viewIdToShow} triggered by ${clickedMenuId}`);
+  console.log(`[showView] Attempting to show view: ${viewIdToShow}, triggered by: ${clickedMenuId || 'system'}`);
 
-  // These would ideally be passed as parameters or ensured to be globally available and initialized.
-  // For now, re-querying them or hoping they are global. This is a potential refactor point.
-  const allViewContainers = [
-    document.getElementById('dashboardViewContainer'),
-    document.getElementById('inventoryViewContainer'),
-    document.getElementById('suppliersSectionContainer'),
-    document.getElementById('ordersSectionContainer'),
-    document.getElementById('reportsSectionContainer'),
-    document.getElementById('quickStockUpdateContainer'),
-    document.getElementById('suppliersAndLocationsContainer'), // Corrected ID to match HTML
-    document.getElementById('ordersSectionContainer'),
-    document.getElementById('reportsSectionContainer'),
-    document.getElementById('quickStockUpdateContainer'),
-    document.getElementById('userManagementSectionContainer')
-  ].filter(container => container !== null);
+  const mainViewContainerIds = [
+    'dashboardViewContainer',
+    'inventoryViewContainer',
+    'suppliersAndLocationsContainer',
+    'ordersSectionContainer',
+    'reportsSectionContainer',
+    'quickStockUpdateContainer',
+    'userManagementSectionContainer'
+  ];
 
-  let viewFound = false;
-  allViewContainers.forEach(container => {
-      if (container.id === viewIdToShow) {
-          container.classList.remove('hidden');
-          viewFound = true;
-          console.log(`Showing: ${container.id}`);
-          // VIEW SPECIFIC INITIALIZATIONS
-          if (container.id === 'inventoryViewContainer') {
-              console.log('[showView] inventoryViewContainer selected. Refreshing inventory display and dashboard.');
-              console.log('[showView] Calling displayInventory() for inventoryViewContainer.');
-              if (typeof displayInventory === 'function') displayInventory(); else console.error("[showView] displayInventory is not defined");
-              console.log('[showView] Calling updateInventoryDashboard() for inventoryViewContainer.');
-              if (typeof updateInventoryDashboard === 'function') updateInventoryDashboard(); else console.error("[showView] updateInventoryDashboard is not defined");
-              console.log('[showView] Calling updateToOrderTable() for inventoryViewContainer.');
-              if (typeof updateToOrderTable === 'function') updateToOrderTable(); else console.error("[showView] updateToOrderTable is not defined");
-          } else if (container.id === 'dashboardViewContainer') {
-              console.log('[showView] dashboardViewContainer selected. Calling updateEnhancedDashboard and displayPendingOrdersOnDashboard.');
-              if (typeof updateEnhancedDashboard === 'function') updateEnhancedDashboard(); else console.error("[showView] updateEnhancedDashboard is not defined");
-              if (typeof displayPendingOrdersOnDashboard === 'function') displayPendingOrdersOnDashboard(); else console.error("[showView] displayPendingOrdersOnDashboard is not defined");
-          }
-          // END VIEW SPECIFIC INITIALIZATIONS
-          // Original if-else chain continues below for other views, slightly refactored to include the above specific initializations first.
-
-          if (container.id === 'quickStockUpdateContainer') {
-            const initialTabToSelect = document.getElementById('barcodeScannerModeTab') ? 'barcodeScannerModeTab' : 'manualBatchModeTab';
-            if (typeof switchQuickUpdateTab === 'function') { // Defensive check
-                switchQuickUpdateTab(initialTabToSelect);
-            } else {
-                console.error("switchQuickUpdateTab is not defined or available when trying to show quickStockUpdateContainer");
-            }
-          } else if (container.id === 'ordersSectionContainer') {
-            // When showing the orders section, populate products and load orders
-            console.log('Orders section is being shown. Calling populateProductsDropdown and loadAndDisplayOrders.');
-            if (typeof populateProductsDropdown === 'function') populateProductsDropdown(); else console.error("populateProductsDropdown is not defined");
-            if (typeof loadAndDisplayOrders === 'function') loadAndDisplayOrders(); else console.error("loadAndDisplayOrders is not defined");
-          } else if (container.id === 'reportsSectionContainer') {
-            // Call report functions with defensive checks
-            console.log('Reports section is being shown - calling report functions');
-
-            // Update inventory dashboard (low stock alerts) - Note: This is already called when inventoryViewContainer is shown if that's part of reports
-            // This might be redundant or specific to a part of the reports view
-            setTimeout(() => {
-              try {
-                // Check if updateInventoryDashboard is truly needed here or if it's covered by inventory view logic
-                // updateInventoryDashboard();
-              } catch (error) {
-                console.error('Error calling updateInventoryDashboard from reports section:', error);
-              }
-            }, 100);
-
-            // Generate supplier order summaries
-            setTimeout(() => {
-              try {
-                generateSupplierOrderSummaries();
-              } catch (error) {
-                console.error('Error calling generateSupplierOrderSummaries:', error);
-              }
-            }, 200);
-
-            // Populate trend product select
-            setTimeout(() => {
-              try {
-                populateTrendProductSelect();
-              } catch (error) {
-                console.error('Error calling populateTrendProductSelect:', error);
-              }
-            }, 300);
-
-            // Generate product usage chart
-            setTimeout(() => {
-              try {
-                generateProductUsageChart('');
-              } catch (error) {
-                console.error('Error calling generateProductUsageChart:', error);
-              }
-            }, 400);
-
-            // Also load orders when reports view is shown
-            setTimeout(() => {
-              try {
-                loadAndDisplayOrders();
-              } catch (error) {
-                console.error('Error calling loadAndDisplayOrders for reports view:', error);
-              }
-            }, 500);
-          } else if (container.id === 'userManagementSectionContainer') {
-            if (typeof displayUserRoleManagement === 'function') displayUserRoleManagement(); else console.error("displayUserRoleManagement is not defined");
-          }
-      } else {
-          if (container.id === 'quickStockUpdateContainer') {
-              if(typeof quickStockBarcodeBuffer !== 'undefined') quickStockBarcodeBuffer = "";
-              if(typeof isBarcodeScannerModeActive !== 'undefined') isBarcodeScannerModeActive = false;
-
-              if (typeof stream !== 'undefined' && stream) { // Ensure stream is defined
-                  if (typeof stopUpdateScanner === 'function' && document.getElementById('updateVideo') && !document.getElementById('updateVideo').classList.contains('hidden')) stopUpdateScanner();
-                  if (typeof stopMoveScanner === 'function' && document.getElementById('moveVideo') && !document.getElementById('moveVideo').classList.contains('hidden')) stopMoveScanner();
-                  if (typeof stopEditScanner === 'function' && document.getElementById('editVideo') && !document.getElementById('editVideo').classList.contains('hidden')) stopEditScanner();
-              }
-          }
-          container.classList.add('hidden');
-          console.log(`Hiding: ${container.id}`);
+  // Explicitly hide all main view containers first
+  mainViewContainerIds.forEach(id => {
+    const containerToHide = document.getElementById(id);
+    if (containerToHide) {
+      if (!containerToHide.classList.contains('hidden')) {
+        containerToHide.classList.add('hidden');
+        console.log(`[showView] Explicitly hid: ${id}`);
       }
+    } else {
+      console.warn(`[showView] Container ID ${id} not found in DOM during hide all phase.`);
+    }
   });
 
-  if (viewFound) {
-      const menuItems = [
-          document.getElementById('menuDashboard'),
-          document.getElementById('menuInventory'),
-          document.getElementById('menuSuppliers'),
-          document.getElementById('menuOrders'),
-          document.getElementById('menuReports'),
-          document.getElementById('menuQuickStockUpdate'),
-          document.getElementById('menuUserManagement')
-      ].filter(item => item !== null);
+  // Now, show the target view
+  const targetView = document.getElementById(viewIdToShow);
+  if (targetView) {
+    targetView.classList.remove('hidden');
+    console.log(`[showView] Made visible: ${targetView.id}`);
 
-      // Updated classes for active/inactive states to be more theme-agnostic
-      const activeMenuClasses = ['bg-base-300', 'text-base-content', 'font-semibold'];
-      const inactiveMenuClasses = ['text-base-content', 'hover:bg-base-300/50']; // Use base-content for text, and a slightly opaque bg-base-300 for hover
+    // VIEW SPECIFIC INITIALIZATIONS
+    if (targetView.id === 'inventoryViewContainer') {
+        console.log('[showView] Initializing inventoryViewContainer.');
+        if (typeof displayInventory === 'function') displayInventory(); else console.error("[showView] displayInventory is not defined");
+        if (typeof updateInventoryDashboard === 'function') updateInventoryDashboard(); else console.error("[showView] updateInventoryDashboard is not defined"); // This updates stats within inventory view
+        if (typeof updateToOrderTable === 'function') updateToOrderTable(); else console.error("[showView] updateToOrderTable is not defined");
+    } else if (targetView.id === 'dashboardViewContainer') {
+        console.log('[showView] Initializing dashboardViewContainer.');
+        if (typeof updateEnhancedDashboard === 'function') updateEnhancedDashboard(); else console.error("[showView] updateEnhancedDashboard is not defined"); // This updates the main dashboard cards
+        if (typeof displayPendingOrdersOnDashboard === 'function') displayPendingOrdersOnDashboard(); else console.error("[showView] displayPendingOrdersOnDashboard is not defined");
+    } else if (targetView.id === 'quickStockUpdateContainer') {
+        console.log('[showView] Initializing quickStockUpdateContainer.');
+        const initialTabToSelect = document.getElementById('barcodeScannerModeTab') ? 'barcodeScannerModeTab' : 'manualBatchModeTab';
+        if (typeof switchQuickUpdateTab === 'function') {
+            switchQuickUpdateTab(initialTabToSelect);
+        } else {
+            console.error("[showView] switchQuickUpdateTab is not defined.");
+        }
+    } else if (targetView.id === 'ordersSectionContainer') {
+        console.log('[showView] Initializing ordersSectionContainer.');
+        if (typeof populateProductsDropdown === 'function') populateProductsDropdown(); else console.error("populateProductsDropdown is not defined");
+        if (typeof loadAndDisplayOrders === 'function') loadAndDisplayOrders(); else console.error("loadAndDisplayOrders is not defined");
+        if (typeof updateLowStockAlerts === 'function') updateLowStockAlerts(); else console.error("[showView] updateLowStockAlerts for orders view is not defined");
+    } else if (targetView.id === 'reportsSectionContainer') {
+        console.log('[showView] Initializing reportsSectionContainer.');
+        if (typeof populateTrendProductSelect === 'function') populateTrendProductSelect(); else console.error("populateTrendProductSelect is not defined");
+        if (typeof generateProductUsageChart === 'function') generateProductUsageChart(''); else console.error("generateProductUsageChart is not defined");
+        // Other report specific initializations can go here
+    } else if (targetView.id === 'userManagementSectionContainer') {
+        console.log('[showView] Initializing userManagementSectionContainer.');
+        if (typeof displayUserRoleManagement === 'function') displayUserRoleManagement(); else console.error("displayUserRoleManagement is not defined");
+    } else if (targetView.id === 'suppliersAndLocationsContainer') {
+        console.log('[showView] Initializing suppliersAndLocationsContainer.');
+        // Supplier/Location specific updates if any, e.g., re-loading lists if they can change.
+        // loadSuppliers(); loadLocations(); are usually called once on auth.
+    }
+  } else {
+    console.error(`[showView] Target view container with ID '${viewIdToShow}' not found.`);
+    // Fallback or error display logic can be added here
+    // For instance, show the dashboard by default if the requested view is invalid
+    const fallbackView = document.getElementById('dashboardViewContainer');
+    if (fallbackView) {
+        fallbackView.classList.remove('hidden');
+        console.warn(`[showView] Fallback: Displaying dashboardViewContainer as ${viewIdToShow} was not found.`);
+        // Also update menu for fallback
+        clickedMenuId = 'menuDashboard'; // Adjust if your dashboard menu item has a different ID
+    }
+  }
 
-      menuItems.forEach(item => {
-          // Remove all potentially conflicting classes first
-          item.classList.remove(...activeMenuClasses, ...inactiveMenuClasses, 'bg-gray-300', 'dark:bg-slate-700', 'text-gray-900', 'dark:text-white', 'text-gray-700', 'dark:text-gray-300', 'hover:bg-gray-300', 'dark:hover:bg-slate-700');
+  // Update active menu item styling
+  if (clickedMenuId) {
+    const menuItems = [
+        document.getElementById('menuDashboard'),
+        document.getElementById('menuInventory'),
+        document.getElementById('menuSuppliers'),
+        document.getElementById('menuOrders'),
+        document.getElementById('menuReports'),
+        document.getElementById('menuQuickStockUpdate'),
+        document.getElementById('menuUserManagement')
+    ].filter(item => item !== null);
 
-          const icon = item.querySelector('svg');
-          if (icon) {
-              icon.classList.remove('text-gray-500', 'dark:text-gray-400', 'group-hover:text-gray-700', 'dark:group-hover:text-gray-200', 'text-gray-700', 'dark:text-gray-100');
-          }
+    const activeMenuClasses = ['bg-base-300', 'text-base-content', 'font-semibold'];
+    const inactiveMenuClasses = ['text-base-content', 'hover:bg-base-300/50'];
 
-          if (item.id === clickedMenuId) {
-              activeMenuClasses.forEach(cls => item.classList.add(cls));
-              if (icon) {
-                  // For active items, ensure icon color contrasts with bg-base-300.
-                  // text-base-content should generally work well.
-                  icon.classList.add('text-base-content');
-              }
-          } else {
-              inactiveMenuClasses.forEach(cls => item.classList.add(cls));
-              if (icon) {
-                  // For inactive items, icon color can be base-content or a slightly muted version.
-                  // text-base-content is fine.
-                  icon.classList.add('text-base-content');
-              }
-          }
-      });
-  } else if (viewIdToShow) {
-      console.warn(`View with ID '${viewIdToShow}' not found among registered containers.`);
+    menuItems.forEach(item => {
+        item.classList.remove(...activeMenuClasses, ...inactiveMenuClasses, 'bg-gray-300', 'dark:bg-slate-700', 'text-gray-900', 'dark:text-white', 'text-gray-700', 'dark:text-gray-300', 'hover:bg-gray-300', 'dark:hover:bg-slate-700');
+        const icon = item.querySelector('svg');
+        if (icon) {
+            icon.classList.remove('text-gray-500', 'dark:text-gray-400', 'group-hover:text-gray-700', 'dark:group-hover:text-gray-200', 'text-gray-700', 'dark:text-gray-100');
+        }
+
+        if (item.id === clickedMenuId) {
+            activeMenuClasses.forEach(cls => item.classList.add(cls));
+            if (icon) icon.classList.add('text-base-content');
+        } else {
+            inactiveMenuClasses.forEach(cls => item.classList.add(cls));
+            if (icon) icon.classList.add('text-base-content');
+        }
+    });
+  } else {
+      console.warn(`[showView] clickedMenuId was not provided. Menu items will not be styled.`);
   }
 }
+
 
 // Helper functions for Barcode Scanner Mode
 function setBarcodeStatus(message, isError = false) {
@@ -2610,14 +2555,16 @@ async function submitProduct() {
       let photoUrlToSave;
       const productIdValue = document.getElementById('productId').value;
 
-      if (currentPhotoSrc.startsWith('data:image')) {
-      } else if (productIdValue && currentPhotoSrc === originalPhotoUrlForEdit) {
-        photoUrlToSave = originalPhotoUrlForEdit;
-      } else if (!currentPhotoSrc) {
-        photoUrlToSave = ''; 
-      } else {
+      if (currentPhotoSrc.startsWith('data:image')) { // New photo captured
         photoUrlToSave = await uploadPhoto(id, currentPhotoSrc);
+      } else if (productIdValue && currentPhotoSrc === originalPhotoUrlForEdit) { // Editing, photo unchanged
+        photoUrlToSave = originalPhotoUrlForEdit;
+      } else if (!currentPhotoSrc) { // No photo, or photo was cleared (needs specific logic if clearing is intended)
+        photoUrlToSave = ''; 
+      } else { // Existing photo URL, but not a new capture (should ideally be originalPhotoUrlForEdit)
+        photoUrlToSave = await uploadPhoto(id, currentPhotoSrc); // This case might be redundant if originalPhotoUrlForEdit is handled
       }
+
 
       await db.collection('inventory').doc(id).set({
         id,
@@ -2664,7 +2611,7 @@ async function editProduct(id) {
     document.getElementById('productCost').value = product.cost;
     document.getElementById('productMinQuantity').value = product.minQuantity;
     document.getElementById('productQuantityOrdered').value = product.quantityOrdered || 0;
-    document.getElementById('productQuantityBackordered').value = product.quantityBackordered || 0;
+    document.getElementById('productQuantityBackordered').value = product.productQuantityBackordered || 0; // Corrected field name
     document.getElementById('productReorderQuantity').value = product.reorderQuantity || 0;
     document.getElementById('productSupplier').value = product.supplier;
     document.getElementById('productLocation').value = product.location;
@@ -2674,6 +2621,8 @@ async function editProduct(id) {
       document.getElementById('productPhotoPreview').classList.remove('hidden');
     } else {
       originalPhotoUrlForEdit = '';
+      document.getElementById('productPhotoPreview').src = ''; // Clear if no photo
+      document.getElementById('productPhotoPreview').classList.add('hidden');
     }
     const productFormTitleEl = document.getElementById('productFormTitle');
     if (productFormTitleEl) productFormTitleEl.textContent = 'Edit Product';
@@ -2692,7 +2641,7 @@ function resetProductForm() {
   document.getElementById('productQuantityBackordered').value = '';
   document.getElementById('productReorderQuantity').value = '';
   document.getElementById('productSupplier').value = '';
-  document.getElementById('productLocation').value = 'Surgery 1';
+  document.getElementById('productLocation').value = 'Surgery 1'; // Consider making this dynamic or empty
   document.getElementById('productPhotoPreview').src = '';
   document.getElementById('productPhotoPreview').classList.add('hidden');
   originalPhotoUrlForEdit = '';
@@ -3270,26 +3219,61 @@ function updateLowStockAlerts() {
     try {
         if (!inventory || inventory.length === 0) {
             console.log('No inventory data available for low stock alerts');
+             // Try to clear both potential table bodies if inventory is empty
+            const tableBodyInventory = document.getElementById('lowStockTableBody'); // Original ID
+            if (tableBodyInventory) tableBodyInventory.innerHTML = '<tr><td colspan="6" class="text-center p-4">No inventory data.</td></tr>';
+            const tableBodyOrders = document.getElementById('ordersViewLowStockTableBody'); // New ID
+            if (tableBodyOrders) tableBodyOrders.innerHTML = '<tr><td colspan="6" class="text-center p-4">No inventory data.</td></tr>';
             return;
         }
 
         const lowStockItems = inventory.filter(item => item.quantity <= item.minQuantity && item.minQuantity > 0);
-        const lowStockTableBody = document.getElementById('lowStockTableBody');
-        const lowStockAlert = document.getElementById('lowStockAlert');
+
+        // Determine which table body and badge to update based on the currently visible view.
+        // This is a bit of a heuristic. A better way might be to pass the target element IDs.
+        let targetTableBodyId = 'lowStockTableBody'; // Default to original inventory view's table
+        let targetBadgeId = 'lowStockAlert'; // Default to original inventory view's badge
+
+        const ordersView = document.getElementById('ordersSectionContainer');
+        if (ordersView && !ordersView.classList.contains('hidden')) {
+            targetTableBodyId = 'ordersViewLowStockTableBody';
+            targetBadgeId = 'ordersViewLowStockAlertBadge';
+        }
+        // Add similar check if it could also appear in inventoryViewContainer directly (though it was removed)
+        // else if (document.getElementById('inventoryViewContainer') && !document.getElementById('inventoryViewContainer').classList.contains('hidden')) {
+        //    targetTableBodyId = 'lowStockTableBody'; // Keep original if it's in inventory view
+        //    targetBadgeId = 'lowStockAlert';
+        // }
+
+
+        const lowStockTableBody = document.getElementById(targetTableBodyId);
+        const lowStockAlertBadge = document.getElementById(targetBadgeId);
 
         if (!lowStockTableBody) {
-            console.log('lowStockTableBody element not found');
+            console.warn(`Low stock table body with ID '${targetTableBodyId}' not found in the current view. Alerts will not be displayed there.`);
+            // Optionally, clear the other table if it exists to avoid stale data
+            const otherTableBodyId = targetTableBodyId === 'lowStockTableBody' ? 'ordersViewLowStockTableBody' : 'lowStockTableBody';
+            const otherTableBody = document.getElementById(otherTableBodyId);
+            if (otherTableBody) otherTableBody.innerHTML = '';
             return;
         }
+         // Clear the other table if it exists, to prevent showing alerts in two places
+        const inactiveTableBodyId = targetTableBodyId === 'lowStockTableBody' ? 'ordersViewLowStockTableBody' : 'lowStockTableBody';
+        const inactiveTableBody = document.getElementById(inactiveTableBodyId);
+        if (inactiveTableBody) inactiveTableBody.innerHTML = '';
+
 
         // Update alert badge
-        if (lowStockAlert) {
+        if (lowStockAlertBadge) {
             if (lowStockItems.length > 0) {
-                lowStockAlert.textContent = `${lowStockItems.length} items need attention`;
-                lowStockAlert.classList.remove('hidden');
+                lowStockAlertBadge.textContent = `${lowStockItems.length} items need attention`;
+                lowStockAlertBadge.classList.remove('hidden');
             } else {
-                lowStockAlert.classList.add('hidden');
+                lowStockAlertBadge.textContent = '0 items need attention'; // Or clear it
+                lowStockAlertBadge.classList.add('hidden'); // Or keep visible with 0
             }
+        } else {
+            console.warn(`Low stock alert badge with ID '${targetBadgeId}' not found.`);
         }
 
         // Clear existing table
@@ -3322,12 +3306,12 @@ function updateLowStockAlerts() {
                     <td class="px-4 py-2 text-center text-amber-700 dark:text-amber-300">${item.minQuantity || 0}</td>
                     <td class="px-4 py-2 text-amber-700 dark:text-amber-300">${item.location || 'Not specified'}</td>
                     <td class="px-4 py-2 text-amber-700 dark:text-amber-300">${item.supplier || 'Not specified'}</td>
-                    <td class="px-4 py-2">
-                        <div class="flex items-center gap-2">
+                    <td class="px-4 py-2 text-center">
+                        <div class="flex items-center justify-center gap-2">
                             <button onclick="createOrder('${item.id}', ${item.reorderQuantity || item.minQuantity})" class="btn btn-warning btn-xs">
                                 Order Now
                             </button>
-                            <button onclick="editProduct('${item.id}')" class="btn btn-secondary btn-xs">
+                            <button onclick="openScanToEditModalAndLoadProduct('${item.id}')" class="btn btn-secondary btn-xs">
                                 Edit
                             </button>
                         </div>
@@ -3336,11 +3320,25 @@ function updateLowStockAlerts() {
             });
         }
 
-        console.log(`Low stock alerts updated: ${lowStockItems.length} items`);
+        console.log(`Low stock alerts updated for ${targetTableBodyId}: ${lowStockItems.length} items`);
     } catch (error) {
         console.error('Error in updateLowStockAlerts:', error);
     }
 }
+
+// Helper function to quickly open scan-to-edit modal and load product (used from alerts table)
+async function openScanToEditModalAndLoadProduct(productId) {
+    openScanToEditModal(); // Opens the modal in ID input state
+    // Directly set the product ID and trigger the search/load
+    const productIdInput = document.getElementById('scanToEditProductIdInput');
+    if (productIdInput) {
+        productIdInput.value = productId;
+        await handleScanToEditProductIdSubmit(); // This will find the product and populate the form
+    } else {
+        console.error("Could not find Product ID input in Scan-to-Edit modal to auto-load product.");
+    }
+}
+
 
 // Missing createOrder function
 async function createOrder(productId, quantity) {
@@ -4560,6 +4558,128 @@ function cancelScanToEditModalPhoto() {
 }
 // END: Scan to Edit Product Modal Functions
 
+// START: Move Product Modal Functions
+let moveProductModal_currentProductId = null;
+
+function openMoveProductModal() {
+    const modal = document.getElementById('moveProductModal');
+    if (!modal) {
+        console.error("Move Product Modal element not found.");
+        return;
+    }
+    console.log("Opening Move Product Modal");
+
+    // Reset to initial ID input view
+    document.getElementById('moveProductIdInputView').classList.remove('hidden');
+    document.getElementById('moveProductFormView').classList.add('hidden');
+    document.getElementById('moveProductModal_productIdInput').value = '';
+    document.getElementById('moveProductModal_statusMessage').textContent = '';
+    document.getElementById('moveProductModalTitle').textContent = 'Move Product';
+
+    moveProductModal_currentProductId = null;
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.getElementById('moveProductModal_productIdInput').focus();
+}
+
+function closeMoveProductModal() {
+    const modal = document.getElementById('moveProductModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+    moveProductModal_currentProductId = null;
+}
+
+async function handleMoveProductModalIdSubmit() {
+    const productIdInput = document.getElementById('moveProductModal_productIdInput');
+    const statusMessage = document.getElementById('moveProductModal_statusMessage');
+    const productId = productIdInput.value.trim();
+
+    if (!productId) {
+        statusMessage.textContent = 'Please enter a Product ID.';
+        statusMessage.className = 'text-sm text-center text-warning-content';
+        return;
+    }
+
+    statusMessage.textContent = 'Searching for product...';
+    statusMessage.className = 'text-sm text-center text-info-content';
+
+    try {
+        const productDoc = await db.collection('inventory').doc(productId).get();
+        if (productDoc.exists) {
+            const product = productDoc.data();
+            moveProductModal_currentProductId = product.id; // Store the found product ID
+
+            document.getElementById('moveProductModal_productName').textContent = product.name || 'N/A';
+            document.getElementById('moveProductModal_currentLocation').textContent = product.location || 'N/A';
+
+            const locationDropdown = document.getElementById('moveProductModal_newLocation');
+            locationDropdown.innerHTML = '<option value="">Select New Location</option>';
+            locations.forEach(loc => { // Assuming 'locations' array is globally available and populated
+                if (loc.name !== product.location) { // Don't list current location as an option
+                    const option = document.createElement('option');
+                    option.value = loc.name;
+                    option.textContent = loc.name;
+                    locationDropdown.appendChild(option);
+                }
+            });
+            locationDropdown.value = ""; // Ensure no location is pre-selected
+
+            document.getElementById('moveProductIdInputView').classList.add('hidden');
+            document.getElementById('moveProductFormView').classList.remove('hidden');
+            document.getElementById('moveProductModalTitle').textContent = `Move: ${product.name}`;
+            statusMessage.textContent = ''; // Clear status message
+        } else {
+            statusMessage.textContent = `Product ID "${productId}" not found.`;
+            statusMessage.className = 'text-sm text-center text-error-content';
+            moveProductModal_currentProductId = null;
+        }
+    } catch (error) {
+        console.error("Error fetching product for move:", error);
+        statusMessage.textContent = 'Error fetching product. Please try again.';
+        statusMessage.className = 'text-sm text-center text-error-content';
+        moveProductModal_currentProductId = null;
+    }
+}
+
+async function submitMoveProductFromModal() {
+    if (!moveProductModal_currentProductId) {
+        uiEnhancementManager.showToast("No product selected to move.", "error");
+        return;
+    }
+    const newLocation = document.getElementById('moveProductModal_newLocation').value;
+    if (!newLocation) {
+        uiEnhancementManager.showToast("Please select a new location.", "warning");
+        return;
+    }
+
+    try {
+        const productRef = db.collection('inventory').doc(moveProductModal_currentProductId);
+        await productRef.update({ location: newLocation });
+
+        const productName = document.getElementById('moveProductModal_productName').textContent;
+        uiEnhancementManager.showToast(`Product "${productName}" moved to ${newLocation}.`, "success");
+        await logActivity('product_moved_modal', `Product: ${productName} (ID: ${moveProductModal_currentProductId}) moved to ${newLocation} via modal.`, moveProductModal_currentProductId, productName);
+
+        closeMoveProductModal();
+
+        // Refresh inventory data and UI
+        inventory = await inventoryManager.loadInventory();
+        displayInventory();
+        updateInventoryDashboard();
+        // updateToOrderTable(); // Not directly affected by move, but good practice if other stats depend on location
+        updateEnhancedDashboard();
+
+
+    } catch (error) {
+        console.error("Error moving product from modal:", error);
+        uiEnhancementManager.showToast(`Error moving product: ${error.message}`, 'error');
+    }
+}
+// END: Move Product Modal Functions
+
 
 // Call initialization on DOM ready
 document.addEventListener('DOMContentLoaded', function() {
@@ -5177,21 +5297,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 } else console.warn("[DOMContentLoaded] viewAllOrdersBtn on dashboard not found");
 
-            const quickAddProductBtn = document.getElementById('quickAddProductBtn'); // This ID is for the original button that switches view
-            if (quickAddProductBtn) {
-                quickAddProductBtn.addEventListener('click', () => {
-                    showView('inventoryViewContainer', 'menuInventory'); // Switch to inventory view
-                    setTimeout(() => { // Ensure form is visible
-                        const productFormCheckbox = document.getElementById('toggleProductFormCheckbox');
-                        if (productFormCheckbox) productFormCheckbox.checked = true; // Open the collapsible form
-                        document.getElementById('productName').focus(); // Focus on product name
-                        resetProductForm(); // Clear form for new product
-                    }, 100); // Small delay to ensure view switch
-                });
-            } else console.warn("[DOMContentLoaded] quickAddProductBtn (view switcher) not found");
+            // This is the old button ID that was causing "view switcher not found"
+            // const quickAddProductBtn = document.getElementById('quickAddProductBtn');
+            // if (quickAddProductBtn) {
+            //     quickAddProductBtn.addEventListener('click', () => {
+            //         showView('inventoryViewContainer', 'menuInventory');
+            //         setTimeout(() => {
+            //             const productFormCheckbox = document.getElementById('toggleProductFormCheckbox');
+            //             if (productFormCheckbox) productFormCheckbox.checked = true;
+            //             document.getElementById('productName').focus();
+            //             resetProductForm();
+            //         }, 100);
+            //     });
+            // } else console.warn("[DOMContentLoaded] quickAddProductBtn (view switcher) - THIS IS EXPECTED TO BE NOT FOUND NOW");
 
 
-            const dashboardAddProductBtn = document.getElementById('dashboardAddProductBtn'); // New button for the modal
+            const dashboardAddProductBtn = document.getElementById('dashboardAddProductBtn');
             if (dashboardAddProductBtn) {
                 dashboardAddProductBtn.addEventListener('click', () => {
                     openAddProductModal();
@@ -5205,6 +5326,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const dashboardScanToEditBtn = document.getElementById('dashboardScanToEditBtn');
             if(dashboardScanToEditBtn) dashboardScanToEditBtn.addEventListener('click', openScanToEditModal);
             else console.warn("[DOMContentLoaded] dashboardScanToEditBtn for modal not found");
+
+            const dashboardMoveProductBtn = document.getElementById('dashboardMoveProductBtn');
+            if(dashboardMoveProductBtn) dashboardMoveProductBtn.addEventListener('click', openMoveProductModal);
+            else console.warn("[DOMContentLoaded] dashboardMoveProductBtn for modal not found");
 
             // Event listeners for the new Add Product Modal
             const closeAddProductModalBtnListener = document.getElementById('closeAddProductModalBtn');
@@ -5246,8 +5371,8 @@ document.addEventListener('DOMContentLoaded', function() {
             else console.warn("[DOMContentLoaded] modalCancelPhotoBtn for Add Product modal not found");
 
             // Event listeners for Scan to Edit Product Modal
-            const closeScanToEditModalBtn = document.getElementById('closeScanToEditModalBtn');
-            if(closeScanToEditModalBtn) closeScanToEditModalBtn.addEventListener('click', closeScanToEditModal);
+            const closeScanToEditModalBtnListener = document.getElementById('closeScanToEditModalBtn');
+            if(closeScanToEditModalBtnListener) closeScanToEditModalBtnListener.addEventListener('click', closeScanToEditModal);
             else console.warn("[DOMContentLoaded] closeScanToEditModalBtn not found");
 
             const scanToEditProductIdInput = document.getElementById('scanToEditProductIdInput');
@@ -5284,6 +5409,33 @@ document.addEventListener('DOMContentLoaded', function() {
             const scanToEdit_cancelPhotoBtn = document.getElementById('scanToEdit_cancelPhotoBtn');
             if(scanToEdit_cancelPhotoBtn) scanToEdit_cancelPhotoBtn.addEventListener('click', cancelScanToEditModalPhoto);
             else console.warn("[DOMContentLoaded] scanToEdit_cancelPhotoBtn not found");
+
+            // Event listeners for Move Product Modal
+            const closeMoveProductModalBtnListener = document.getElementById('closeMoveProductModalBtn');
+            if(closeMoveProductModalBtnListener) closeMoveProductModalBtnListener.addEventListener('click', closeMoveProductModal);
+            else console.warn("[DOMContentLoaded] closeMoveProductModalBtn for Move Product Modal not found");
+
+            const moveProductModal_productIdInput = document.getElementById('moveProductModal_productIdInput');
+            if(moveProductModal_productIdInput) {
+                moveProductModal_productIdInput.addEventListener('keypress', (event) => {
+                    if (event.key === 'Enter' || event.keyCode === 13) {
+                        event.preventDefault();
+                        handleMoveProductModalIdSubmit();
+                    }
+                });
+            } else console.warn("[DOMContentLoaded] moveProductModal_productIdInput not found");
+
+            const moveProductModal_findBtn = document.getElementById('moveProductModal_findBtn');
+            if(moveProductModal_findBtn) moveProductModal_findBtn.addEventListener('click', handleMoveProductModalIdSubmit);
+            else console.warn("[DOMContentLoaded] moveProductModal_findBtn not found");
+
+            const moveProductModal_submitBtn = document.getElementById('moveProductModal_submitBtn');
+            if(moveProductModal_submitBtn) moveProductModal_submitBtn.addEventListener('click', submitMoveProductFromModal);
+            else console.warn("[DOMContentLoaded] moveProductModal_submitBtn not found");
+
+            const moveProductModal_cancelBtn = document.getElementById('moveProductModal_cancelBtn');
+            if(moveProductModal_cancelBtn) moveProductModal_cancelBtn.addEventListener('click', closeMoveProductModal);
+            else console.warn("[DOMContentLoaded] moveProductModal_cancelBtn not found");
 
 
             const quickStockUpdateBtn = document.getElementById('quickStockUpdateBtn'); // Button on dashboard
