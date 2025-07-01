@@ -240,6 +240,13 @@ function attachTableEventListeners() {
 
 // +++++ END OF MOVED FUNCTIONS +++++
 
+// Global State Variables for Barcode Scanner Mode
+let isBarcodeScannerModeActive = false; // Moved this declaration up
+let qsuStream = null;
+let qsuAnimationLoopId = null;
+let currentBarcodeModeProductId = null; // Also moved, as it's related and used in handleQuickStockScan
+
+
 // +++++ START OF STUB AND OTHER FUNCTIONS (MOVED EARLIER) +++++
 
 function startUpdateScanner() { console.log('startUpdateScanner called - STUB'); }
@@ -312,8 +319,14 @@ async function startQuickStockBarcodeScanner() {
 
     } catch (err) {
         console.error("Error starting QSU barcode scanner:", err);
-        setBarcodeStatus(`Error: ${err.message}`, true);
-        scanResultElement.textContent = `Error: ${err.message}`;
+        let userMessage = `Error: ${err.message}`;
+        if (err.name === "NotFoundError") {
+            userMessage = "No camera found. Please ensure a camera is connected and enabled.";
+        } else if (err.name === "NotAllowedError") {
+            userMessage = "Camera permission denied. Please allow camera access in your browser settings.";
+        }
+        setBarcodeStatus(userMessage, true);
+        if(scanResultElement) scanResultElement.textContent = userMessage; // Added null check for safety
         isBarcodeScannerModeActive = false;
         if (qsuStream) {
             qsuStream.getTracks().forEach(track => track.stop());
@@ -726,10 +739,10 @@ let originalPhotoUrlForEdit = ''; // Stores the original photo URL when editing 
 let quickStockBarcodeBuffer = ""; // Used by Manual Batch (indirectly via keypress), and Barcode Scanner modes
 
 // Global State Variables for Barcode Scanner Mode (already defined above with qsuStream, qsuAnimationLoopId)
-// let currentBarcodeModeProductId = null;
-// let isBarcodeScannerModeActive = false;
-let qsuStream = null;
-let qsuAnimationLoopId = null;
+// let currentBarcodeModeProductId = null; // Declaration moved up
+// let isBarcodeScannerModeActive = false; // Declaration moved up
+// let qsuStream = null; // Declaration moved up
+// let qsuAnimationLoopId = null; // Declaration moved up
 
 // Pagination Global Variables
 let currentPage = 1;
