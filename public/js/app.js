@@ -241,10 +241,10 @@ function attachTableEventListeners() {
 // +++++ END OF MOVED FUNCTIONS +++++
 
 // Global State Variables for Barcode Scanner Mode
-let isBarcodeScannerModeActive = false; // Moved this declaration up
-let qsuStream = null;
-let qsuAnimationLoopId = null;
-let currentBarcodeModeProductId = null; // Also moved, as it's related and used in handleQuickStockScan
+// let isBarcodeScannerModeActive = false; // No longer needed for camera-based scanning
+// let qsuStream = null; // No longer needed for camera-based scanning
+// let qsuAnimationLoopId = null; // No longer needed for camera-based scanning
+let currentBarcodeModeProductId = null; // Still used to store the currently scanned/entered product ID for actions
 
 
 // +++++ START OF STUB AND OTHER FUNCTIONS (MOVED EARLIER) +++++
@@ -254,6 +254,7 @@ function stopUpdateScanner() { console.log('stopUpdateScanner called - STUB'); }
 function startMoveScanner() { console.log('startMoveScanner called - STUB'); }
 function stopMoveScanner() { console.log('stopMoveScanner called - STUB'); }
 
+/*
 async function startQuickStockBarcodeScanner() {
     console.log('startQuickStockBarcodeScanner called');
     const video = document.getElementById('qsuVideo');
@@ -336,7 +337,9 @@ async function startQuickStockBarcodeScanner() {
         stopBtn.classList.add('hidden');
     }
 }
+*/
 
+/*
 function stopQuickStockBarcodeScanner() {
     console.log('stopQuickStockBarcodeScanner called');
     const video = document.getElementById('qsuVideo');
@@ -364,16 +367,17 @@ function stopQuickStockBarcodeScanner() {
     if(scanResultElement) scanResultElement.textContent = '';
     if(scannedProductInfoEl) scannedProductInfoEl.classList.add('hidden');
 }
+*/
 
 async function handleQuickStockScan(productId) {
     console.log("handleQuickStockScan called with Product ID:", productId);
     setBarcodeStatus(`Processing ID: ${productId}...`, false);
 
-    if (isBarcodeScannerModeActive) {
-        stopQuickStockBarcodeScanner();
-    }
+    // if (isBarcodeScannerModeActive) { // isBarcodeScannerModeActive might be repurposed or removed
+        // stopQuickStockBarcodeScanner(); // This function is now commented out
+    // }
 
-    currentBarcodeModeProductId = productId;
+    currentBarcodeModeProductId = productId; // This global variable is still useful
 
     const product = inventory.find(p => p.id === productId);
 
@@ -556,10 +560,11 @@ function switchQuickUpdateTab(tabIdToActivate) {
                 console.log(`Hiding content: ${contentElement.id}`);
 
                 // If we are hiding a tab that might have an active scanner, stop it.
-                if (contentElement.id === 'barcodeScannerModeContent' && typeof stopQuickStockBarcodeScanner === 'function' && typeof isBarcodeScannerModeActive !== 'undefined' && isBarcodeScannerModeActive) {
-                    console.log('Switching away from Barcode Scanner Mode, stopping scanner.');
-                    stopQuickStockBarcodeScanner();
-                }
+                // The camera scanner is removed, so stopQuickStockBarcodeScanner is commented out.
+                // if (contentElement.id === 'barcodeScannerModeContent' && typeof stopQuickStockBarcodeScanner === 'function' && typeof isBarcodeScannerModeActive !== 'undefined' && isBarcodeScannerModeActive) {
+                //     console.log('Switching away from Barcode Scanner Mode, stopping scanner.');
+                //     stopQuickStockBarcodeScanner();
+                // }
                 if (contentElement.id === 'manualBatchModeContent') { // Assuming manual batch might use scanners too
                     if (typeof stopUpdateScanner === 'function' && document.getElementById('updateVideo') && !document.getElementById('updateVideo').classList.contains('hidden')) {
                         console.log('Switching away from Manual Batch Mode with active update scanner, stopping it.');
@@ -573,12 +578,15 @@ function switchQuickUpdateTab(tabIdToActivate) {
     // Specific actions when a tab becomes active
     if (activeContentId === 'barcodeScannerModeContent') {
         console.log('Barcode Scanner Mode tab activated.');
-        // Optional: Reset the status message and last action feedback when tab is selected
-        setBarcodeStatus('Scan a Product QR Code to begin.', false);
+        setBarcodeStatus('Ready for barcode input. Scan or type Product ID and press Enter.', false);
         setLastActionFeedback('---', false);
         const scannedProductInfoEl = document.getElementById('qsuScannedProductInfo');
         if(scannedProductInfoEl) scannedProductInfoEl.classList.add('hidden');
-
+        const qsuBarcodeIdInput = document.getElementById('qsuBarcodeIdInput');
+        if (qsuBarcodeIdInput) {
+            qsuBarcodeIdInput.value = ''; // Clear previous input
+            qsuBarcodeIdInput.focus();
+        }
     } else if (activeContentId === 'manualBatchModeContent') {
         console.log('Manual Batch Entry tab activated.');
         const updateScanResultEl = document.getElementById('updateScanResult');
@@ -3633,13 +3641,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 else console.warn(`[DOMContentLoaded] QSU Tab not found: ${tabId}`);
             });
 
-            const qsuScanProductBtn = document.getElementById('qsuScanProductBtn');
-            if (qsuScanProductBtn) qsuScanProductBtn.addEventListener('click', startQuickStockBarcodeScanner);
-            else console.warn("[DOMContentLoaded] qsuScanProductBtn not found");
+            // Commented out camera scanner buttons
+            // const qsuScanProductBtn = document.getElementById('qsuScanProductBtn');
+            // if (qsuScanProductBtn) qsuScanProductBtn.addEventListener('click', startQuickStockBarcodeScanner);
+            // else console.warn("[DOMContentLoaded] qsuScanProductBtn not found");
 
-            const qsuStopScanBtn = document.getElementById('qsuStopScanBtn');
-            if (qsuStopScanBtn) qsuStopScanBtn.addEventListener('click', stopQuickStockBarcodeScanner);
-            else console.warn("[DOMContentLoaded] qsuStopScanBtn not found");
+            // const qsuStopScanBtn = document.getElementById('qsuStopScanBtn');
+            // if (qsuStopScanBtn) qsuStopScanBtn.addEventListener('click', stopQuickStockBarcodeScanner);
+            // else console.warn("[DOMContentLoaded] qsuStopScanBtn not found");
+
+            // Event listener for the new barcode input field
+            const qsuBarcodeIdInput = document.getElementById('qsuBarcodeIdInput');
+            if (qsuBarcodeIdInput) {
+                qsuBarcodeIdInput.addEventListener('keypress', async (event) => {
+                    if (event.key === 'Enter' || event.keyCode === 13) {
+                        event.preventDefault(); // Prevent default form submission if it's in a form
+                        const productId = qsuBarcodeIdInput.value.trim();
+                        if (productId) {
+                            await handleQuickStockScan(productId);
+                            qsuBarcodeIdInput.value = ''; // Clear for next scan
+                            // Optional: blur and re-focus for mobile keyboard handling, might not be necessary for physical scanners
+                            // qsuBarcodeIdInput.blur();
+                            // setTimeout(() => qsuBarcodeIdInput.focus(), 50);
+                        } else {
+                            setBarcodeStatus('Please enter or scan a Product ID.', true);
+                        }
+                    }
+                });
+            } else {
+                console.warn("[DOMContentLoaded] qsuBarcodeIdInput not found");
+            }
 
             const qsuAddManualEntryBtn = document.getElementById('qsuAddManualEntryBtn');
             if (qsuAddManualEntryBtn) qsuAddManualEntryBtn.addEventListener('click', addQuickStockManualEntry);
