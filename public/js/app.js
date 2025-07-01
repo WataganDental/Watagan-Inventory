@@ -801,6 +801,127 @@ function updateEnhancedDashboard() {
     console.log('Dashboard stats updated, activity feed initiated.');
 }
 
+// START: Order Processing Functions
+async function processFullReceipt(orderId, orderData, productData, productRef) {
+    console.log(`[processFullReceipt] Processing full receipt for order ${orderId}`);
+    if (!orderData || !productData || !productRef) {
+        uiEnhancementManager.showToast("Missing data for full receipt processing.", "error");
+        console.error("[processFullReceipt] Missing orderData, productData, or productRef.");
+        return;
+    }
+
+    const orderRefFs = db.collection('orders').doc(orderId);
+    const quantityReceived = orderData.quantity; // For full receipt, quantity received is the total ordered quantity
+
+    try {
+        // Update inventory: increase quantity, decrease quantityOrdered
+        const newInventoryQuantity = (productData.quantity || 0) + quantityReceived;
+        const newInventoryQuantityOrdered = Math.max(0, (productData.quantityOrdered || 0) - quantityReceived);
+
+        await productRef.update({
+            quantity: newInventoryQuantity,
+            quantityOrdered: newInventoryQuantityOrdered
+        });
+        console.log(`[processFullReceipt] Inventory updated for product ${productData.id}: quantity=${newInventoryQuantity}, quantityOrdered=${newInventoryQuantityOrdered}`);
+
+        // Update order status to 'Received'
+        await orderRefFs.update({ status: 'received' });
+        console.log(`[processFullReceipt] Order ${orderId} status updated to 'received'.`);
+
+        uiEnhancementManager.showToast(`Order ${orderId} fully received. Inventory updated.`, "success");
+        await logActivity('order_received_full', `Order ${orderId} (${orderData.productName}) fully received. Quantity: ${quantityReceived}.`, orderId, orderData.productName);
+
+        // Update local inventory array for immediate UI reflection
+        const localProductIndex = inventory.findIndex(p => p.id === productData.id);
+        if (localProductIndex !== -1) {
+            inventory[localProductIndex].quantity = newInventoryQuantity;
+            inventory[localProductIndex].quantityOrdered = newInventoryQuantityOrdered;
+        }
+
+    } catch (error) {
+        console.error(`[processFullReceipt] Error processing full receipt for order ${orderId}:`, error);
+        uiEnhancementManager.showToast(`Error processing full receipt for ${orderId}: ${error.message}`, "error");
+    }
+}
+
+
+async function processPartialReceipt(orderId, orderData, productData, productRef, quantityActuallyReceived) {
+    console.log(`[processPartialReceipt] Processing partial receipt for order ${orderId}, quantity: ${quantityActuallyReceived}`);
+    if (!orderData || !productData || !productRef || isNaN(quantityActuallyReceived) || quantityActuallyReceived <= 0) {
+        uiEnhancementManager.showToast("Invalid data for partial receipt processing.", "error");
+        console.error("[processPartialReceipt] Missing or invalid data:", { orderData, productData, productRef, quantityActuallyReceived });
+        return;
+    }
+
+    const orderRefFs = db.collection('orders').doc(orderId);
+    const quantityRemainingForBackorder = orderData.quantity - quantityActuallyReceived;
+
+    if (quantityRemainingForBackorder <= 0) {
+        uiEnhancementManager.showToast("Quantity received is full or exceeds order. Use 'Received' status.", "warning");
+        console.warn("[processPartialReceipt] Quantity received implies full receipt. Aborting partial.");
+        return; // Or call processFullReceipt
+    }
+
+    try {
+        // 1. Update Inventory
+        const newInventoryQuantity = (productData.quantity || 0) + quantityActuallyReceived;
+        const newInventoryQuantityOrdered = Math.max(0, (productData.quantityOrdered || 0) - quantityActuallyReceived);
+        // productQuantityBackordered on the product itself tracks total backordered units for THIS product,
+        // not specifically from this single order. So we add the new backorder quantity to it.
+        const newProductQuantityBackordered = (productData.productQuantityBackordered || 0) + quantityRemainingForBackorder;
+
+
+        await productRef.update({
+            quantity: newInventoryQuantity,
+            quantityOrdered: newInventoryQuantityOrdered,
+            productQuantityBackordered: newProductQuantityBackordered
+        });
+        console.log(`[processPartialReceipt] Inventory updated for product ${productData.id}: quantity=${newInventoryQuantity}, quantityOrdered=${newInventoryQuantityOrdered}, productQuantityBackordered=${newProductQuantityBackordered}`);
+
+        // 2. Update Original Order
+        await orderRefFs.update({
+            status: 'partially_received',
+            quantityReceived: quantityActuallyReceived,
+            quantityBackordered: quantityRemainingForBackorder
+            // The original order.quantity remains the total initially ordered.
+        });
+        console.log(`[processPartialReceipt] Original order ${orderId} updated to 'partially_received'.`);
+
+        // 3. Create New Backorder Document
+        const backorderData = {
+            productId: orderData.productId,
+            productName: orderData.productName,
+            quantity: quantityRemainingForBackorder,
+            status: 'backordered', // New status for this new order
+            originalOrderId: orderId, // Link to the original partially received order
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            supplier: productData.supplier, // Assuming productData has supplier info
+            userId: orderData.userId || (firebase.auth().currentUser ? firebase.auth().currentUser.uid : 'unknown')
+        };
+        const newBackorderRef = await db.collection('orders').add(backorderData);
+        console.log(`[processPartialReceipt] New backorder document created with ID: ${newBackorderRef.id}`);
+
+        // Log Activities
+        await logActivity('order_received_partial', `Order ${orderId} (${orderData.productName}) partially received. Quantity: ${quantityActuallyReceived}.`, orderId, orderData.productName);
+        await logActivity('backorder_created', `Backorder for ${quantityRemainingForBackorder} of ${orderData.productName} (from order ${orderId}) created. New Order ID: ${newBackorderRef.id}`, newBackorderRef.id, orderData.productName);
+
+        uiEnhancementManager.showToast(`Order ${orderId} partially received. Backorder for ${quantityRemainingForBackorder} units created.`, "success");
+
+        // Update local inventory array
+        const localProductIndex = inventory.findIndex(p => p.id === productData.id);
+        if (localProductIndex !== -1) {
+            inventory[localProductIndex].quantity = newInventoryQuantity;
+            inventory[localProductIndex].quantityOrdered = newInventoryQuantityOrdered;
+            inventory[localProductIndex].productQuantityBackordered = newProductQuantityBackordered;
+        }
+
+    } catch (error) {
+        console.error(`[processPartialReceipt] Error processing partial receipt for order ${orderId}:`, error);
+        uiEnhancementManager.showToast(`Error processing partial receipt for ${orderId}: ${error.message}`, "error");
+    }
+}
+// END: Order Processing Functions
+
 
 // +++++ END OF STUB FUNCTIONS +++++
 
@@ -3472,6 +3593,22 @@ function openMiniStatusModal(orderId, currentStatus) {
         console.error("miniModalOrderStatusSelect element not found.");
     }
 
+    // Initially hide quantity input, will be shown by dropdown listener if needed
+    const quantityReceivedGroup = document.getElementById('miniModalQuantityReceivedGroup');
+    if (quantityReceivedGroup) {
+        quantityReceivedGroup.classList.add('hidden');
+    }
+    const quantityReceivedInput = document.getElementById('miniModalQuantityReceived');
+    if (quantityReceivedInput) {
+        quantityReceivedInput.value = ''; // Clear any previous value
+    }
+
+    // Trigger change event on status dropdown to set initial visibility of quantity input
+    if (statusSelectElem) {
+        statusSelectElem.dispatchEvent(new Event('change'));
+    }
+
+
     const modal = document.getElementById('miniStatusUpdateModal');
     if (modal) {
         modal.classList.remove('hidden');
@@ -3489,6 +3626,15 @@ function closeMiniStatusModal() {
         console.error("miniStatusUpdateModal element not found.");
     }
     currentMiniModalOrderId = null; // Clear the stored order ID
+    // Also clear quantity input and hide its group on close
+    const quantityReceivedGroup = document.getElementById('miniModalQuantityReceivedGroup');
+    if (quantityReceivedGroup) {
+        quantityReceivedGroup.classList.add('hidden');
+    }
+    const quantityReceivedInput = document.getElementById('miniModalQuantityReceived');
+    if (quantityReceivedInput) {
+        quantityReceivedInput.value = '';
+    }
 }
 
 
@@ -3874,6 +4020,43 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.warn("[DOMContentLoaded] miniStatusUpdateModalElement not found for overlay click listener");
             }
 
+            // Mini Status Update Modal Close Button & Overlay
+            const miniModalCloseBtn = document.getElementById('miniModalCloseBtn');
+            if (miniModalCloseBtn) {
+                miniModalCloseBtn.addEventListener('click', closeMiniStatusModal);
+            } else {
+                console.warn("[DOMContentLoaded] miniModalCloseBtn not found");
+            }
+            const miniStatusUpdateModalElement = document.getElementById('miniStatusUpdateModal');
+            if (miniStatusUpdateModalElement) {
+                miniStatusUpdateModalElement.addEventListener('click', (e) => {
+                    if (e.target === miniStatusUpdateModalElement) { // Overlay click
+                        closeMiniStatusModal();
+                    }
+                });
+            } else {
+                console.warn("[DOMContentLoaded] miniStatusUpdateModalElement not found for overlay click listener");
+            }
+
+            // Event listener for the status dropdown in the mini modal
+            const miniModalOrderStatusSelect = document.getElementById('miniModalOrderStatusSelect');
+            const miniModalQuantityReceivedGroup = document.getElementById('miniModalQuantityReceivedGroup');
+            const miniModalQuantityReceivedInput = document.getElementById('miniModalQuantityReceived');
+
+            if (miniModalOrderStatusSelect && miniModalQuantityReceivedGroup && miniModalQuantityReceivedInput) {
+                miniModalOrderStatusSelect.addEventListener('change', function() {
+                    if (this.value === 'partially_received') {
+                        miniModalQuantityReceivedGroup.classList.remove('hidden');
+                        miniModalQuantityReceivedInput.focus();
+                    } else {
+                        miniModalQuantityReceivedGroup.classList.add('hidden');
+                        miniModalQuantityReceivedInput.value = ''; // Clear value when hidden
+                    }
+                });
+            } else {
+                console.warn("[DOMContentLoaded] One or more elements for mini modal quantity input logic not found.");
+            }
+
             // Mini Status Update Modal Save Button
             const miniModalSaveStatusBtn = document.getElementById('miniModalSaveStatusBtn');
             if (miniModalSaveStatusBtn) {
@@ -3885,6 +4068,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
 
                     const newStatus = document.getElementById('miniModalOrderStatusSelect').value;
+                    const quantityReceivedInput = document.getElementById('miniModalQuantityReceived');
+                    const quantityReceived = quantityReceivedInput ? parseInt(quantityReceivedInput.value) : 0;
+
                     if (!newStatus) {
                         uiEnhancementManager.showToast("No status selected.", "warning");
                         return;
@@ -3892,25 +4078,68 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     const orderRef = db.collection('orders').doc(currentMiniModalOrderId);
                     try {
-                        const doc = await orderRef.get();
-                        if (doc.exists) {
-                            const orderData = doc.data();
+                        const orderDoc = await orderRef.get();
+                        if (!orderDoc.exists) {
+                            uiEnhancementManager.showToast(`Order ${currentMiniModalOrderId} not found.`, "error");
+                            closeMiniStatusModal();
+                            return;
+                        }
+                        const orderData = orderDoc.data();
+
+                        // Fetch product data for inventory updates
+                        let productData = null;
+                        let productRef = null;
+                        if (orderData.productId) {
+                            productRef = db.collection('inventory').doc(orderData.productId);
+                            const productDoc = await productRef.get();
+                            if (productDoc.exists) {
+                                productData = productDoc.data();
+                            } else {
+                                console.warn(`Product ${orderData.productId} for order ${currentMiniModalOrderId} not found in inventory.`);
+                                // Proceed with status change but inventory updates might fail or be skipped
+                            }
+                        } else {
+                            console.warn(`Order ${currentMiniModalOrderId} does not have a productId.`);
+                             // Proceed with status change but inventory updates will be skipped
+                        }
+
+
+                        if (newStatus === 'received') {
+                            console.log(`Calling processFullReceipt for order ${currentMiniModalOrderId}`);
+                            await processFullReceipt(currentMiniModalOrderId, orderData, productData, productRef);
+                        } else if (newStatus === 'partially_received') {
+                            if (isNaN(quantityReceived) || quantityReceived <= 0) {
+                                uiEnhancementManager.showToast("Please enter a valid quantity received for partial receipt.", "warning");
+                                return; // Don't close modal, let user correct
+                            }
+                            if (quantityReceived >= orderData.quantity) {
+                                uiEnhancementManager.showToast("Quantity received is equal to or more than ordered. Use 'Received' status for full receipt.", "warning");
+                                return; // Don't close modal
+                            }
+                            console.log(`Calling processPartialReceipt for order ${currentMiniModalOrderId} with quantity ${quantityReceived}`);
+                            await processPartialReceipt(currentMiniModalOrderId, orderData, productData, productRef, quantityReceived);
+                        } else { // Handle other simple status changes (Pending, Fulfilled, Cancelled, Backordered)
                             if (orderData.status !== newStatus) {
                                 await orderRef.update({ status: newStatus });
                                 uiEnhancementManager.showToast(`Order ${currentMiniModalOrderId} status updated to ${newStatus}.`, "success");
                                 console.log(`Order ${currentMiniModalOrderId} status updated to ${newStatus} via mini-modal.`);
-                                if (typeof loadAndDisplayOrders === 'function') {
-                                    loadAndDisplayOrders();
-                                }
                                 await logActivity('order_status_changed', `Order ${currentMiniModalOrderId} status changed to ${newStatus} via mini-modal`, currentMiniModalOrderId, orderData.productName);
                             } else {
                                 uiEnhancementManager.showToast(`Order status is already ${newStatus}. No change made.`, "info");
                             }
-                        } else {
-                            uiEnhancementManager.showToast(`Order ${currentMiniModalOrderId} not found in database.`, "error");
                         }
+
+                        if (typeof loadAndDisplayOrders === 'function') {
+                            loadAndDisplayOrders();
+                        }
+                        if (productData && (newStatus === 'received' || newStatus === 'partially_received')) { // Refresh inventory display if stock levels changed
+                            if (typeof displayInventory === 'function') displayInventory();
+                            if (typeof updateInventoryDashboard === 'function') updateInventoryDashboard();
+                            if (typeof updateToOrderTable === 'function') updateToOrderTable();
+                        }
+
                     } catch (error) {
-                        console.error("Error updating order status from mini-modal:", error);
+                        console.error("Error processing order status update from mini-modal:", error);
                         uiEnhancementManager.showToast("Error updating status: " + error.message, "error");
                     }
                     closeMiniStatusModal();
