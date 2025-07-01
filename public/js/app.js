@@ -633,7 +633,7 @@ function generateFastOrderReportPDF() { console.log('generateFastOrderReportPDF 
 function generateOrderReportPDFWithQRCodes() { console.log('generateOrderReportPDFWithQRCodes called - STUB'); }
 function generateAllQRCodesPDF() { console.log('generateAllQRCodesPDF called - STUB'); }
 function generateProductUsageChart(productId) { console.log(`generateProductUsageChart called for ${productId} - STUB`); }
-window.viewOrderDetails = async function(orderId) { // Made async
+window.viewOrderDetails = async function(orderId) {
     console.log(`viewOrderDetails called for order ID: ${orderId}`);
     if (!db) {
         console.error("Firestore (db) is not initialized.");
@@ -648,33 +648,86 @@ window.viewOrderDetails = async function(orderId) { // Made async
         if (doc.exists) {
             const orderData = doc.data();
             console.log("Order data:", orderData);
-            // For now, display using an alert. A modal or dedicated UI would be better.
-            let alertMessage = `Order ID: ${doc.id}\n`;
-            alertMessage += `Product ID: ${orderData.productId}\n`;
-            alertMessage += `Product Name: ${orderData.productName || 'N/A'}\n`;
-            alertMessage += `Quantity: ${orderData.quantity}\n`;
-            alertMessage += `Status: ${orderData.status}\n`;
-            alertMessage += `User ID: ${orderData.userId}\n`;
+
+            let detailsMessage = `Order ID: ${doc.id}\n`;
+            detailsMessage += `Product Name: ${orderData.productName || 'N/A'}\n`;
+            detailsMessage += `Quantity: ${orderData.quantity}\n`;
+            detailsMessage += `Current Status: ${orderData.status}\n`;
             if (orderData.orderDate && orderData.orderDate.toDate) {
-                alertMessage += `Order Date: ${orderData.orderDate.toDate().toLocaleString()}\n`;
-            } else if (orderData.createdAt && orderData.createdAt.toDate) { // Fallback for different timestamp field name
-                alertMessage += `Order Date: ${orderData.createdAt.toDate().toLocaleString()}\n`;
+                detailsMessage += `Order Date: ${orderData.orderDate.toDate().toLocaleString()}\n`;
+            } else if (orderData.createdAt && orderData.createdAt.toDate) {
+                detailsMessage += `Order Date: ${orderData.createdAt.toDate().toLocaleString()}\n`;
             }
 
-            alert(alertMessage);
-            // Here, you would typically populate a modal or a detail view.
-            // For example:
-            // populateOrderDetailsModal(orderData);
-            // showOrderDetailsModal();
+            // Display order details and UI placeholders for receiving items
+            let promptMessage = `${detailsMessage}\n`;
+            promptMessage += `--- Item Receiving ---\n`;
+            promptMessage += `Product: ${orderData.productName || orderData.productId}\n`;
+            promptMessage += `Ordered: ${orderData.quantity}\n`;
+            promptMessage += `Quantity Received (input here if applicable): [___]\n\n`;
+            promptMessage += `--- Actions ---\n`;
+            promptMessage += `1. Change Status (current: ${orderData.status})\n`;
+            promptMessage += `2. Mark as Fully Received (placeholder)\n`;
+            promptMessage += `3. Mark as Partially Received (placeholder)\n\n`;
+            promptMessage += `Enter action (e.g., 'status fulfilled', 'receive full', 'receive partial [qty]'):`;
+
+            const userInput = prompt(promptMessage, "");
+
+            if (userInput && userInput.trim() !== "") {
+                const actionParts = userInput.trim().toLowerCase().split(" ");
+                const command = actionParts[0];
+
+                if (command === "status" && actionParts.length > 1) {
+                    const newStatus = actionParts[1];
+                    const validStatuses = ['pending', 'partially_received', 'received', 'fulfilled', 'cancelled', 'backordered'];
+                    if (validStatuses.includes(newStatus)) {
+                        if (newStatus !== orderData.status) {
+                            await orderRef.update({ status: newStatus });
+                            alert(`Order status updated to: ${newStatus}`);
+                            console.log(`Order ${orderId} status updated to ${newStatus}`);
+                            if (typeof loadAndDisplayOrders === 'function') {
+                                loadAndDisplayOrders();
+                            }
+                            await logActivity('order_status_changed', `Order ${orderId} status changed to ${newStatus}`, orderId, orderData.productName);
+                        } else {
+                            alert(`Order status is already ${newStatus}. No change made.`);
+                        }
+                    } else {
+                        alert(`Invalid status '${newStatus}'. Valid statuses are: ${validStatuses.join(", ")}.`);
+                    }
+                } else if (command === "receive") {
+                    // Placeholder for receiving logic - will be implemented in Phase 2 & 3
+                    if (actionParts.length > 1 && actionParts[1] === "full") {
+                        alert("Placeholder: Logic for 'Mark as Fully Received' will be implemented later.");
+                        // Example: await receiveFullOrder(orderId);
+                    } else if (actionParts.length > 1 && actionParts[1] === "partial" && actionParts[2]) {
+                        const qtyReceived = parseInt(actionParts[2]);
+                        if (!isNaN(qtyReceived) && qtyReceived > 0) {
+                            alert(`Placeholder: Logic for 'Mark as Partially Received' with quantity ${qtyReceived} will be implemented later.`);
+                            // Example: await receivePartialOrder(orderId, [{ productId: orderData.productId, quantityReceived: qtyReceived }]);
+                        } else {
+                            alert("Invalid quantity for partial receipt.");
+                        }
+                    } else {
+                        alert("Invalid 'receive' command. Use 'receive full' or 'receive partial [qty]'.");
+                    }
+                } else {
+                    alert("Invalid action entered. No changes made.");
+                }
+            } else {
+                alert("No action taken.");
+            }
+
         } else {
             console.log("No such order found!");
             alert("Order not found.");
         }
     } catch (error) {
-        console.error("Error fetching order details: ", error);
-        alert("Error fetching order details: " + error.message);
+        console.error("Error fetching or updating order details: ", error);
+        alert("Error processing order: " + error.message);
     }
 }
+
 function populateTrendProductSelect() { console.log('populateTrendProductSelect called - STUB'); }
 
 async function logActivity(actionType, details, itemId = null, itemName = null) {
@@ -1275,7 +1328,8 @@ async function loadAndDisplayOrders() {
 
     const db = firebase.firestore();
     const filterStatusDropdown = document.getElementById('filterOrderStatus');
-    const selectedStatus = filterStatusDropdown ? filterStatusDropdown.value : '';
+    // Default to 'pending' if the dropdown value is empty, though HTML change should make it selected.
+    const selectedStatus = (filterStatusDropdown && filterStatusDropdown.value) ? filterStatusDropdown.value : 'pending';
 
     console.log(`[loadAndDisplayOrders] Fetching orders from Firestore collection "orders". Selected status: '${selectedStatus}'`);
 
@@ -1330,14 +1384,17 @@ async function loadAndDisplayOrders() {
       // Apply styling based on status
       if (status === 'Pending') {
         cellStatus.classList.add('status-pending');
-      } else if (status === 'Fulfilled' || status === 'fulfilled') { // Handle potential case variations
+    } else if (status === 'Fulfilled' || status === 'fulfilled') {
         cellStatus.classList.add('status-fulfilled');
       } else if (status === 'Cancelled' || status === 'cancelled') {
         cellStatus.classList.add('status-cancelled');
-      } else if (status === 'Backordered' || status === 'backordered') { // New condition for backordered
+    } else if (status === 'Backordered' || status === 'backordered') {
         cellStatus.classList.add('status-backordered');
-      }
-      else {
+    } else if (status === 'Received' || status === 'received') { // New
+      cellStatus.classList.add('status-received');
+    } else if (status === 'Partially Received' || status === 'partially_received') { // New
+      cellStatus.classList.add('status-partially-received');
+    } else {
         cellStatus.classList.add('status-other');
       }
 
