@@ -4002,46 +4002,47 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             */
 
-            // Mini Status Update Modal Close Button & Overlay
+            // Mini Status Update Modal Elements and Event Listeners
             const miniModalCloseBtn = document.getElementById('miniModalCloseBtn');
-            if (miniModalCloseBtn) {
-                miniModalCloseBtn.addEventListener('click', closeMiniStatusModal);
-            } else {
-                console.warn("[DOMContentLoaded] miniModalCloseBtn not found");
-            }
             const miniStatusUpdateModalElement = document.getElementById('miniStatusUpdateModal');
-            if (miniStatusUpdateModalElement) {
-                miniStatusUpdateModalElement.addEventListener('click', (e) => {
-                    if (e.target === miniStatusUpdateModalElement) { // Overlay click
-                        closeMiniStatusModal();
-                    }
-                });
-            } else {
-                console.warn("[DOMContentLoaded] miniStatusUpdateModalElement not found for overlay click listener");
-            }
-
-            // Mini Status Update Modal Close Button & Overlay
-            const miniModalCloseBtn = document.getElementById('miniModalCloseBtn');
-            if (miniModalCloseBtn) {
-                miniModalCloseBtn.addEventListener('click', closeMiniStatusModal);
-            } else {
-                console.warn("[DOMContentLoaded] miniModalCloseBtn not found");
-            }
-            const miniStatusUpdateModalElement = document.getElementById('miniStatusUpdateModal');
-            if (miniStatusUpdateModalElement) {
-                miniStatusUpdateModalElement.addEventListener('click', (e) => {
-                    if (e.target === miniStatusUpdateModalElement) { // Overlay click
-                        closeMiniStatusModal();
-                    }
-                });
-            } else {
-                console.warn("[DOMContentLoaded] miniStatusUpdateModalElement not found for overlay click listener");
-            }
-
-            // Event listener for the status dropdown in the mini modal
             const miniModalOrderStatusSelect = document.getElementById('miniModalOrderStatusSelect');
             const miniModalQuantityReceivedGroup = document.getElementById('miniModalQuantityReceivedGroup');
             const miniModalQuantityReceivedInput = document.getElementById('miniModalQuantityReceived');
+            const miniModalSaveStatusBtn = document.getElementById('miniModalSaveStatusBtn');
+
+            if (miniModalCloseBtn) {
+                miniModalCloseBtn.addEventListener('click', closeMiniStatusModal);
+            } else {
+                console.warn("[DOMContentLoaded] miniModalCloseBtn not found");
+            }
+
+            if (miniStatusUpdateModalElement) {
+                miniStatusUpdateModalElement.addEventListener('click', (e) => {
+                    if (e.target === miniStatusUpdateModalElement) { // Overlay click
+                        closeMiniStatusModal();
+                    }
+                });
+            } else {
+                console.warn("[DOMContentLoaded] miniStatusUpdateModalElement not found for overlay click listener");
+            }
+
+            // Mini Status Update Modal Close Button & Overlay
+            const miniModalCloseBtn = document.getElementById('miniModalCloseBtn');
+            if (miniModalCloseBtn) {
+                miniModalCloseBtn.addEventListener('click', closeMiniStatusModal);
+            } else {
+                console.warn("[DOMContentLoaded] miniModalCloseBtn not found");
+            }
+            const miniStatusUpdateModalElement = document.getElementById('miniStatusUpdateModal');
+            if (miniStatusUpdateModalElement) {
+                miniStatusUpdateModalElement.addEventListener('click', (e) => {
+                    if (e.target === miniStatusUpdateModalElement) { // Overlay click
+                        closeMiniStatusModal();
+                    }
+                });
+            } else {
+                console.warn("[DOMContentLoaded] miniStatusUpdateModalElement not found for overlay click listener");
+            }
 
             if (miniModalOrderStatusSelect && miniModalQuantityReceivedGroup && miniModalQuantityReceivedInput) {
                 miniModalOrderStatusSelect.addEventListener('change', function() {
@@ -4054,11 +4055,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
             } else {
-                console.warn("[DOMContentLoaded] One or more elements for mini modal quantity input logic not found.");
+                console.warn("[DOMContentLoaded] One or more elements for mini modal quantity input logic not found (order status select, qty group, qty input).");
             }
 
-            // Mini Status Update Modal Save Button
-            const miniModalSaveStatusBtn = document.getElementById('miniModalSaveStatusBtn');
             if (miniModalSaveStatusBtn) {
                 miniModalSaveStatusBtn.addEventListener('click', async () => {
                     if (!currentMiniModalOrderId) {
