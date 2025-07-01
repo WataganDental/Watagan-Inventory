@@ -4026,24 +4026,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.warn("[DOMContentLoaded] miniStatusUpdateModalElement not found for overlay click listener");
             }
 
-            // Mini Status Update Modal Close Button & Overlay
-            const miniModalCloseBtn = document.getElementById('miniModalCloseBtn');
-            if (miniModalCloseBtn) {
-                miniModalCloseBtn.addEventListener('click', closeMiniStatusModal);
-            } else {
-                console.warn("[DOMContentLoaded] miniModalCloseBtn not found");
-            }
-            const miniStatusUpdateModalElement = document.getElementById('miniStatusUpdateModal');
-            if (miniStatusUpdateModalElement) {
-                miniStatusUpdateModalElement.addEventListener('click', (e) => {
-                    if (e.target === miniStatusUpdateModalElement) { // Overlay click
-                        closeMiniStatusModal();
-                    }
-                });
-            } else {
-                console.warn("[DOMContentLoaded] miniStatusUpdateModalElement not found for overlay click listener");
-            }
-
             if (miniModalOrderStatusSelect && miniModalQuantityReceivedGroup && miniModalQuantityReceivedInput) {
                 miniModalOrderStatusSelect.addEventListener('change', function() {
                     if (this.value === 'partially_received') {
