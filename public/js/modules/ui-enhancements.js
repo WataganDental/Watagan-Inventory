@@ -11,6 +11,8 @@ export class UIEnhancementManager {
             outOfStockCount: 0
         };
         this.toastContainer = null;
+        this.currentToastElement = null; // To store the current toast DOM element
+        this.currentToastTimeout = null; // To store the timeout ID for the current toast
         this.initializeToastContainer();
     }
 
@@ -143,7 +145,15 @@ export class UIEnhancementManager {
         const alertClass = this.getAlertClass(type);
         const icon = this.getToastIcon(type);
 
-        toast.className = `alert ${alertClass} shadow-lg animate-pulse`;
+        // If a toast is already showing, remove it immediately
+        if (this.currentToastElement && this.currentToastElement.parentNode) {
+            clearTimeout(this.currentToastTimeout); // Clear its removal timeout
+            this.currentToastElement.remove();
+            this.currentToastElement = null;
+            this.currentToastTimeout = null;
+        }
+
+        toast.className = `alert ${alertClass} shadow-lg`; // Removed animate-pulse
         toast.innerHTML = `
             <div class="flex items-center">
                 ${icon}
@@ -152,14 +162,29 @@ export class UIEnhancementManager {
         `;
 
         this.toastContainer.appendChild(toast);
+        this.currentToastElement = toast; // Store reference to the new toast
 
         // Auto-remove after duration
-        setTimeout(() => {
+        this.currentToastTimeout = setTimeout(() => {
             if (toast.parentNode) {
-                toast.style.animation = 'slideOutRight 0.3s ease-in';
+                // Optional: add a slide-out animation
+                toast.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)'; // Slide out to the right
+
                 setTimeout(() => {
                     toast.remove();
-                }, 300);
+                    if (this.currentToastElement === toast) { // Clear refs if this was the current toast
+                        this.currentToastElement = null;
+                        this.currentToastTimeout = null;
+                    }
+                }, 300); // Wait for animation
+            } else {
+                 // If toast was already removed by a new toast call, just clear refs
+                if (this.currentToastElement === toast) {
+                    this.currentToastElement = null;
+                    this.currentToastTimeout = null;
+                }
             }
         }, duration);
     }
