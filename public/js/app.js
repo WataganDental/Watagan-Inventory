@@ -1076,8 +1076,9 @@ function showView(viewIdToShow, clickedMenuId) {
               console.log('[showView] Calling updateToOrderTable() for inventoryViewContainer.');
               if (typeof updateToOrderTable === 'function') updateToOrderTable(); else console.error("[showView] updateToOrderTable is not defined");
           } else if (container.id === 'dashboardViewContainer') {
-              console.log('[showView] dashboardViewContainer selected. Calling updateEnhancedDashboard.');
+              console.log('[showView] dashboardViewContainer selected. Calling updateEnhancedDashboard and displayPendingOrdersOnDashboard.');
               if (typeof updateEnhancedDashboard === 'function') updateEnhancedDashboard(); else console.error("[showView] updateEnhancedDashboard is not defined");
+              if (typeof displayPendingOrdersOnDashboard === 'function') displayPendingOrdersOnDashboard(); else console.error("[showView] displayPendingOrdersOnDashboard is not defined");
           }
           // END VIEW SPECIFIC INITIALIZATIONS
           // Original if-else chain continues below for other views, slightly refactored to include the above specific initializations first.
@@ -4131,6 +4132,196 @@ function setUpdateStockModalLastActionFeedback(message, isError = false) {
 
 // END: Update Stock Modal Functions
 
+// START: Create Order Modal Functions
+function openCreateOrderModal() {
+    const modal = document.getElementById('createOrderModal');
+    if (!modal) {
+        console.error("Create Order Modal element not found.");
+        return;
+    }
+    console.log("Opening Create Order Modal");
+
+    // Reset form fields
+    const productDropdown = document.getElementById('modalOrderProductId');
+    productDropdown.innerHTML = '<option value="">Loading products...</option>'; // Placeholder
+    document.getElementById('modalOrderQuantity').value = '';
+    document.getElementById('modalOrderSupplierInfo').classList.add('hidden');
+    document.getElementById('modalOrderSelectedProductSupplier').textContent = 'N/A';
+
+
+    // Populate product dropdown
+    // This should list all products, or perhaps only those needing reorder. For now, all.
+    if (inventory && inventory.length > 0) {
+        productDropdown.innerHTML = '<option value="">Select Product</option>';
+        inventory.sort((a,b) => (a.name || a.id).localeCompare(b.name || b.id)).forEach(product => {
+            const option = document.createElement('option');
+            option.value = product.id;
+            option.textContent = `${product.name} (Stock: ${product.quantity}, Min: ${product.minQuantity})`;
+            option.dataset.supplier = product.supplier || 'N/A'; // Store supplier info
+            productDropdown.appendChild(option);
+        });
+    } else {
+        productDropdown.innerHTML = '<option value="">No products available</option>';
+    }
+
+    // Add event listener to product dropdown to show supplier info
+    productDropdown.onchange = function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const supplier = selectedOption.dataset.supplier;
+        if (supplier && supplier !== 'N/A') {
+            document.getElementById('modalOrderSelectedProductSupplier').textContent = supplier;
+            document.getElementById('modalOrderSupplierInfo').classList.remove('hidden');
+        } else {
+            document.getElementById('modalOrderSupplierInfo').classList.add('hidden');
+        }
+    };
+
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    productDropdown.focus();
+}
+
+function closeCreateOrderModal() {
+    const modal = document.getElementById('createOrderModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+    // Clear/reset fields if necessary, e.g., product dropdown selection might persist
+    document.getElementById('modalOrderProductId').value = '';
+    document.getElementById('modalOrderQuantity').value = '';
+    document.getElementById('modalOrderSupplierInfo').classList.add('hidden');
+}
+
+async function submitModalOrder() {
+    const productId = document.getElementById('modalOrderProductId').value;
+    const quantityStr = document.getElementById('modalOrderQuantity').value;
+    const quantity = parseInt(quantityStr);
+
+    const showToast = (message, type = 'info') => {
+        if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+            uiEnhancementManager.showToast(message, type);
+        } else {
+            alert(message); // Fallback
+        }
+    };
+
+    if (!productId) {
+        showToast("Please select a product.", 'warning');
+        return;
+    }
+    if (isNaN(quantity) || quantity <= 0) {
+        showToast("Please enter a valid quantity.", 'warning');
+        return;
+    }
+
+    const product = inventory.find(p => p.id === productId);
+    if (!product) {
+        showToast("Selected product not found in local inventory data. Please refresh.", 'error');
+        return;
+    }
+
+    try {
+        const user = firebase.auth().currentUser;
+        if (!user) {
+            showToast("User not authenticated. Please log in.", "error");
+            return;
+        }
+
+        const orderData = {
+            productId: productId,
+            productName: product.name, // Store product name for easier display
+            quantity: quantity,
+            status: 'pending', // Default status for new orders
+            orderDate: firebase.firestore.Timestamp.now(), // Firebase server timestamp
+            userId: user.uid, // Link order to the user who created it
+            supplier: product.supplier || null // Store supplier if available
+        };
+
+        const orderRef = await db.collection('orders').add(orderData);
+        console.log("Order created with ID:", orderRef.id);
+
+        // Update the product's quantityOrdered in Firestore
+        const productDocRef = db.collection('inventory').doc(productId);
+        await db.runTransaction(async (transaction) => {
+            const productDoc = await transaction.get(productDocRef);
+            if (!productDoc.exists) {
+                throw "Product document not found!";
+            }
+            const currentQuantityOrdered = productDoc.data().quantityOrdered || 0;
+            transaction.update(productDocRef, { quantityOrdered: currentQuantityOrdered + quantity });
+        });
+        console.log(`Updated quantityOrdered for product ${productId}`);
+
+        showToast(`Order for ${quantity} of ${product.name} created successfully!`, 'success');
+        await logActivity('order_created_modal', `Order for ${quantity} of ${product.name} created via dashboard modal. Order ID: ${orderRef.id}`, orderRef.id, product.name);
+
+        closeCreateOrderModal();
+
+        // Refresh relevant data and UI components
+        inventory = await inventoryManager.loadInventory(); // Refresh local inventory
+        displayInventory(); // Refresh main inventory table if visible
+        updateInventoryDashboard();
+        updateToOrderTable();
+        updateEnhancedDashboard(); // Update main dashboard stats
+        // If the pending orders table is implemented on the dashboard, refresh it too
+        if (typeof displayPendingOrdersOnDashboard === "function") {
+            displayPendingOrdersOnDashboard();
+        }
+
+
+    } catch (error) {
+        console.error("Error submitting order from modal:", error);
+        showToast(`Error creating order: ${error.message}`, 'error');
+    }
+}
+// END: Create Order Modal Functions
+
+// START: Dashboard Pending Orders Table Functions
+async function displayPendingOrdersOnDashboard() {
+    const tableBody = document.getElementById('dashboardPendingOrdersTableBody');
+    if (!tableBody) {
+        console.error("Dashboard Pending Orders table body not found.");
+        return;
+    }
+    tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4">Loading pending orders...</td></tr>';
+
+    try {
+        const ordersSnapshot = await db.collection('orders').where('status', '==', 'pending').orderBy('orderDate', 'desc').limit(10).get();
+
+        if (ordersSnapshot.empty) {
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-gray-500 dark:text-gray-400">No pending orders found.</td></tr>';
+            return;
+        }
+
+        tableBody.innerHTML = ''; // Clear loading message
+        ordersSnapshot.forEach(doc => {
+            const order = doc.data();
+            const row = tableBody.insertRow();
+            row.className = 'hover'; // DaisyUI hover effect
+
+            row.innerHTML = `
+                <td class="text-xs whitespace-nowrap">${doc.id}</td>
+                <td>${order.productName || 'N/A'}</td>
+                <td class="text-center">${order.quantity}</td>
+                <td class="text-xs whitespace-nowrap">${order.orderDate ? order.orderDate.toDate().toLocaleDateString() : 'N/A'}</td>
+                <td><span class="badge badge-warning badge-sm">${order.status}</span></td>
+                <td class="text-center">
+                    <button class="btn btn-xs btn-ghost" onclick="openMiniStatusModal('${doc.id}', '${order.status}')" title="Edit Status">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+                    </button>
+                </td>
+            `;
+        });
+        console.log("Pending orders displayed on dashboard.");
+    } catch (error) {
+        console.error("Error fetching or displaying pending orders on dashboard:", error);
+        tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-red-500 dark:text-red-400">Error loading pending orders.</td></tr>';
+    }
+}
+// END: Dashboard Pending Orders Table Functions
+
 
 // Call initialization on DOM ready
 document.addEventListener('DOMContentLoaded', function() {
@@ -4734,8 +4925,19 @@ document.addEventListener('DOMContentLoaded', function() {
         // Block 9: Dashboard View specific buttons
         try {
             const refreshDashboardBtn = document.getElementById('refreshDashboardBtn');
-            if(refreshDashboardBtn) refreshDashboardBtn.addEventListener('click', updateEnhancedDashboard);
-            else console.warn("[DOMContentLoaded] refreshDashboardBtn not found");
+                if(refreshDashboardBtn) {
+                    refreshDashboardBtn.addEventListener('click', () => {
+                        if (typeof updateEnhancedDashboard === 'function') updateEnhancedDashboard();
+                        if (typeof displayPendingOrdersOnDashboard === 'function') displayPendingOrdersOnDashboard();
+                    });
+                } else console.warn("[DOMContentLoaded] refreshDashboardBtn not found");
+
+                const viewAllOrdersBtn = document.getElementById('viewAllOrdersBtn');
+                if(viewAllOrdersBtn) {
+                    viewAllOrdersBtn.addEventListener('click', () => {
+                        showView('ordersSectionContainer', 'menuOrders');
+                    });
+                } else console.warn("[DOMContentLoaded] viewAllOrdersBtn on dashboard not found");
 
             const quickAddProductBtn = document.getElementById('quickAddProductBtn'); // This ID is for the original button that switches view
             if (quickAddProductBtn) {
@@ -4758,18 +4960,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             } else console.warn("[DOMContentLoaded] dashboardAddProductBtn (modal opener) not found");
 
+            const dashboardCreateOrderBtn = document.getElementById('dashboardCreateOrderBtn');
+            if (dashboardCreateOrderBtn) dashboardCreateOrderBtn.addEventListener('click', openCreateOrderModal);
+            else console.warn("[DOMContentLoaded] dashboardCreateOrderBtn not found");
+
             // Event listeners for the new Add Product Modal
-            const closeAddProductModalBtn = document.getElementById('closeAddProductModalBtn');
-            if (closeAddProductModalBtn) closeAddProductModalBtn.addEventListener('click', closeAddProductModal);
-            else console.warn("[DOMContentLoaded] closeAddProductModalBtn not found");
+            const closeAddProductModalBtnListener = document.getElementById('closeAddProductModalBtn');
+            if (closeAddProductModalBtnListener) closeAddProductModalBtnListener.addEventListener('click', closeAddProductModal);
+            else console.warn("[DOMContentLoaded] closeAddProductModalBtn for Add Product Modal not found");
 
             const modalProductSubmitBtn = document.getElementById('modalProductSubmitBtn');
             if (modalProductSubmitBtn) modalProductSubmitBtn.addEventListener('click', submitModalProduct);
-            else console.warn("[DOMContentLoaded] modalProductSubmitBtn not found");
+            else console.warn("[DOMContentLoaded] modalProductSubmitBtn for Add Product Modal not found");
 
-            const modalCancelProductBtn = document.getElementById('modalCancelProductBtn');
+            const modalCancelProductBtn = document.getElementById('modalCancelProductBtn'); // Specific to Add Product Modal
             if (modalCancelProductBtn) modalCancelProductBtn.addEventListener('click', closeAddProductModal);
-            else console.warn("[DOMContentLoaded] modalCancelProductBtn not found");
+            else console.warn("[DOMContentLoaded] modalCancelProductBtn for Add Product Modal not found");
+
+            // Event listeners for the new Create Order Modal
+            const closeCreateOrderModalBtnListener = document.getElementById('closeCreateOrderModalBtn');
+            if (closeCreateOrderModalBtnListener) closeCreateOrderModalBtnListener.addEventListener('click', closeCreateOrderModal);
+            else console.warn("[DOMContentLoaded] closeCreateOrderModalBtn for Create Order Modal not found");
+
+            const modalSubmitOrderBtn = document.getElementById('modalSubmitOrderBtn');
+            if (modalSubmitOrderBtn) modalSubmitOrderBtn.addEventListener('click', submitModalOrder);
+            else console.warn("[DOMContentLoaded] modalSubmitOrderBtn for Create Order Modal not found");
+
+            const modalCancelOrderBtn = document.getElementById('modalCancelOrderBtn'); // Specific to Create Order Modal
+            if (modalCancelOrderBtn) modalCancelOrderBtn.addEventListener('click', closeCreateOrderModal);
+            else console.warn("[DOMContentLoaded] modalCancelOrderBtn for Create Order Modal not found");
 
             // Photo capture buttons for the modal
             const modalCapturePhotoBtn = document.getElementById('modalCapturePhotoBtn');

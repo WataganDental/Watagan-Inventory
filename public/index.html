@@ -495,10 +495,73 @@
                 </div></section>
                 <section class="mb-8"><h2 class="text-2xl font-semibold mb-4">Quick Actions</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="card bg-base-100 shadow-xl"><div class="card-body"><h3 class="card-title text-primary">Add New Product</h3><p>Quickly add a new product to inventory</p><div class="card-actions justify-end"><button id="dashboardAddProductBtn" class="btn btn-primary">Add Product</button></div></div></div>
+                    <div class="card bg-base-100 shadow-xl"><div class="card-body"><h3 class="card-title text-info">Create New Order</h3><p>Place a new order for products</p><div class="card-actions justify-end"><button id="dashboardCreateOrderBtn" class="btn btn-info">Create Order</button></div></div></div>
                     <div class="card bg-base-100 shadow-xl"><div class="card-body"><h3 class="card-title text-secondary">Stock Update</h3><p>Update product quantities quickly</p><div class="card-actions justify-end"><button id="quickStockUpdateBtn" class="btn btn-secondary">Update Stock</button></div></div></div>
                     <div class="card bg-base-100 shadow-xl"><div class="card-body"><h3 class="card-title text-accent">View Reports</h3><p>Generate inventory reports</p><div class="card-actions justify-end"><button id="quickViewReportsBtn" class="btn btn-accent">View Reports</button></div></div></div>
                 </div></section>
+
+                <section id="dashboardPendingOrdersSection" class="mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-semibold">Pending Orders</h2>
+                        <button id="viewAllOrdersBtn" class="btn btn-outline btn-sm btn-primary">View All Orders</button>
+                    </div>
+                    <div class="card bg-base-100 shadow-xl">
+                        <div class="card-body">
+                            <div class="overflow-x-auto max-h-96">
+                                <table class="table table-sm w-full">
+                                    <thead>
+                                        <tr>
+                                            <th>Order ID</th>
+                                            <th>Product Name</th>
+                                            <th class="text-center">Qty</th>
+                                            <th>Order Date</th>
+                                            <th>Status</th>
+                                            <th class="text-center">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dashboardPendingOrdersTableBody">
+                                        <!-- Rows will be populated by JS -->
+                                        <tr><td colspan="6" class="text-center p-4">Loading pending orders...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <section class="mb-8"><h2 class="text-2xl font-semibold mb-4">Recent Activity</h2><div class="card bg-base-100 shadow-xl"><div class="card-body"><div id="recentActivityList" class="space-y-1 max-h-32 overflow-y-auto"><div class="flex items-center text-sm text-gray-500 dark:text-gray-400"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>No recent activity to display</div></div></div></div></section>
+            </div>
+
+            <!-- Create New Order Modal -->
+            <div id="createOrderModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+              <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-xl max-w-md w-full">
+                <div class="flex justify-between items-center mb-4">
+                  <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Create New Order</h3>
+                  <button id="closeCreateOrderModalBtn" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+                </div>
+                <div class="space-y-4">
+                  <div>
+                    <label for="modalOrderProductId" class="label"><span class="label-text">Product</span></label>
+                    <select id="modalOrderProductId" class="select select-bordered w-full">
+                      <option value="">Select Product</option>
+                      <!-- Options will be populated by JS -->
+                    </select>
+                  </div>
+                  <div>
+                    <label for="modalOrderQuantity" class="label"><span class="label-text">Quantity</span></label>
+                    <input type="number" id="modalOrderQuantity" placeholder="Enter quantity" class="input input-bordered w-full">
+                  </div>
+                  <div id="modalOrderSupplierInfo" class="text-sm text-gray-600 dark:text-gray-400 hidden">
+                    Supplier: <span id="modalOrderSelectedProductSupplier" class="font-semibold">N/A</span>
+                  </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                  <button id="modalSubmitOrderBtn" class="btn btn-success">Submit Order</button>
+                  <button id="modalCancelOrderBtn" class="btn btn-ghost">Cancel</button>
+                </div>
+              </div>
             </div>
 
             <!-- Add Product Modal -->
