@@ -1363,11 +1363,20 @@ async function loadAndDisplayOrders() {
 
       const cellActions = row.insertCell();
       cellActions.className = 'px-4 py-2 text-center whitespace-nowrap';
-      // Add action buttons if needed, e.g., view details, update status
-      cellActions.innerHTML = `<button class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-xs" onclick="viewOrderDetails('${doc.id}')">View</button>`;
-      // Note: viewOrderDetails function would need to be implemented.
+
+      const editStatusBtn = document.createElement('button');
+      editStatusBtn.className = 'btn btn-xs btn-outline btn-primary'; // Using DaisyUI button classes
+      editStatusBtn.textContent = 'Edit Status';
+      editStatusBtn.addEventListener('click', () => {
+        openMiniStatusModal(doc.id, orderData.status);
+      });
+      cellActions.appendChild(editStatusBtn);
+
+      // Original viewOrderDetails call is removed as per new plan.
+      // The old viewOrderDetails opened the larger modal.
+      // cellActions.innerHTML = `<button class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-xs" onclick="viewOrderDetails('${doc.id}')">View</button>`;
     });
-    console.log('[loadAndDisplayOrders] Orders loaded and displayed successfully into ordersTableBody.');
+    console.log('[loadAndDisplayOrders] Orders loaded and displayed successfully into ordersTableBody with Edit Status buttons.');
 
   } catch (error) {
     console.error('[loadAndDisplayOrders] Error loading and displaying orders:', error.message, error.stack);
@@ -3415,10 +3424,12 @@ function enhanceQuickQRFeatures() {
     console.log('Quick QR features enhancement complete');
 }
 
-// Modal Global Variable
-let currentModalOrderId = null; // To store the ID of the order being viewed/edited in the modal
+// Modal Global Variables
+// let currentModalOrderId = null; // For the original larger modal (DEPRECATED)
+let currentMiniModalOrderId = null; // For the new mini status update modal
 
-// Function to open the order details modal
+// Function to open the order details modal (original - DEPRECATED)
+/*
 function openOrderDetailsModal() {
     const modal = document.getElementById('orderDetailsModal');
     if (modal) {
@@ -3428,20 +3439,58 @@ function openOrderDetailsModal() {
         console.error("Order details modal element not found.");
     }
 }
+*/
 
-// Function to close the order details modal
+// Function to close the order details modal (original - DEPRECATED)
+/*
 function closeOrderDetailsModal() {
     const modal = document.getElementById('orderDetailsModal');
     if (modal) {
         modal.classList.add('hidden');
-        // modal.classList.remove('flex'); // If using flex to center
-        currentModalOrderId = null; // Clear the stored order ID
-        // Optionally reset form fields within the modal here if needed
-        // document.getElementById('modalOrderStatusSelect').value = ''; // Example
+        currentModalOrderId = null;
     } else {
         console.error("Order details modal element not found.");
     }
 }
+*/
+
+// Function to open the NEW mini status update modal
+function openMiniStatusModal(orderId, currentStatus) {
+    currentMiniModalOrderId = orderId; // Store the orderId
+
+    const displayOrderIdElem = document.getElementById('miniModalDisplayOrderId');
+    if (displayOrderIdElem) {
+        displayOrderIdElem.textContent = orderId;
+    } else {
+        console.error("miniModalDisplayOrderId element not found.");
+    }
+
+    const statusSelectElem = document.getElementById('miniModalOrderStatusSelect');
+    if (statusSelectElem) {
+        statusSelectElem.value = currentStatus;
+    } else {
+        console.error("miniModalOrderStatusSelect element not found.");
+    }
+
+    const modal = document.getElementById('miniStatusUpdateModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    } else {
+        console.error("miniStatusUpdateModal element not found.");
+    }
+}
+
+// Function to close the NEW mini status update modal
+function closeMiniStatusModal() {
+    const modal = document.getElementById('miniStatusUpdateModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    } else {
+        console.error("miniStatusUpdateModal element not found.");
+    }
+    currentMiniModalOrderId = null; // Clear the stored order ID
+}
+
 
 // Initialize all enhancements
 function initializeAllEnhancements() {
@@ -3736,15 +3785,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if(imageModalElement) imageModalElement.addEventListener('click', (e) => { if (e.target === imageModalElement) closeImageModal(); });
             else console.warn("[DOMContentLoaded] imageModal element not found");
 
-            // Order Details Modal Close Button
+            // Order Details Modal Close Button (Original - DEPRECATED)
+            /*
             const closeOrderModalBtn = document.getElementById('closeOrderModalBtn');
             if (closeOrderModalBtn) {
                 closeOrderModalBtn.addEventListener('click', closeOrderDetailsModal);
             } else {
                 console.warn("[DOMContentLoaded] closeOrderModalBtn not found");
             }
+            */
 
-            // Order Details Modal Save Button
+            // Order Details Modal Save Button (Original - DEPRECATED)
+            /*
             const saveOrderStatusBtn = document.getElementById('saveOrderStatusBtn');
             if (saveOrderStatusBtn) {
                 saveOrderStatusBtn.addEventListener('click', async () => {
@@ -3788,17 +3840,83 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 console.warn("[DOMContentLoaded] saveOrderStatusBtn not found");
             }
+            */
 
-            // Allow closing order details modal by clicking outside of it (on the overlay)
+            // Allow closing order details modal by clicking outside of it (on the overlay) (Original - DEPRECATED)
+            /*
             const orderDetailsModalElement = document.getElementById('orderDetailsModal');
             if (orderDetailsModalElement) {
                 orderDetailsModalElement.addEventListener('click', (e) => {
-                    if (e.target === orderDetailsModalElement) { // Check if the click is on the overlay itself
+                    if (e.target === orderDetailsModalElement) {
                         closeOrderDetailsModal();
                     }
                 });
             } else {
                 console.warn("[DOMContentLoaded] orderDetailsModal element not found for overlay click listener");
+            }
+            */
+
+            // Mini Status Update Modal Close Button & Overlay
+            const miniModalCloseBtn = document.getElementById('miniModalCloseBtn');
+            if (miniModalCloseBtn) {
+                miniModalCloseBtn.addEventListener('click', closeMiniStatusModal);
+            } else {
+                console.warn("[DOMContentLoaded] miniModalCloseBtn not found");
+            }
+            const miniStatusUpdateModalElement = document.getElementById('miniStatusUpdateModal');
+            if (miniStatusUpdateModalElement) {
+                miniStatusUpdateModalElement.addEventListener('click', (e) => {
+                    if (e.target === miniStatusUpdateModalElement) { // Overlay click
+                        closeMiniStatusModal();
+                    }
+                });
+            } else {
+                console.warn("[DOMContentLoaded] miniStatusUpdateModalElement not found for overlay click listener");
+            }
+
+            // Mini Status Update Modal Save Button
+            const miniModalSaveStatusBtn = document.getElementById('miniModalSaveStatusBtn');
+            if (miniModalSaveStatusBtn) {
+                miniModalSaveStatusBtn.addEventListener('click', async () => {
+                    if (!currentMiniModalOrderId) {
+                        console.error("No currentMiniModalOrderId set. Cannot save status.");
+                        uiEnhancementManager.showToast("Error: No order selected to update.", "error");
+                        return;
+                    }
+
+                    const newStatus = document.getElementById('miniModalOrderStatusSelect').value;
+                    if (!newStatus) {
+                        uiEnhancementManager.showToast("No status selected.", "warning");
+                        return;
+                    }
+
+                    const orderRef = db.collection('orders').doc(currentMiniModalOrderId);
+                    try {
+                        const doc = await orderRef.get();
+                        if (doc.exists) {
+                            const orderData = doc.data();
+                            if (orderData.status !== newStatus) {
+                                await orderRef.update({ status: newStatus });
+                                uiEnhancementManager.showToast(`Order ${currentMiniModalOrderId} status updated to ${newStatus}.`, "success");
+                                console.log(`Order ${currentMiniModalOrderId} status updated to ${newStatus} via mini-modal.`);
+                                if (typeof loadAndDisplayOrders === 'function') {
+                                    loadAndDisplayOrders();
+                                }
+                                await logActivity('order_status_changed', `Order ${currentMiniModalOrderId} status changed to ${newStatus} via mini-modal`, currentMiniModalOrderId, orderData.productName);
+                            } else {
+                                uiEnhancementManager.showToast(`Order status is already ${newStatus}. No change made.`, "info");
+                            }
+                        } else {
+                            uiEnhancementManager.showToast(`Order ${currentMiniModalOrderId} not found in database.`, "error");
+                        }
+                    } catch (error) {
+                        console.error("Error updating order status from mini-modal:", error);
+                        uiEnhancementManager.showToast("Error updating status: " + error.message, "error");
+                    }
+                    closeMiniStatusModal();
+                });
+            } else {
+                console.warn("[DOMContentLoaded] miniModalSaveStatusBtn not found");
             }
 
             console.log('[DOMContentLoaded] Modal listeners attached.');
