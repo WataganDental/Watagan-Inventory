@@ -435,13 +435,24 @@ async function handleQuickStockScan(productId) {
 
 async function adjustScannedProductQuantity(adjustmentType, quantityToAdjustStr) {
     const quantityToAdjust = parseInt(quantityToAdjustStr);
+    const showToast = (message, type = 'info') => {
+        if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+            uiEnhancementManager.showToast(message, type);
+        } else {
+            console.warn('uiEnhancementManager.showToast not available. Message:', message);
+            // Fallback or alternative notification if needed
+            setLastActionFeedback(message, type === 'error' || type === 'warning');
+        }
+    };
 
     if (!currentBarcodeModeProductId) {
-        setLastActionFeedback("No active product selected for quantity adjustment.", true);
+        showToast("No active product selected for quantity adjustment.", 'error');
+        setLastActionFeedback("No active product selected for quantity adjustment.", true); // Keep for non-toast UI
         return;
     }
     if (isNaN(quantityToAdjust) || quantityToAdjust <= 0) {
-        setLastActionFeedback("Invalid quantity for adjustment.", true);
+        showToast("Invalid quantity for adjustment. Must be a positive number.", 'error');
+        setLastActionFeedback("Invalid quantity for adjustment.", true); // Keep for non-toast UI
         return;
     }
 
@@ -450,53 +461,69 @@ async function adjustScannedProductQuantity(adjustmentType, quantityToAdjustStr)
         const productDoc = await productRef.get();
 
         if (!productDoc.exists) {
-            setLastActionFeedback(`Product ${currentBarcodeModeProductId} not found.`, true);
+            const msg = `Product ${currentBarcodeModeProductId} not found in database.`;
+            showToast(msg, 'error');
+            setLastActionFeedback(msg, true);
             return;
         }
 
         const productData = productDoc.data();
         let currentQuantity = productData.quantity;
         let newQuantity;
+        let successMessage = '';
 
         if (adjustmentType === 'increment') {
             newQuantity = currentQuantity + quantityToAdjust;
             await productRef.update({ quantity: newQuantity });
-            setLastActionFeedback(`Added ${quantityToAdjust} to ${productData.name}. New stock: ${newQuantity}`, false);
+            successMessage = `Added ${quantityToAdjust} to ${productData.name}. New stock: ${newQuantity}`;
+            showToast(successMessage, 'success');
+            setLastActionFeedback(successMessage, false);
             await logActivity('stock_adjusted_scan', `Product: ${productData.name} quantity increased by ${quantityToAdjust} (New: ${newQuantity})`, currentBarcodeModeProductId, productData.name);
         } else if (adjustmentType === 'decrement') {
             if (currentQuantity >= quantityToAdjust) {
                 newQuantity = currentQuantity - quantityToAdjust;
                 await productRef.update({ quantity: newQuantity });
-                setLastActionFeedback(`Removed ${quantityToAdjust} from ${productData.name}. New stock: ${newQuantity}`, false);
+                successMessage = `Removed ${quantityToAdjust} from ${productData.name}. New stock: ${newQuantity}`;
+                showToast(successMessage, 'success');
+                setLastActionFeedback(successMessage, false);
                 await logActivity('stock_adjusted_scan', `Product: ${productData.name} quantity decreased by ${quantityToAdjust} (New: ${newQuantity})`, currentBarcodeModeProductId, productData.name);
             } else {
-                setLastActionFeedback(`Cannot remove ${quantityToAdjust}. Only ${currentQuantity} in stock for ${productData.name}.`, true);
+                const errMsg = `Cannot remove ${quantityToAdjust}. Only ${currentQuantity} in stock for ${productData.name}.`;
+                showToast(errMsg, 'warning');
+                setLastActionFeedback(errMsg, true);
                 return;
             }
         } else {
-            setLastActionFeedback("Invalid adjustment type.", true);
+            const errMsg = "Invalid adjustment type specified.";
+            showToast(errMsg, 'error');
+            setLastActionFeedback(errMsg, true);
             return;
         }
 
+        // Update local inventory array
         const inventoryIndex = inventory.findIndex(p => p.id === currentBarcodeModeProductId);
         if (inventoryIndex !== -1) {
             inventory[inventoryIndex].quantity = newQuantity;
         }
 
+        // Update UI elements
         const currentStockEl = document.getElementById('qsuCurrentStock');
         if (currentStockEl) {
             currentStockEl.textContent = newQuantity;
         }
 
+        // Refresh relevant parts of the UI
         if (document.getElementById('inventoryViewContainer') && !document.getElementById('inventoryViewContainer').classList.contains('hidden')) {
             displayInventory();
         }
         updateInventoryDashboard();
-        updateToOrderTable();
+        updateToOrderTable(); // Ensure this is robust
 
     } catch (error) {
         console.error("Error adjusting product quantity:", error);
-        setLastActionFeedback(`Error updating stock: ${error.message}`, true);
+        const errMsg = `Error updating stock: ${error.message}`;
+        showToast(errMsg, 'error');
+        setLastActionFeedback(errMsg, true);
     }
 }
 
@@ -3655,17 +3682,59 @@ document.addEventListener('DOMContentLoaded', function() {
             if (qsuBarcodeIdInput) {
                 qsuBarcodeIdInput.addEventListener('keypress', async (event) => {
                     if (event.key === 'Enter' || event.keyCode === 13) {
-                        event.preventDefault(); // Prevent default form submission if it's in a form
-                        const productId = qsuBarcodeIdInput.value.trim();
-                        if (productId) {
-                            await handleQuickStockScan(productId);
-                            qsuBarcodeIdInput.value = ''; // Clear for next scan
-                            // Optional: blur and re-focus for mobile keyboard handling, might not be necessary for physical scanners
-                            // qsuBarcodeIdInput.blur();
-                            // setTimeout(() => qsuBarcodeIdInput.focus(), 50);
+                        event.preventDefault();
+                        const scannedValue = qsuBarcodeIdInput.value.trim();
+                        qsuBarcodeIdInput.value = ''; // Clear input immediately
+
+                        if (scannedValue) {
+                            if (scannedValue.startsWith('ACTION_')) {
+                                // Handle Action QR Code
+                                if (!currentBarcodeModeProductId) {
+                                    const msg = 'Please scan a product before scanning an action QR code.';
+                                    setBarcodeStatus(msg, true);
+                                    if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                                        uiEnhancementManager.showToast(msg, 'error');
+                                    }
+                                    return;
+                                }
+                                const parts = scannedValue.split('_'); // e.g., ACTION_ADD_10
+                                if (parts.length === 3) {
+                                    const action = parts[1].toLowerCase(); // 'add' or 'sub'
+                                    const quantityStr = parts[2];
+
+                                    let actionType;
+                                    if (action === 'add') {
+                                        actionType = 'increment';
+                                    } else if (action === 'sub' || action === 'subtract') { // Allow "sub" or "subtract"
+                                        actionType = 'decrement';
+                                    } else {
+                                        const errMsg = `Invalid action: ${action}`;
+                                        setBarcodeStatus(errMsg, true);
+                                        if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                                            uiEnhancementManager.showToast(errMsg, 'error');
+                                        }
+                                        return;
+                                    }
+                                    await adjustScannedProductQuantity(actionType, quantityStr);
+                                } else {
+                                    const errMsg = `Malformed action QR code: ${scannedValue}`;
+                                    setBarcodeStatus(errMsg, true);
+                                    if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                                        uiEnhancementManager.showToast(errMsg, 'error');
+                                    }
+                                }
+                            } else {
+                                // Handle as Product ID
+                                await handleQuickStockScan(scannedValue);
+                            }
                         } else {
-                            setBarcodeStatus('Please enter or scan a Product ID.', true);
+                            setBarcodeStatus('Please enter or scan a Product ID or Action Code.', true);
+                             if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                                uiEnhancementManager.showToast('Input field was empty.', 'warning');
+                            }
                         }
+                        // Ensure focus remains or returns to the input field for chained scanning
+                        qsuBarcodeIdInput.focus();
                     }
                 });
             } else {
