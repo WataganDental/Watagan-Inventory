@@ -217,25 +217,55 @@
                             <div id="productFormTitle" class="collapse-title text-xl font-medium">
                                 Add New Product <!-- JS might change this to "Edit Product" -->
                             </div>
-                            <div id="productFormContent" class="collapse-content space-y-4">
+                            <div id="productFormContent" class="collapse-content space-y-3">
                                 <input type="hidden" id="productId">
-                                <input type="text" id="productName" placeholder="Product Name" class="input input-bordered w-full">
-                                <input type="number" id="productQuantity" placeholder="Quantity" class="input input-bordered w-full">
-                                <input type="number" id="productCost" placeholder="Cost" step="0.01" class="input input-bordered w-full">
-                                <input type="number" id="productMinQuantity" placeholder="Minimum Quantity" class="input input-bordered w-full">
-                                 <!-- Adding Reorder Quantity, Quantity Ordered, Backordered from public/index.html's form structure -->
-                                <input type="number" id="productReorderQuantity" placeholder="Reorder Quantity" class="input input-bordered w-full">
-                                <input type="number" id="productQuantityOrdered" placeholder="Quantity Ordered" class="input input-bordered w-full">
-                                <input type="number" id="productQuantityBackordered" placeholder="Quantity Backordered" class="input input-bordered w-full">
-                                <select id="productSupplier" class="select select-bordered w-full">
-                                    <option value="">Select Supplier</option>
-                                </select>
-                                <select id="productLocation" class="select select-bordered w-full">
-                                    <option value="">Select Location</option>
-                                </select>
-                                <div class="flex space-x-2"> <!-- Photo Buttons -->
-                                    <button id="capturePhotoBtn" class="btn btn-info">Capture Photo</button>
-                                    <button id="takePhotoBtn" class="btn btn-success hidden">Take Photo</button>
+                                <div>
+                                    <label for="productName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Product Name</label>
+                                    <input type="text" id="productName" placeholder="Enter product name" class="input input-bordered w-full mt-1">
+                                </div>
+                                <div>
+                                    <label for="productQuantity" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Current Quantity</label>
+                                    <input type="number" id="productQuantity" placeholder="Enter current quantity" class="input input-bordered w-full mt-1">
+                                </div>
+                                <div>
+                                    <label for="productCost" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Cost Price</label>
+                                    <input type="number" id="productCost" placeholder="Enter cost price" step="0.01" class="input input-bordered w-full mt-1">
+                                </div>
+                                <div>
+                                    <label for="productMinQuantity" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Minimum Stock Quantity</label>
+                                    <input type="number" id="productMinQuantity" placeholder="Enter minimum stock level" class="input input-bordered w-full mt-1">
+                                </div>
+                                <div>
+                                    <label for="productReorderQuantity" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Reorder Quantity</label>
+                                    <input type="number" id="productReorderQuantity" placeholder="Enter reorder quantity" class="input input-bordered w-full mt-1">
+                                </div>
+                                <div>
+                                    <label for="productQuantityOrdered" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Quantity Currently Ordered</label>
+                                    <input type="number" id="productQuantityOrdered" placeholder="Enter quantity on order" class="input input-bordered w-full mt-1">
+                                </div>
+                                <div>
+                                    <label for="productQuantityBackordered" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Quantity Backordered</label>
+                                    <input type="number" id="productQuantityBackordered" placeholder="Enter quantity backordered" class="input input-bordered w-full mt-1">
+                                </div>
+                                <div>
+                                    <label for="productSupplier" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Supplier</label>
+                                    <select id="productSupplier" class="select select-bordered w-full mt-1">
+                                        <option value="">Select Supplier</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="productLocation" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Location</label>
+                                    <select id="productLocation" class="select select-bordered w-full mt-1">
+                                        <option value="">Select Location</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Product Photo</label>
+                                    <div class="flex space-x-2 mt-1"> <!-- Photo Buttons -->
+                                        <button id="capturePhotoBtn" class="btn btn-info">Capture Photo</button>
+                                        <button id="takePhotoBtn" class="btn btn-success hidden">Take Photo</button>
+                                    </div>
+                                </div>
                                     <button id="cancelPhotoBtn" class="btn btn-error hidden">Cancel Photo</button>
                                 </div>
                                  <video id="photoVideo" class="hidden w-full rounded border mt-2"></video>
@@ -495,6 +525,7 @@
                 </div></section>
                 <section class="mb-8"><h2 class="text-2xl font-semibold mb-4">Quick Actions</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="card bg-base-100 shadow-xl"><div class="card-body"><h3 class="card-title text-primary">Add New Product</h3><p>Quickly add a new product to inventory</p><div class="card-actions justify-end"><button id="dashboardAddProductBtn" class="btn btn-primary">Add Product</button></div></div></div>
+                    <div class="card bg-base-100 shadow-xl"><div class="card-body"><h3 class="card-title text-warning">Edit Product</h3><p>Scan or enter ID to edit a product</p><div class="card-actions justify-end"><button id="dashboardScanToEditBtn" class="btn btn-warning">Scan to Edit</button></div></div></div>
                     <div class="card bg-base-100 shadow-xl"><div class="card-body"><h3 class="card-title text-info">Create New Order</h3><p>Place a new order for products</p><div class="card-actions justify-end"><button id="dashboardCreateOrderBtn" class="btn btn-info">Create Order</button></div></div></div>
                     <div class="card bg-base-100 shadow-xl"><div class="card-body"><h3 class="card-title text-secondary">Stock Update</h3><p>Update product quantities quickly</p><div class="card-actions justify-end"><button id="quickStockUpdateBtn" class="btn btn-secondary">Update Stock</button></div></div></div>
                     <div class="card bg-base-100 shadow-xl"><div class="card-body"><h3 class="card-title text-accent">View Reports</h3><p>Generate inventory reports</p><div class="card-actions justify-end"><button id="quickViewReportsBtn" class="btn btn-accent">View Reports</button></div></div></div>
@@ -573,24 +604,55 @@
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                   </button>
                 </div>
-                <div id="modalProductFormContent" class="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                <div id="modalProductFormContent" class="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
                     <input type="hidden" id="modalProductId">
-                    <input type="text" id="modalProductName" placeholder="Product Name" class="input input-bordered w-full">
-                    <input type="number" id="modalProductQuantity" placeholder="Quantity" class="input input-bordered w-full">
-                    <input type="number" id="modalProductCost" placeholder="Cost" step="0.01" class="input input-bordered w-full">
-                    <input type="number" id="modalProductMinQuantity" placeholder="Minimum Quantity" class="input input-bordered w-full">
-                    <input type="number" id="modalProductReorderQuantity" placeholder="Reorder Quantity" class="input input-bordered w-full">
-                    <input type="number" id="modalProductQuantityOrdered" placeholder="Quantity Ordered" class="input input-bordered w-full">
-                    <input type="number" id="modalProductQuantityBackordered" placeholder="Quantity Backordered" class="input input-bordered w-full">
-                    <select id="modalProductSupplier" class="select select-bordered w-full">
-                        <option value="">Select Supplier</option>
-                    </select>
-                    <select id="modalProductLocation" class="select select-bordered w-full">
-                        <option value="">Select Location</option>
-                    </select>
-                    <div class="flex space-x-2"> <!-- Photo Buttons -->
-                        <button id="modalCapturePhotoBtn" class="btn btn-info">Capture Photo</button>
-                        <button id="modalTakePhotoBtn" class="btn btn-success hidden">Take Photo</button>
+                    <div>
+                        <label for="modalProductName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Product Name</label>
+                        <input type="text" id="modalProductName" placeholder="Enter product name" class="input input-bordered w-full mt-1">
+                    </div>
+                    <div>
+                        <label for="modalProductQuantity" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Current Quantity</label>
+                        <input type="number" id="modalProductQuantity" placeholder="Enter current quantity" class="input input-bordered w-full mt-1">
+                    </div>
+                    <div>
+                        <label for="modalProductCost" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Cost Price</label>
+                        <input type="number" id="modalProductCost" placeholder="Enter cost price" step="0.01" class="input input-bordered w-full mt-1">
+                    </div>
+                    <div>
+                        <label for="modalProductMinQuantity" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Minimum Stock Quantity</label>
+                        <input type="number" id="modalProductMinQuantity" placeholder="Enter minimum stock level" class="input input-bordered w-full mt-1">
+                    </div>
+                    <div>
+                        <label for="modalProductReorderQuantity" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Reorder Quantity</label>
+                        <input type="number" id="modalProductReorderQuantity" placeholder="Enter reorder quantity" class="input input-bordered w-full mt-1">
+                    </div>
+                    <div>
+                        <label for="modalProductQuantityOrdered" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Quantity Currently Ordered</label>
+                        <input type="number" id="modalProductQuantityOrdered" placeholder="Enter quantity on order" class="input input-bordered w-full mt-1">
+                    </div>
+                    <div>
+                        <label for="modalProductQuantityBackordered" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Quantity Backordered</label>
+                        <input type="number" id="modalProductQuantityBackordered" placeholder="Enter quantity backordered" class="input input-bordered w-full mt-1">
+                    </div>
+                    <div>
+                        <label for="modalProductSupplier" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Supplier</label>
+                        <select id="modalProductSupplier" class="select select-bordered w-full mt-1">
+                            <option value="">Select Supplier</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="modalProductLocation" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Location</label>
+                        <select id="modalProductLocation" class="select select-bordered w-full mt-1">
+                            <option value="">Select Location</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Product Photo</label>
+                        <div class="flex space-x-2 mt-1"> <!-- Photo Buttons -->
+                            <button id="modalCapturePhotoBtn" class="btn btn-info">Capture Photo</button>
+                            <button id="modalTakePhotoBtn" class="btn btn-success hidden">Take Photo</button>
+                        </div>
+                    </div>
                         <button id="modalCancelPhotoBtn" class="btn btn-error hidden">Cancel Photo</button>
                     </div>
                     <video id="modalPhotoVideo" class="hidden w-full rounded border mt-2"></video>
@@ -646,6 +708,90 @@
                 </div>
                 <div class="flex justify-end space-x-3 mt-6">
                     <button id="updateStockDoneBtn" class="btn btn-primary">Done</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Scan to Edit Product Modal -->
+            <div id="scanToEditProductModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+              <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-xl max-w-2xl w-full">
+                <div class="flex justify-between items-center mb-4">
+                  <h3 id="scanToEditModalTitle" class="text-xl font-semibold text-gray-900 dark:text-white">Scan or Enter Product ID to Edit</h3>
+                  <button id="closeScanToEditModalBtn" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+                </div>
+
+                <!-- Initial ID Input View -->
+                <div id="scanToEditIdInputView" class="space-y-4">
+                  <div>
+                    <label for="scanToEditProductIdInput" class="label"><span class="label-text">Product ID:</span></label>
+                    <input type="text" id="scanToEditProductIdInput" placeholder="Scan barcode or type ID and press Enter" class="input input-bordered w-full">
+                  </div>
+                  <p id="scanToEditStatusMessage" class="text-sm text-center min-h-[20px]"></p>
+                   <button id="scanToEditSubmitIdBtn" class="btn btn-primary w-full">Find Product</button>
+                </div>
+
+                <!-- Edit Form View (hidden initially) -->
+                <div id="scanToEditFormView" class="hidden space-y-3 max-h-[70vh] overflow-y-auto pr-2">
+                  <input type="hidden" id="scanToEdit_productId">
+                  <div>
+                    <label for="scanToEdit_productName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Product Name</label>
+                    <input type="text" id="scanToEdit_productName" placeholder="Product Name" class="input input-bordered w-full mt-1">
+                  </div>
+                  <div>
+                    <label for="scanToEdit_productQuantity" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Quantity</label>
+                    <input type="number" id="scanToEdit_productQuantity" placeholder="Quantity" class="input input-bordered w-full mt-1">
+                  </div>
+                  <div>
+                    <label for="scanToEdit_productCost" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Cost</label>
+                    <input type="number" id="scanToEdit_productCost" placeholder="Cost" step="0.01" class="input input-bordered w-full mt-1">
+                  </div>
+                  <div>
+                    <label for="scanToEdit_productMinQuantity" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Minimum Quantity</label>
+                    <input type="number" id="scanToEdit_productMinQuantity" placeholder="Minimum Quantity" class="input input-bordered w-full mt-1">
+                  </div>
+                  <div>
+                    <label for="scanToEdit_productReorderQuantity" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Reorder Quantity</label>
+                    <input type="number" id="scanToEdit_productReorderQuantity" placeholder="Reorder Quantity" class="input input-bordered w-full mt-1">
+                  </div>
+                  <div>
+                    <label for="scanToEdit_productQuantityOrdered" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Quantity Ordered</label>
+                    <input type="number" id="scanToEdit_productQuantityOrdered" placeholder="Quantity Ordered" class="input input-bordered w-full mt-1">
+                  </div>
+                  <div>
+                    <label for="scanToEdit_productQuantityBackordered" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Quantity Backordered</label>
+                    <input type="number" id="scanToEdit_productQuantityBackordered" placeholder="Quantity Backordered" class="input input-bordered w-full mt-1">
+                  </div>
+                  <div>
+                    <label for="scanToEdit_productSupplier" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Supplier</label>
+                    <select id="scanToEdit_productSupplier" class="select select-bordered w-full mt-1">
+                        <option value="">Select Supplier</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="scanToEdit_productLocation" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Location</label>
+                    <select id="scanToEdit_productLocation" class="select select-bordered w-full mt-1">
+                        <option value="">Select Location</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Product Photo</label>
+                    <div class="mt-1 flex items-center space-x-3">
+                        <img id="scanToEdit_productPhotoPreview" class="w-32 h-32 object-cover rounded border" alt="Product Preview">
+                        <div class="space-y-2">
+                            <button id="scanToEdit_capturePhotoBtn" class="btn btn-info btn-sm">Change Photo</button>
+                            <button id="scanToEdit_takePhotoBtn" class="btn btn-success btn-sm hidden">Take Photo</button>
+                            <button id="scanToEdit_cancelPhotoBtn" class="btn btn-error btn-sm hidden">Cancel</button>
+                        </div>
+                    </div>
+                    <video id="scanToEdit_photoVideo" class="hidden w-full rounded border mt-2"></video>
+                    <canvas id="scanToEdit_photoCanvas" class="hidden"></canvas>
+                  </div>
+                  <div class="flex justify-end space-x-3 pt-4">
+                      <button id="scanToEdit_submitProductBtn" class="btn btn-success">Save Changes</button>
+                      <button id="scanToEdit_cancelChangesBtn" class="btn btn-ghost">Cancel</button>
+                  </div>
                 </div>
               </div>
             </div>

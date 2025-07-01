@@ -4322,6 +4322,244 @@ async function displayPendingOrdersOnDashboard() {
 }
 // END: Dashboard Pending Orders Table Functions
 
+// START: Scan to Edit Product Modal Functions
+let scanToEditModalPhotoStream = null;
+let scanToEditModalOriginalPhotoUrl = '';
+
+function openScanToEditModal() {
+    const modal = document.getElementById('scanToEditProductModal');
+    if (!modal) {
+        console.error("Scan to Edit Product Modal element not found.");
+        return;
+    }
+    console.log("Opening Scan to Edit Modal");
+
+    // Reset to initial ID input view
+    document.getElementById('scanToEditIdInputView').classList.remove('hidden');
+    document.getElementById('scanToEditFormView').classList.add('hidden');
+    document.getElementById('scanToEditProductIdInput').value = '';
+    document.getElementById('scanToEditStatusMessage').textContent = '';
+    document.getElementById('scanToEditModalTitle').textContent = 'Scan or Enter Product ID to Edit';
+
+    cancelScanToEditModalPhoto(); // Ensure camera is off if previously used
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.getElementById('scanToEditProductIdInput').focus();
+}
+
+function closeScanToEditModal() {
+    const modal = document.getElementById('scanToEditProductModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+    cancelScanToEditModalPhoto(); // Ensure camera is off
+    scanToEditModalOriginalPhotoUrl = ''; // Clear stored original photo URL
+}
+
+async function handleScanToEditProductIdSubmit() {
+    const productIdInput = document.getElementById('scanToEditProductIdInput');
+    const statusMessage = document.getElementById('scanToEditStatusMessage');
+    const productId = productIdInput.value.trim();
+
+    if (!productId) {
+        statusMessage.textContent = 'Please enter a Product ID.';
+        statusMessage.className = 'text-sm text-center text-warning-content';
+        return;
+    }
+
+    statusMessage.textContent = 'Searching for product...';
+    statusMessage.className = 'text-sm text-center text-info-content';
+
+    try {
+        const productDoc = await db.collection('inventory').doc(productId).get();
+        if (productDoc.exists) {
+            const product = productDoc.data();
+            statusMessage.textContent = 'Product found. Loading details...';
+            populateEditFormInModal(product);
+            document.getElementById('scanToEditIdInputView').classList.add('hidden');
+            document.getElementById('scanToEditFormView').classList.remove('hidden');
+            document.getElementById('scanToEditModalTitle').textContent = `Editing: ${product.name}`;
+        } else {
+            statusMessage.textContent = `Product ID "${productId}" not found.`;
+            statusMessage.className = 'text-sm text-center text-error-content';
+        }
+    } catch (error) {
+        console.error("Error fetching product for edit:", error);
+        statusMessage.textContent = 'Error fetching product. Please try again.';
+        statusMessage.className = 'text-sm text-center text-error-content';
+    }
+}
+
+function populateEditFormInModal(product) {
+    document.getElementById('scanToEdit_productId').value = product.id;
+    document.getElementById('scanToEdit_productName').value = product.name || '';
+    document.getElementById('scanToEdit_productQuantity').value = product.quantity !== undefined ? product.quantity : '';
+    document.getElementById('scanToEdit_productCost').value = product.cost !== undefined ? product.cost : '';
+    document.getElementById('scanToEdit_productMinQuantity').value = product.minQuantity !== undefined ? product.minQuantity : '';
+    document.getElementById('scanToEdit_productReorderQuantity').value = product.reorderQuantity !== undefined ? product.reorderQuantity : '';
+    document.getElementById('scanToEdit_productQuantityOrdered').value = product.quantityOrdered !== undefined ? product.quantityOrdered : '';
+    document.getElementById('scanToEdit_productQuantityBackordered').value = product.productQuantityBackordered !== undefined ? product.productQuantityBackordered : '';
+
+    const supplierDropdown = document.getElementById('scanToEdit_productSupplier');
+    supplierDropdown.innerHTML = '<option value="">Select Supplier</option>';
+    suppliers.forEach(s => {
+        const option = document.createElement('option');
+        option.value = s;
+        option.textContent = s;
+        if (product.supplier === s) option.selected = true;
+        supplierDropdown.appendChild(option);
+    });
+    if (!product.supplier && supplierDropdown.options.length > 0) supplierDropdown.value = ""; else supplierDropdown.value = product.supplier || "";
+
+
+    const locationDropdown = document.getElementById('scanToEdit_productLocation');
+    locationDropdown.innerHTML = '<option value="">Select Location</option>';
+    locations.forEach(l => {
+        const option = document.createElement('option');
+        option.value = l.name;
+        option.textContent = l.name;
+        if (product.location === l.name) option.selected = true;
+        locationDropdown.appendChild(option);
+    });
+     if (!product.location && locationDropdown.options.length > 0) locationDropdown.value = ""; else locationDropdown.value = product.location || "";
+
+
+    const photoPreview = document.getElementById('scanToEdit_productPhotoPreview');
+    if (product.photo) {
+        photoPreview.src = product.photo;
+        photoPreview.classList.remove('hidden'); // Make sure it's visible if there's a photo
+        scanToEditModalOriginalPhotoUrl = product.photo;
+    } else {
+        photoPreview.src = '#'; // Placeholder or default image
+        photoPreview.classList.add('hidden'); // Hide if no photo, or use a placeholder
+        scanToEditModalOriginalPhotoUrl = '';
+    }
+    cancelScanToEditModalPhoto(); // Reset photo capture state
+}
+
+async function submitEditProductFromModal() {
+    const id = document.getElementById('scanToEdit_productId').value; // ID must exist for an edit
+    if (!id) {
+        uiEnhancementManager.showToast("Product ID is missing. Cannot update.", "error");
+        return;
+    }
+
+    const name = document.getElementById('scanToEdit_productName').value.trim();
+    const quantity = parseInt(document.getElementById('scanToEdit_productQuantity').value) || 0;
+    const cost = parseFloat(document.getElementById('scanToEdit_productCost').value) || 0;
+    const minQuantity = parseInt(document.getElementById('scanToEdit_productMinQuantity').value) || 0;
+    const reorderQuantity = parseInt(document.getElementById('scanToEdit_productReorderQuantity').value) || 0;
+    const quantityOrdered = parseInt(document.getElementById('scanToEdit_productQuantityOrdered').value) || 0;
+    const quantityBackordered = parseInt(document.getElementById('scanToEdit_productQuantityBackordered').value) || 0;
+    const supplier = document.getElementById('scanToEdit_productSupplier').value;
+    const location = document.getElementById('scanToEdit_productLocation').value;
+    const currentPhotoPreviewSrc = document.getElementById('scanToEdit_productPhotoPreview').src;
+
+    if (!name || !supplier || !location) {
+        uiEnhancementManager.showToast("Please fill all required fields (Name, Supplier, Location).", "warning");
+        return;
+    }
+     if (quantity < 0 || cost < 0 || minQuantity < 0 || reorderQuantity < 0 || quantityOrdered < 0 || quantityBackordered < 0) {
+        uiEnhancementManager.showToast("Numeric values (quantity, cost, etc.) cannot be negative.", "warning");
+        return;
+    }
+
+
+    const name_lowercase = name.toLowerCase();
+    const name_words_lc = name_lowercase.split(' ').filter(word => word.length > 0);
+
+    try {
+        let photoUrlToSave = scanToEditModalOriginalPhotoUrl; // Assume original photo unless changed
+
+        // Check if a new photo was captured (src will be a data URL)
+        if (currentPhotoPreviewSrc && currentPhotoPreviewSrc.startsWith('data:image')) {
+            photoUrlToSave = await uploadPhoto(id, currentPhotoPreviewSrc); // uploadPhoto handles storage
+        }
+        // If currentPhotoPreviewSrc is '#' or empty and there was an originalPhotoUrl, it means user wants to remove photo.
+        // However, current logic doesn't explicitly support photo removal via setting src to '#'.
+        // For now, if src is not a data URL, it's assumed to be the original or unchanged.
+        // If you want to support REMOVING a photo, you'd need a separate mechanism or check if photoPreview.src is empty/placeholder
+        // and scanToEditModalOriginalPhotoUrl had a value, then set photoUrlToSave = ''
+
+        const productDataToUpdate = {
+            name, name_lowercase, name_words_lc, quantity, cost, minQuantity,
+            reorderQuantity, quantityOrdered, productQuantityBackordered: quantityBackordered,
+            supplier, location, photo: photoUrlToSave
+            // ID is not part of the update data, it's the document key
+        };
+
+        await db.collection('inventory').doc(id).update(productDataToUpdate);
+
+        uiEnhancementManager.showToast(`Product "${name}" updated successfully!`, 'success');
+        await logActivity('product_updated_modal', `Product: ${name} (ID: ${id}) updated via Scan-to-Edit modal.`, id, name);
+
+        closeScanToEditModal();
+
+        // Refresh data and UI
+        inventory = await inventoryManager.loadInventory();
+        displayInventory();
+        updateInventoryDashboard();
+        updateToOrderTable();
+        updateEnhancedDashboard();
+
+    } catch (error) {
+        console.error("Error updating product from modal:", error);
+        uiEnhancementManager.showToast(`Error updating product: ${error.message}`, 'error');
+    }
+}
+
+
+// Photo functions specific to the Scan to Edit modal
+async function startScanToEditModalPhotoCapture() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('Camera access not supported by this browser.');
+    return;
+  }
+  try {
+    scanToEditModalPhotoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const video = document.getElementById('scanToEdit_photoVideo');
+    video.srcObject = scanToEditModalPhotoStream;
+    video.classList.remove('hidden');
+    document.getElementById('scanToEdit_capturePhotoBtn').classList.add('hidden');
+    document.getElementById('scanToEdit_takePhotoBtn').classList.remove('hidden');
+    document.getElementById('scanToEdit_cancelPhotoBtn').classList.remove('hidden');
+  } catch (err) {
+    console.error('Error accessing camera for Scan to Edit modal:', err);
+    alert('Error accessing camera: ' + err.message);
+  }
+}
+
+async function takeScanToEditModalPhoto() {
+  const video = document.getElementById('scanToEdit_photoVideo');
+  const canvas = document.getElementById('scanToEdit_photoCanvas');
+  const context = canvas.getContext('2d');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const photoData = canvas.toDataURL('image/jpeg', 0.5); // Get as data URL
+  document.getElementById('scanToEdit_productPhotoPreview').src = photoData; // Set preview to new data URL
+  document.getElementById('scanToEdit_productPhotoPreview').classList.remove('hidden');
+  cancelScanToEditModalPhoto();
+}
+
+function cancelScanToEditModalPhoto() {
+  if (scanToEditModalPhotoStream) {
+    scanToEditModalPhotoStream.getTracks().forEach(track => track.stop());
+    scanToEditModalPhotoStream = null;
+  }
+  const video = document.getElementById('scanToEdit_photoVideo');
+  if(video) {
+    video.srcObject = null;
+    video.classList.add('hidden');
+  }
+  document.getElementById('scanToEdit_capturePhotoBtn').classList.remove('hidden');
+  document.getElementById('scanToEdit_takePhotoBtn').classList.add('hidden');
+  document.getElementById('scanToEdit_cancelPhotoBtn').classList.add('hidden');
+}
+// END: Scan to Edit Product Modal Functions
+
 
 // Call initialization on DOM ready
 document.addEventListener('DOMContentLoaded', function() {
@@ -4964,6 +5202,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (dashboardCreateOrderBtn) dashboardCreateOrderBtn.addEventListener('click', openCreateOrderModal);
             else console.warn("[DOMContentLoaded] dashboardCreateOrderBtn not found");
 
+            const dashboardScanToEditBtn = document.getElementById('dashboardScanToEditBtn');
+            if(dashboardScanToEditBtn) dashboardScanToEditBtn.addEventListener('click', openScanToEditModal);
+            else console.warn("[DOMContentLoaded] dashboardScanToEditBtn for modal not found");
+
             // Event listeners for the new Add Product Modal
             const closeAddProductModalBtnListener = document.getElementById('closeAddProductModalBtn');
             if (closeAddProductModalBtnListener) closeAddProductModalBtnListener.addEventListener('click', closeAddProductModal);
@@ -4990,7 +5232,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (modalCancelOrderBtn) modalCancelOrderBtn.addEventListener('click', closeCreateOrderModal);
             else console.warn("[DOMContentLoaded] modalCancelOrderBtn for Create Order Modal not found");
 
-            // Photo capture buttons for the modal
+            // Photo capture buttons for the Add Product modal
             const modalCapturePhotoBtn = document.getElementById('modalCapturePhotoBtn');
             if (modalCapturePhotoBtn) modalCapturePhotoBtn.addEventListener('click', startModalPhotoCapture);
             else console.warn("[DOMContentLoaded] modalCapturePhotoBtn not found");
@@ -5001,7 +5243,47 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const modalCancelPhotoBtn = document.getElementById('modalCancelPhotoBtn');
             if (modalCancelPhotoBtn) modalCancelPhotoBtn.addEventListener('click', cancelModalPhoto);
-            else console.warn("[DOMContentLoaded] modalCancelPhotoBtn not found");
+            else console.warn("[DOMContentLoaded] modalCancelPhotoBtn for Add Product modal not found");
+
+            // Event listeners for Scan to Edit Product Modal
+            const closeScanToEditModalBtn = document.getElementById('closeScanToEditModalBtn');
+            if(closeScanToEditModalBtn) closeScanToEditModalBtn.addEventListener('click', closeScanToEditModal);
+            else console.warn("[DOMContentLoaded] closeScanToEditModalBtn not found");
+
+            const scanToEditProductIdInput = document.getElementById('scanToEditProductIdInput');
+            if(scanToEditProductIdInput) {
+                scanToEditProductIdInput.addEventListener('keypress', (event) => {
+                    if (event.key === 'Enter' || event.keyCode === 13) {
+                        event.preventDefault();
+                        handleScanToEditProductIdSubmit();
+                    }
+                });
+            } else console.warn("[DOMContentLoaded] scanToEditProductIdInput not found");
+
+            const scanToEditSubmitIdBtn = document.getElementById('scanToEditSubmitIdBtn');
+            if(scanToEditSubmitIdBtn) scanToEditSubmitIdBtn.addEventListener('click', handleScanToEditProductIdSubmit);
+            else console.warn("[DOMContentLoaded] scanToEditSubmitIdBtn not found");
+
+            const scanToEdit_submitProductBtn = document.getElementById('scanToEdit_submitProductBtn');
+            if(scanToEdit_submitProductBtn) scanToEdit_submitProductBtn.addEventListener('click', submitEditProductFromModal);
+            else console.warn("[DOMContentLoaded] scanToEdit_submitProductBtn not found");
+
+            const scanToEdit_cancelChangesBtn = document.getElementById('scanToEdit_cancelChangesBtn');
+            if(scanToEdit_cancelChangesBtn) scanToEdit_cancelChangesBtn.addEventListener('click', closeScanToEditModal);
+            else console.warn("[DOMContentLoaded] scanToEdit_cancelChangesBtn not found");
+
+            // Photo capture buttons for Scan to Edit modal
+            const scanToEdit_capturePhotoBtn = document.getElementById('scanToEdit_capturePhotoBtn');
+            if(scanToEdit_capturePhotoBtn) scanToEdit_capturePhotoBtn.addEventListener('click', startScanToEditModalPhotoCapture);
+            else console.warn("[DOMContentLoaded] scanToEdit_capturePhotoBtn not found");
+
+            const scanToEdit_takePhotoBtn = document.getElementById('scanToEdit_takePhotoBtn');
+            if(scanToEdit_takePhotoBtn) scanToEdit_takePhotoBtn.addEventListener('click', takeScanToEditModalPhoto);
+            else console.warn("[DOMContentLoaded] scanToEdit_takePhotoBtn not found");
+
+            const scanToEdit_cancelPhotoBtn = document.getElementById('scanToEdit_cancelPhotoBtn');
+            if(scanToEdit_cancelPhotoBtn) scanToEdit_cancelPhotoBtn.addEventListener('click', cancelScanToEditModalPhoto);
+            else console.warn("[DOMContentLoaded] scanToEdit_cancelPhotoBtn not found");
 
 
             const quickStockUpdateBtn = document.getElementById('quickStockUpdateBtn'); // Button on dashboard
