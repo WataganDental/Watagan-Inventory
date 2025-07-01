@@ -637,7 +637,7 @@ window.viewOrderDetails = async function(orderId) {
     console.log(`viewOrderDetails called for order ID: ${orderId}`);
     if (!db) {
         console.error("Firestore (db) is not initialized.");
-        alert("Error: Database connection not available.");
+        uiEnhancementManager.showToast("Error: Database connection not available.", "error");
         return;
     }
 
@@ -647,84 +647,41 @@ window.viewOrderDetails = async function(orderId) {
 
         if (doc.exists) {
             const orderData = doc.data();
-            console.log("Order data:", orderData);
+            console.log("Order data for modal:", orderData);
 
-            let detailsMessage = `Order ID: ${doc.id}\n`;
-            detailsMessage += `Product Name: ${orderData.productName || 'N/A'}\n`;
-            detailsMessage += `Quantity: ${orderData.quantity}\n`;
-            detailsMessage += `Current Status: ${orderData.status}\n`;
+            // Populate modal fields
+            document.getElementById('modalOrderId').textContent = doc.id;
+            document.getElementById('modalProductName').textContent = orderData.productName || 'N/A';
+            document.getElementById('modalOrderQuantity').textContent = orderData.quantity;
+            document.getElementById('modalCurrentStatus').textContent = orderData.status;
+
+            let orderDateText = 'N/A';
             if (orderData.orderDate && orderData.orderDate.toDate) {
-                detailsMessage += `Order Date: ${orderData.orderDate.toDate().toLocaleString()}\n`;
+                orderDateText = orderData.orderDate.toDate().toLocaleString();
             } else if (orderData.createdAt && orderData.createdAt.toDate) {
-                detailsMessage += `Order Date: ${orderData.createdAt.toDate().toLocaleString()}\n`;
+                orderDateText = orderData.createdAt.toDate().toLocaleString();
+            }
+            document.getElementById('modalOrderDate').textContent = orderDateText;
+
+            // Set dropdown to current status
+            const statusSelect = document.getElementById('modalOrderStatusSelect');
+            if (statusSelect) {
+                statusSelect.value = orderData.status;
             }
 
-            // Display order details and UI placeholders for receiving items
-            let promptMessage = `${detailsMessage}\n`;
-            promptMessage += `--- Item Receiving ---\n`;
-            promptMessage += `Product: ${orderData.productName || orderData.productId}\n`;
-            promptMessage += `Ordered: ${orderData.quantity}\n`;
-            promptMessage += `Quantity Received (input here if applicable): [___]\n\n`;
-            promptMessage += `--- Actions ---\n`;
-            promptMessage += `1. Change Status (current: ${orderData.status})\n`;
-            promptMessage += `2. Mark as Fully Received (placeholder)\n`;
-            promptMessage += `3. Mark as Partially Received (placeholder)\n\n`;
-            promptMessage += `Enter action (e.g., 'status fulfilled', 'receive full', 'receive partial [qty]'):`;
+            // Store orderId for the save button
+            currentModalOrderId = doc.id;
 
-            const userInput = prompt(promptMessage, "");
-
-            if (userInput && userInput.trim() !== "") {
-                const actionParts = userInput.trim().toLowerCase().split(" ");
-                const command = actionParts[0];
-
-                if (command === "status" && actionParts.length > 1) {
-                    const newStatus = actionParts[1];
-                    const validStatuses = ['pending', 'partially_received', 'received', 'fulfilled', 'cancelled', 'backordered'];
-                    if (validStatuses.includes(newStatus)) {
-                        if (newStatus !== orderData.status) {
-                            await orderRef.update({ status: newStatus });
-                            alert(`Order status updated to: ${newStatus}`);
-                            console.log(`Order ${orderId} status updated to ${newStatus}`);
-                            if (typeof loadAndDisplayOrders === 'function') {
-                                loadAndDisplayOrders();
-                            }
-                            await logActivity('order_status_changed', `Order ${orderId} status changed to ${newStatus}`, orderId, orderData.productName);
-                        } else {
-                            alert(`Order status is already ${newStatus}. No change made.`);
-                        }
-                    } else {
-                        alert(`Invalid status '${newStatus}'. Valid statuses are: ${validStatuses.join(", ")}.`);
-                    }
-                } else if (command === "receive") {
-                    // Placeholder for receiving logic - will be implemented in Phase 2 & 3
-                    if (actionParts.length > 1 && actionParts[1] === "full") {
-                        alert("Placeholder: Logic for 'Mark as Fully Received' will be implemented later.");
-                        // Example: await receiveFullOrder(orderId);
-                    } else if (actionParts.length > 1 && actionParts[1] === "partial" && actionParts[2]) {
-                        const qtyReceived = parseInt(actionParts[2]);
-                        if (!isNaN(qtyReceived) && qtyReceived > 0) {
-                            alert(`Placeholder: Logic for 'Mark as Partially Received' with quantity ${qtyReceived} will be implemented later.`);
-                            // Example: await receivePartialOrder(orderId, [{ productId: orderData.productId, quantityReceived: qtyReceived }]);
-                        } else {
-                            alert("Invalid quantity for partial receipt.");
-                        }
-                    } else {
-                        alert("Invalid 'receive' command. Use 'receive full' or 'receive partial [qty]'.");
-                    }
-                } else {
-                    alert("Invalid action entered. No changes made.");
-                }
-            } else {
-                alert("No action taken.");
-            }
+            // Open the modal
+            openOrderDetailsModal();
 
         } else {
             console.log("No such order found!");
-            alert("Order not found.");
+            uiEnhancementManager.showToast("Order not found.", "error");
         }
     } catch (error) {
-        console.error("Error fetching or updating order details: ", error);
-        alert("Error processing order: " + error.message);
+        console.error("Error fetching order details for modal: ", error);
+        uiEnhancementManager.showToast("Error fetching order details: " + error.message, "error");
     }
 }
 
@@ -3458,6 +3415,34 @@ function enhanceQuickQRFeatures() {
     console.log('Quick QR features enhancement complete');
 }
 
+// Modal Global Variable
+let currentModalOrderId = null; // To store the ID of the order being viewed/edited in the modal
+
+// Function to open the order details modal
+function openOrderDetailsModal() {
+    const modal = document.getElementById('orderDetailsModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        // modal.classList.add('flex'); // If using flex to center, already in HTML
+    } else {
+        console.error("Order details modal element not found.");
+    }
+}
+
+// Function to close the order details modal
+function closeOrderDetailsModal() {
+    const modal = document.getElementById('orderDetailsModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        // modal.classList.remove('flex'); // If using flex to center
+        currentModalOrderId = null; // Clear the stored order ID
+        // Optionally reset form fields within the modal here if needed
+        // document.getElementById('modalOrderStatusSelect').value = ''; // Example
+    } else {
+        console.error("Order details modal element not found.");
+    }
+}
+
 // Initialize all enhancements
 function initializeAllEnhancements() {
     console.log('Initializing all enhancements');
@@ -3751,6 +3736,70 @@ document.addEventListener('DOMContentLoaded', function() {
             if(imageModalElement) imageModalElement.addEventListener('click', (e) => { if (e.target === imageModalElement) closeImageModal(); });
             else console.warn("[DOMContentLoaded] imageModal element not found");
 
+            // Order Details Modal Close Button
+            const closeOrderModalBtn = document.getElementById('closeOrderModalBtn');
+            if (closeOrderModalBtn) {
+                closeOrderModalBtn.addEventListener('click', closeOrderDetailsModal);
+            } else {
+                console.warn("[DOMContentLoaded] closeOrderModalBtn not found");
+            }
+
+            // Order Details Modal Save Button
+            const saveOrderStatusBtn = document.getElementById('saveOrderStatusBtn');
+            if (saveOrderStatusBtn) {
+                saveOrderStatusBtn.addEventListener('click', async () => {
+                    if (!currentModalOrderId) {
+                        console.error("No currentModalOrderId set. Cannot save status.");
+                        uiEnhancementManager.showToast("Error: No order selected to update.", "error");
+                        return;
+                    }
+
+                    const newStatus = document.getElementById('modalOrderStatusSelect').value;
+                    if (!newStatus) {
+                        uiEnhancementManager.showToast("No status selected.", "warning");
+                        return;
+                    }
+
+                    const orderRef = db.collection('orders').doc(currentModalOrderId);
+                    try {
+                        const doc = await orderRef.get();
+                        if (doc.exists) {
+                            const orderData = doc.data();
+                            if (orderData.status !== newStatus) {
+                                await orderRef.update({ status: newStatus });
+                                uiEnhancementManager.showToast(`Order ${currentModalOrderId} status updated to ${newStatus}.`, "success");
+                                console.log(`Order ${currentModalOrderId} status updated to ${newStatus} via modal.`);
+                                if (typeof loadAndDisplayOrders === 'function') {
+                                    loadAndDisplayOrders();
+                                }
+                                await logActivity('order_status_changed', `Order ${currentModalOrderId} status changed to ${newStatus} via modal`, currentModalOrderId, orderData.productName);
+                            } else {
+                                uiEnhancementManager.showToast(`Order status is already ${newStatus}. No change made.`, "info");
+                            }
+                        } else {
+                            uiEnhancementManager.showToast(`Order ${currentModalOrderId} not found in database.`, "error");
+                        }
+                    } catch (error) {
+                        console.error("Error updating order status from modal:", error);
+                        uiEnhancementManager.showToast("Error updating status: " + error.message, "error");
+                    }
+                    closeOrderDetailsModal();
+                });
+            } else {
+                console.warn("[DOMContentLoaded] saveOrderStatusBtn not found");
+            }
+
+            // Allow closing order details modal by clicking outside of it (on the overlay)
+            const orderDetailsModalElement = document.getElementById('orderDetailsModal');
+            if (orderDetailsModalElement) {
+                orderDetailsModalElement.addEventListener('click', (e) => {
+                    if (e.target === orderDetailsModalElement) { // Check if the click is on the overlay itself
+                        closeOrderDetailsModal();
+                    }
+                });
+            } else {
+                console.warn("[DOMContentLoaded] orderDetailsModal element not found for overlay click listener");
+            }
 
             console.log('[DOMContentLoaded] Modal listeners attached.');
         } catch (e) {
