@@ -633,7 +633,48 @@ function generateFastOrderReportPDF() { console.log('generateFastOrderReportPDF 
 function generateOrderReportPDFWithQRCodes() { console.log('generateOrderReportPDFWithQRCodes called - STUB'); }
 function generateAllQRCodesPDF() { console.log('generateAllQRCodesPDF called - STUB'); }
 function generateProductUsageChart(productId) { console.log(`generateProductUsageChart called for ${productId} - STUB`); }
-function viewOrderDetails(orderId) { console.log(`viewOrderDetails called for ${orderId} - STUB`); }
+window.viewOrderDetails = async function(orderId) { // Made async
+    console.log(`viewOrderDetails called for order ID: ${orderId}`);
+    if (!db) {
+        console.error("Firestore (db) is not initialized.");
+        alert("Error: Database connection not available.");
+        return;
+    }
+
+    try {
+        const orderRef = db.collection('orders').doc(orderId);
+        const doc = await orderRef.get();
+
+        if (doc.exists) {
+            const orderData = doc.data();
+            console.log("Order data:", orderData);
+            // For now, display using an alert. A modal or dedicated UI would be better.
+            let alertMessage = `Order ID: ${doc.id}\n`;
+            alertMessage += `Product ID: ${orderData.productId}\n`;
+            alertMessage += `Product Name: ${orderData.productName || 'N/A'}\n`;
+            alertMessage += `Quantity: ${orderData.quantity}\n`;
+            alertMessage += `Status: ${orderData.status}\n`;
+            alertMessage += `User ID: ${orderData.userId}\n`;
+            if (orderData.orderDate && orderData.orderDate.toDate) {
+                alertMessage += `Order Date: ${orderData.orderDate.toDate().toLocaleString()}\n`;
+            } else if (orderData.createdAt && orderData.createdAt.toDate) { // Fallback for different timestamp field name
+                alertMessage += `Order Date: ${orderData.createdAt.toDate().toLocaleString()}\n`;
+            }
+
+            alert(alertMessage);
+            // Here, you would typically populate a modal or a detail view.
+            // For example:
+            // populateOrderDetailsModal(orderData);
+            // showOrderDetailsModal();
+        } else {
+            console.log("No such order found!");
+            alert("Order not found.");
+        }
+    } catch (error) {
+        console.error("Error fetching order details: ", error);
+        alert("Error fetching order details: " + error.message);
+    }
+}
 function populateTrendProductSelect() { console.log('populateTrendProductSelect called - STUB'); }
 
 async function logActivity(actionType, details, itemId = null, itemName = null) {
