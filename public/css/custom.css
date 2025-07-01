@@ -169,3 +169,26 @@ body {
 .dark .inventory-row-needs-reordering {
   background-color: #7F1D1D; /* Tailwind red-900, was #450A0A (red-950) - adjusted for slightly better visibility if text is dark, or pair with light text */
 }
+
+/* --- Toast Notification Enhancements --- */
+#toast-container-navbar .alert {
+    min-width: 280px;  /* Minimum width for a toast */
+    max-width: 450px;  /* Maximum width for a toast */
+    width: auto;       /* Allow it to shrink if content is small, up to max-width */
+    word-break: break-word; /* Break long words if necessary */
+    /* The animate-pulse class was removed from JS. If further animation control is needed,
+       it can be done here or by adding specific animation classes in JS.
+       e.g., for a fade-in effect:
+       opacity: 0;
+       animation: fadeIn 0.5s forwards;
+    */
+}
+
+/* Keyframes for a simple fade-in (example) */
+/*
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+    }
+}
+*/
