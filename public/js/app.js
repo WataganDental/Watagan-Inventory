@@ -70,9 +70,9 @@ function displayInventory(searchTerm = '', supplierFilter = '', locationFilter =
     const emptyStateEl = document.getElementById('inventoryEmptyState');
 
     const currentPageDisplay = document.getElementById('currentPageDisplay');
-    // const prevPageBtn = document.getElementById('prevPageBtn'); // Referenced later
-    // const nextPageBtn = document.getElementById('nextPageBtn'); // Referenced later
-    const pageInfo = document.getElementById('pageInfo'); // UNCOMMENTED
+    const prevPageBtn = document.getElementById('prevPageBtn'); // UNCOMMENTED
+    const nextPageBtn = document.getElementById('nextPageBtn'); // UNCOMMENTED
+    const pageInfo = document.getElementById('pageInfo');
 
     if (!inventoryTableBody) {
         console.error("displayInventory: inventoryTable body not found.");
