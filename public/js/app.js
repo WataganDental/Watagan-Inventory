@@ -72,7 +72,7 @@ function displayInventory(searchTerm = '', supplierFilter = '', locationFilter =
     const currentPageDisplay = document.getElementById('currentPageDisplay');
     // const prevPageBtn = document.getElementById('prevPageBtn'); // Referenced later
     // const nextPageBtn = document.getElementById('nextPageBtn'); // Referenced later
-    // const pageInfo = document.getElementById('pageInfo'); // Referenced later
+    const pageInfo = document.getElementById('pageInfo'); // UNCOMMENTED
 
     if (!inventoryTableBody) {
         console.error("displayInventory: inventoryTable body not found.");
