@@ -444,11 +444,27 @@
                     </div>
                     <div id="manualBatchModeContent"><div id="qsuBatchEntriesContainer" class="space-y-3 mb-4 max-h-96 overflow-y-auto"></div><div class="flex gap-2 mb-4"><input type="text" id="qsuProductSearch" placeholder="Search Product by Name/ID" class="input input-bordered flex-grow"><button id="qsuAddManualEntryBtn" class="btn btn-info">Add Row</button></div><div id="qsuSearchResults" class="mb-4 max-h-40 overflow-y-auto"></div><button id="qsuSubmitBatchBtn" class="btn btn-success w-full">Submit Batch Update</button></div>
                     <div id="barcodeScannerModeContent" class="hidden space-y-4">
-                        <div><button id="qsuScanProductBtn" class="btn btn-accent mr-2">Scan Product QR</button><button id="qsuStopScanBtn" class="btn btn-error hidden">Stop Scanner</button></div>
-                        <video id="qsuVideo" class="w-full max-w-md mx-auto hidden rounded-lg border bg-gray-200 dark:bg-slate-700" playsinline></video>
-                        <canvas id="qsuCanvas" class="hidden" style="width: 100%; max-width: 400px; margin: auto; display: block;"></canvas>
-                        <p id="qsuScanResult" class="text-center font-medium"></p>
-                        <div id="qsuScannedProductInfo" class="hidden text-center p-4 border rounded-md">
+                        <!-- Camera-based scanner elements commented out -->
+                        <!-- <div><button id="qsuScanProductBtn" class="btn btn-accent mr-2">Scan Product QR</button><button id="qsuStopScanBtn" class="btn btn-error hidden">Stop Scanner</button></div> -->
+                        <!-- <video id="qsuVideo" class="w-full max-w-md mx-auto hidden rounded-lg border bg-gray-200 dark:bg-slate-700" playsinline></video> -->
+                        <!-- <canvas id="qsuCanvas" class="hidden" style="width: 100%; max-width: 400px; margin: auto; display: block;"></canvas> -->
+
+                        <div>
+                            <label for="qsuBarcodeIdInput" class="label">
+                                <span class="label-text">Scan or Enter Product ID:</span>
+                            </label>
+                            <input type="text" id="qsuBarcodeIdInput" placeholder="Waiting for barcode scan..." class="input input-bordered w-full mb-2">
+                        </div>
+
+                        <p id="qsuScanResult" class="text-center font-medium"></p> <!-- This can still be used for general messages or errors related to processing the ID -->
+
+                        <div id="qsuScannedProductInfo" class="hidden text-center p-4 border rounded-md dark:border-slate-600">
+                            <div class="flex justify-center items-center space-x-4 mb-3">
+                                <div id="barcodeProductSpecificQR" class="w-20 h-20 bg-white rounded-md flex items-center justify-center">
+                                    <!-- Product Specific QR will be generated here -->
+                                </div>
+                                <img id="barcodeProductSpecificImage" src="#" alt="Product Image" class="w-20 h-20 object-cover rounded-md hidden">
+                            </div>
                             <h4 id="qsuProductName" class="text-lg font-semibold"></h4>
                             <p>Current Stock: <span id="qsuCurrentStock"></span></p>
                             <div class="form-control w-full max-w-xs mx-auto mt-2">
