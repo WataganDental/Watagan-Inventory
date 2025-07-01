@@ -494,12 +494,99 @@
                     <div class="stat"><div class="stat-figure text-success"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path></svg></div><div class="stat-title">Total Value</div><div id="dashboardTotalValue" class="stat-value text-success">$0</div><div class="stat-desc">Current inventory value</div></div>
                 </div></section>
                 <section class="mb-8"><h2 class="text-2xl font-semibold mb-4">Quick Actions</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="card bg-base-100 shadow-xl"><div class="card-body"><h3 class="card-title text-primary">Add New Product</h3><p>Quickly add a new product to inventory</p><div class="card-actions justify-end"><button id="quickAddProductBtn" class="btn btn-primary">Add Product</button></div></div></div>
+                    <div class="card bg-base-100 shadow-xl"><div class="card-body"><h3 class="card-title text-primary">Add New Product</h3><p>Quickly add a new product to inventory</p><div class="card-actions justify-end"><button id="dashboardAddProductBtn" class="btn btn-primary">Add Product</button></div></div></div>
                     <div class="card bg-base-100 shadow-xl"><div class="card-body"><h3 class="card-title text-secondary">Stock Update</h3><p>Update product quantities quickly</p><div class="card-actions justify-end"><button id="quickStockUpdateBtn" class="btn btn-secondary">Update Stock</button></div></div></div>
                     <div class="card bg-base-100 shadow-xl"><div class="card-body"><h3 class="card-title text-accent">View Reports</h3><p>Generate inventory reports</p><div class="card-actions justify-end"><button id="quickViewReportsBtn" class="btn btn-accent">View Reports</button></div></div></div>
                 </div></section>
                 <section class="mb-8"><h2 class="text-2xl font-semibold mb-4">Recent Activity</h2><div class="card bg-base-100 shadow-xl"><div class="card-body"><div id="recentActivityList" class="space-y-1 max-h-32 overflow-y-auto"><div class="flex items-center text-sm text-gray-500 dark:text-gray-400"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>No recent activity to display</div></div></div></div></section>
             </div>
+
+            <!-- Add Product Modal -->
+            <div id="addProductModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+              <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-xl max-w-lg w-full">
+                <div class="flex justify-between items-center mb-4">
+                  <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Add New Product</h3>
+                  <button id="closeAddProductModalBtn" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+                </div>
+                <div id="modalProductFormContent" class="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                    <input type="hidden" id="modalProductId">
+                    <input type="text" id="modalProductName" placeholder="Product Name" class="input input-bordered w-full">
+                    <input type="number" id="modalProductQuantity" placeholder="Quantity" class="input input-bordered w-full">
+                    <input type="number" id="modalProductCost" placeholder="Cost" step="0.01" class="input input-bordered w-full">
+                    <input type="number" id="modalProductMinQuantity" placeholder="Minimum Quantity" class="input input-bordered w-full">
+                    <input type="number" id="modalProductReorderQuantity" placeholder="Reorder Quantity" class="input input-bordered w-full">
+                    <input type="number" id="modalProductQuantityOrdered" placeholder="Quantity Ordered" class="input input-bordered w-full">
+                    <input type="number" id="modalProductQuantityBackordered" placeholder="Quantity Backordered" class="input input-bordered w-full">
+                    <select id="modalProductSupplier" class="select select-bordered w-full">
+                        <option value="">Select Supplier</option>
+                    </select>
+                    <select id="modalProductLocation" class="select select-bordered w-full">
+                        <option value="">Select Location</option>
+                    </select>
+                    <div class="flex space-x-2"> <!-- Photo Buttons -->
+                        <button id="modalCapturePhotoBtn" class="btn btn-info">Capture Photo</button>
+                        <button id="modalTakePhotoBtn" class="btn btn-success hidden">Take Photo</button>
+                        <button id="modalCancelPhotoBtn" class="btn btn-error hidden">Cancel Photo</button>
+                    </div>
+                    <video id="modalPhotoVideo" class="hidden w-full rounded border mt-2"></video>
+                    <canvas id="modalPhotoCanvas" class="hidden"></canvas>
+                    <img id="modalProductPhotoPreview" class="hidden w-32 h-32 object-cover rounded border mt-2" alt="Product Preview">
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button id="modalProductSubmitBtn" class="btn btn-success">Add Product</button>
+                    <button id="modalCancelProductBtn" class="btn btn-ghost">Cancel</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Update Stock Modal -->
+            <div id="updateStockModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+              <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-xl max-w-lg w-full">
+                <div class="flex justify-between items-center mb-4">
+                  <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Quick Stock Update</h3>
+                  <button id="closeUpdateStockModalBtn" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+                </div>
+                <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                  <div>
+                    <label for="updateStockProductIdInput" class="label"><span class="label-text">Scan or Enter Product ID:</span></label>
+                    <input type="text" id="updateStockProductIdInput" placeholder="Waiting for barcode scan or manual entry..." class="input input-bordered w-full mb-2">
+                  </div>
+                  <p id="updateStockScanResult" class="text-center font-medium text-sm min-h-[20px]"></p>
+
+                  <div id="updateStockScannedProductInfo" class="hidden text-center p-4 border rounded-md dark:border-slate-600">
+                    <div class="flex justify-center items-center space-x-4 mb-3">
+                        <div id="updateStockProductSpecificQR" class="w-20 h-20 bg-white dark:bg-slate-700 rounded-md flex items-center justify-center">
+                            <!-- Product Specific QR will be generated here -->
+                        </div>
+                        <img id="updateStockProductSpecificImage" src="#" alt="Product Image" class="w-20 h-20 object-cover rounded-md hidden">
+                    </div>
+                    <h4 id="updateStockProductName" class="text-lg font-semibold"></h4>
+                    <p>Current Stock: <span id="updateStockCurrentStock"></span></p>
+                    <div class="form-control w-full max-w-xs mx-auto mt-2">
+                        <label class="label"><span class="label-text">Adjust Quantity By:</span></label>
+                        <input type="number" id="updateStockAdjustQuantity" value="1" class="input input-bordered">
+                    </div>
+                    <div class="flex gap-2 justify-center mt-3">
+                        <button id="updateStockAdjustIncrementBtn" class="btn btn-success">Add to Stock</button>
+                        <button id="updateStockAdjustDecrementBtn" class="btn btn-warning">Remove from Stock</button>
+                    </div>
+                  </div>
+                  <div id="updateStockActionQRCodesContainer" class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
+                    <!-- Action QR Codes will be populated here by JS -->
+                  </div>
+                  <p id="updateStockScannerStatus" class="p-2 rounded-md bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200 text-sm min-h-[36px]"></p>
+                  <p id="updateStockLastActionFeedback" class="text-sm min-h-[20px]"></p>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button id="updateStockDoneBtn" class="btn btn-primary">Done</button>
+                </div>
+              </div>
+            </div>
+
 
             <!-- User Management Section (from public/index.html) -->
             <section id="userManagementSectionContainer" class="hidden mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
