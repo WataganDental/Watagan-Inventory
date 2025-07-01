@@ -1056,10 +1056,12 @@ function showView(viewIdToShow, clickedMenuId) {
     if (containerToHide) {
       if (!containerToHide.classList.contains('hidden')) {
         containerToHide.classList.add('hidden');
-        console.log(`[showView] Explicitly hid: ${id}`);
+        // console.log(`[showView] Explicitly hid: ${id}`); // Keep for debugging if needed
       }
     } else {
-      console.warn(`[showView] Container ID ${id} not found in DOM during hide all phase.`);
+      // This warning is important to catch if a view ID is misspelled or missing from HTML
+      // Ensure all actual view container IDs used in your HTML are in mainViewContainerIds.
+      console.warn(`[showView] Container ID ${id} not found in DOM during hide all phase. Check HTML and mainViewContainerIds list.`);
     }
   });
 
@@ -1073,11 +1075,11 @@ function showView(viewIdToShow, clickedMenuId) {
     if (targetView.id === 'inventoryViewContainer') {
         console.log('[showView] Initializing inventoryViewContainer.');
         if (typeof displayInventory === 'function') displayInventory(); else console.error("[showView] displayInventory is not defined");
-        if (typeof updateInventoryDashboard === 'function') updateInventoryDashboard(); else console.error("[showView] updateInventoryDashboard is not defined"); // This updates stats within inventory view
+        if (typeof updateInventoryDashboard === 'function') updateInventoryDashboard(); else console.error("[showView] updateInventoryDashboard is not defined");
         if (typeof updateToOrderTable === 'function') updateToOrderTable(); else console.error("[showView] updateToOrderTable is not defined");
     } else if (targetView.id === 'dashboardViewContainer') {
         console.log('[showView] Initializing dashboardViewContainer.');
-        if (typeof updateEnhancedDashboard === 'function') updateEnhancedDashboard(); else console.error("[showView] updateEnhancedDashboard is not defined"); // This updates the main dashboard cards
+        if (typeof updateEnhancedDashboard === 'function') updateEnhancedDashboard(); else console.error("[showView] updateEnhancedDashboard is not defined");
         if (typeof displayPendingOrdersOnDashboard === 'function') displayPendingOrdersOnDashboard(); else console.error("[showView] displayPendingOrdersOnDashboard is not defined");
     } else if (targetView.id === 'quickStockUpdateContainer') {
         console.log('[showView] Initializing quickStockUpdateContainer.');
@@ -1096,25 +1098,22 @@ function showView(viewIdToShow, clickedMenuId) {
         console.log('[showView] Initializing reportsSectionContainer.');
         if (typeof populateTrendProductSelect === 'function') populateTrendProductSelect(); else console.error("populateTrendProductSelect is not defined");
         if (typeof generateProductUsageChart === 'function') generateProductUsageChart(''); else console.error("generateProductUsageChart is not defined");
-        // Other report specific initializations can go here
     } else if (targetView.id === 'userManagementSectionContainer') {
         console.log('[showView] Initializing userManagementSectionContainer.');
         if (typeof displayUserRoleManagement === 'function') displayUserRoleManagement(); else console.error("displayUserRoleManagement is not defined");
     } else if (targetView.id === 'suppliersAndLocationsContainer') {
         console.log('[showView] Initializing suppliersAndLocationsContainer.');
-        // Supplier/Location specific updates if any, e.g., re-loading lists if they can change.
-        // loadSuppliers(); loadLocations(); are usually called once on auth.
+        // Assuming loadSuppliers and loadLocations also update their respective lists.
+        if (typeof loadSuppliers === 'function') loadSuppliers(); else console.error("[showView] loadSuppliers is not defined");
+        if (typeof loadLocations === 'function') loadLocations(); else console.error("[showView] loadLocations is not defined");
     }
   } else {
     console.error(`[showView] Target view container with ID '${viewIdToShow}' not found.`);
-    // Fallback or error display logic can be added here
-    // For instance, show the dashboard by default if the requested view is invalid
     const fallbackView = document.getElementById('dashboardViewContainer');
     if (fallbackView) {
         fallbackView.classList.remove('hidden');
         console.warn(`[showView] Fallback: Displaying dashboardViewContainer as ${viewIdToShow} was not found.`);
-        // Also update menu for fallback
-        clickedMenuId = 'menuDashboard'; // Adjust if your dashboard menu item has a different ID
+        clickedMenuId = 'menuDashboard';
     }
   }
 
@@ -5297,20 +5296,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 } else console.warn("[DOMContentLoaded] viewAllOrdersBtn on dashboard not found");
 
-            // This is the old button ID that was causing "view switcher not found"
-            // const quickAddProductBtn = document.getElementById('quickAddProductBtn');
-            // if (quickAddProductBtn) {
-            //     quickAddProductBtn.addEventListener('click', () => {
-            //         showView('inventoryViewContainer', 'menuInventory');
-            //         setTimeout(() => {
-            //             const productFormCheckbox = document.getElementById('toggleProductFormCheckbox');
-            //             if (productFormCheckbox) productFormCheckbox.checked = true;
-            //             document.getElementById('productName').focus();
-            //             resetProductForm();
-            //         }, 100);
-            //     });
-            // } else console.warn("[DOMContentLoaded] quickAddProductBtn (view switcher) - THIS IS EXPECTED TO BE NOT FOUND NOW");
-
+            // Ensure the old quickAddProductBtn listener (if any was for view switching) is not active.
+            // The new dashboardAddProductBtn handles opening the modal.
+            // The console warning "quickAddProductBtn (view switcher) not found" is now expected and fine.
 
             const dashboardAddProductBtn = document.getElementById('dashboardAddProductBtn');
             if (dashboardAddProductBtn) {
