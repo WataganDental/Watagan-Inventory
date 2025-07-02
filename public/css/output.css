@@ -9093,25 +9093,25 @@
 @layer base {
   :root:has(input.theme-controller[value=business]:checked),[data-theme=business] {
     color-scheme: dark;
-    --color-base-100: oklch(18% 0.02 140);
-    --color-base-200: oklch(16% 0.025 140);
-    --color-base-300: oklch(14% 0.03 140);
-    --color-base-content: oklch(85% 0.01 140);
-    --color-primary: oklch(45% 0.15 145);
+    --color-base-100: oklch(8% 0.02 140);
+    --color-base-200: oklch(5% 0.025 140);
+    --color-base-300: oklch(3% 0.03 140);
+    --color-base-content: oklch(92% 0.008 140);
+    --color-primary: oklch(50% 0.18 145);
     --color-primary-content: oklch(95% 0.01 145);
-    --color-secondary: oklch(50% 0.12 160);
+    --color-secondary: oklch(55% 0.15 160);
     --color-secondary-content: oklch(95% 0.01 160);
-    --color-accent: oklch(65% 0.2 80);
+    --color-accent: oklch(70% 0.22 80);
     --color-accent-content: oklch(15% 0.02 80);
-    --color-neutral: oklch(25% 0.015 140);
-    --color-neutral-content: oklch(85% 0.005 140);
-    --color-info: oklch(60% 0.15 220);
+    --color-neutral: oklch(10% 0.025 140);
+    --color-neutral-content: oklch(90% 0.008 140);
+    --color-info: oklch(65% 0.18 220);
     --color-info-content: oklch(95% 0.01 220);
-    --color-success: oklch(55% 0.18 150);
+    --color-success: oklch(60% 0.2 150);
     --color-success-content: oklch(95% 0.01 150);
-    --color-warning: oklch(70% 0.16 75);
+    --color-warning: oklch(75% 0.18 75);
     --color-warning-content: oklch(20% 0.02 75);
-    --color-error: oklch(55% 0.2 25);
+    --color-error: oklch(60% 0.22 25);
     --color-error-content: oklch(95% 0.01 25);
     --radius-selector: 0.5rem;
     --radius-field: 0.5rem;
