@@ -1,6 +1,271 @@
 /*! tailwindcss v4.1.11 | MIT License | https://tailwindcss.com */
 @layer properties;
 @layer theme, base, components, utilities;
+
+/* Professional Inventory Theme Enhancements */
+@layer components {
+  /* Enhanced Card Styling */
+  .card {
+    border: 1px solid oklch(var(--b3));
+    box-shadow: 0 2px 8px oklch(var(--b3) / 0.1), 0 1px 4px oklch(var(--b3) / 0.08);
+  }
+  
+  .card:hover {
+    box-shadow: 0 4px 12px oklch(var(--b3) / 0.15), 0 2px 6px oklch(var(--b3) / 0.1);
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+  }
+  
+  /* Enhanced Stats Cards */
+  .stats .stat {
+    border: 1px solid oklch(var(--b3));
+    background: oklch(var(--b1));
+  }
+
+  /* Professional Dashboard Grid Enhancements */
+  .stats {
+    gap: 1rem;
+  }
+  
+  .stats .stat {
+    background: oklch(var(--b1));
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .stats .stat::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, oklch(var(--p)), oklch(var(--s)), oklch(var(--a)));
+  }
+  
+  /* Professional Quick Actions Grid */
+  .grid .card {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .grid .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: currentColor;
+    opacity: 0.6;
+  }
+  
+  /* Enhanced Typography */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+  
+  .stat-title {
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.8;
+  }
+  
+  .stat-value {
+    font-weight: 700;
+    font-size: 2rem;
+    line-height: 1.2;
+  }
+  
+  .stat-desc {
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+  
+  /* Professional Form Styling */
+  .form-control {
+    margin-bottom: 1rem;
+  }
+  
+  .label-text {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: oklch(var(--bc));
+    margin-bottom: 0.5rem;
+  }
+  
+  /* Enhanced Professional Spacing */
+  .card-body {
+    padding: 1.5rem;
+  }
+  
+  .card-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+  }
+  
+  /* Professional Badge System */
+  .badge-outline {
+    border: 1.5px solid currentColor;
+    background: transparent;
+  }
+  
+  /* Enhanced Table Professional Styling */
+  .table thead tr {
+    border-bottom: 2px solid oklch(var(--b3));
+  }
+  
+  .table tbody tr {
+    border-bottom: 1px solid oklch(var(--b2));
+  }
+  
+  .table tbody tr:last-child {
+    border-bottom: none;
+  }
+  
+  /* Professional Modal Backdrop */
+  .modal-backdrop, [class*="bg-gray-900"] {
+    background: oklch(var(--b1) / 0.8);
+    backdrop-filter: blur(4px);
+  }
+  
+  /* Professional Loading States */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      oklch(var(--b2)) 25%,
+      oklch(var(--b3)) 50%,
+      oklch(var(--b2)) 75%
+    );
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+  }
+  
+  @keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  
+  /* Professional Focus States */
+  *:focus {
+    outline: 2px solid oklch(var(--p));
+    outline-offset: 2px;
+  }
+  
+  .btn:focus,
+  .input:focus,
+  .select:focus,
+  .textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px oklch(var(--p) / 0.2);
+  }
+
+  /* Professional Sidebar Styling */
+  #sidebar {
+    background: oklch(var(--b2));
+    border-right: 1px solid oklch(var(--b3));
+    box-shadow: 2px 0 8px oklch(var(--b3) / 0.1);
+  }
+  
+  /* Enhanced Menu Items */
+  #sidebar .menu li a {
+    border-radius: 0.5rem;
+    margin-bottom: 0.25rem;
+    transition: all 0.2s ease;
+  }
+  
+  #sidebar .menu li a:hover {
+    background: oklch(var(--b3));
+    transform: translateX(2px);
+  }
+  
+  #sidebar .menu li a.active {
+    background: oklch(var(--p) / 0.1);
+    border-left: 3px solid oklch(var(--p));
+    color: oklch(var(--p));
+  }
+  
+  /* Professional Button Styling */
+  .btn {
+    font-weight: 600;
+    letter-spacing: 0.025em;
+    box-shadow: 0 1px 3px oklch(var(--b3) / 0.2);
+  }
+  
+  .btn:hover {
+    box-shadow: 0 2px 6px oklch(var(--b3) / 0.25);
+    transform: translateY(-1px);
+  }
+  
+  /* Enhanced Table Styling */
+  .table {
+    border: 1px solid oklch(var(--b3));
+  }
+  
+  .table th {
+    background: oklch(var(--b2));
+    font-weight: 600;
+    color: oklch(var(--bc));
+    border-bottom: 2px solid oklch(var(--b3));
+  }
+  
+  .table tr:hover {
+    background: oklch(var(--b2) / 0.5);
+  }
+  
+  /* Professional Modal Styling */
+  .modal-box, [class*="bg-white"], [class*="bg-base-100"] {
+    background: oklch(var(--b1));
+    border: 1px solid oklch(var(--b3));
+    box-shadow: 0 8px 32px oklch(var(--b3) / 0.2);
+  }
+  
+  /* Enhanced Input Styling */
+  .input, .select, .textarea {
+    border: 1px solid oklch(var(--b3));
+    background: oklch(var(--b1));
+    transition: all 0.2s ease;
+  }
+  
+  .input:focus, .select:focus, .textarea:focus {
+    border-color: oklch(var(--p));
+    box-shadow: 0 0 0 2px oklch(var(--p) / 0.1);
+  }
+  
+  /* Professional Status Colors */
+  .badge {
+    font-weight: 600;
+    letter-spacing: 0.025em;
+  }
+  
+  /* Enhanced Dashboard Layout */
+  #mainContent {
+    background: oklch(var(--b1));
+    min-height: calc(100vh - 4rem);
+  }
+  
+  /* Professional Navbar */
+  .navbar {
+    background: oklch(var(--p));
+    border-bottom: 1px solid oklch(var(--p) / 0.2);
+    box-shadow: 0 2px 8px oklch(var(--p) / 0.1);
+  }
+  
+  /* Enhanced Loading States */
+  .loading {
+    color: oklch(var(--p));
+  }
+  
+  /* Professional Alert Styling */
+  .alert {
+    border: 1px solid oklch(var(--b3));
+    box-shadow: 0 2px 8px oklch(var(--b3) / 0.1);
+  }
+}
 @layer theme {
   :root, :host {
     --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
@@ -8992,29 +9257,29 @@
 @layer base {
   :where(:root),:root:has(input.theme-controller[value=garden]:checked),[data-theme=garden] {
     color-scheme: light;
-    --color-base-100: oklch(100% 0 0);
-    --color-base-200: oklch(94.29% 0.017 136.59);
-    --color-base-300: oklch(88.57% 0.034 136.59);
-    --color-base-content: oklch(17.86% 0.046 136.59);
-    --color-primary: oklch(50.98% 0.15 146.4);
-    --color-primary-content: oklch(100% 0 0);
-    --color-secondary: oklch(74.31% 0.13 156.4);
-    --color-secondary-content: oklch(17.86% 0.046 136.59);
-    --color-accent: oklch(62.45% 0.24 76.4);
-    --color-accent-content: oklch(17.86% 0.046 136.59);
-    --color-neutral: oklch(25.49% 0.055 135.6);
-    --color-neutral-content: oklch(94.29% 0.017 136.59);
-    --color-info: oklch(74.31% 0.13 212.4);
-    --color-info-content: oklch(17.86% 0.046 136.59);
-    --color-success: oklch(60.78% 0.14 146.4);
-    --color-success-content: oklch(17.86% 0.046 136.59);
-    --color-warning: oklch(76.47% 0.16 76.4);
-    --color-warning-content: oklch(17.86% 0.046 136.59);
-    --color-error: oklch(65.69% 0.20 22.18);
-    --color-error-content: oklch(100% 0 0);
-    --radius-selector: 1rem;
+    --color-base-100: oklch(99% 0.005 210);
+    --color-base-200: oklch(96% 0.008 210);
+    --color-base-300: oklch(92% 0.012 210);
+    --color-base-content: oklch(20% 0.015 210);
+    --color-primary: oklch(45% 0.12 210);
+    --color-primary-content: oklch(98% 0.005 210);
+    --color-secondary: oklch(65% 0.10 240);
+    --color-secondary-content: oklch(98% 0.005 240);
+    --color-accent: oklch(70% 0.15 160);
+    --color-accent-content: oklch(98% 0.005 160);
+    --color-neutral: oklch(25% 0.02 210);
+    --color-neutral-content: oklch(96% 0.008 210);
+    --color-info: oklch(60% 0.12 220);
+    --color-info-content: oklch(98% 0.005 220);
+    --color-success: oklch(55% 0.14 150);
+    --color-success-content: oklch(98% 0.005 150);
+    --color-warning: oklch(75% 0.12 70);
+    --color-warning-content: oklch(22% 0.02 70);
+    --color-error: oklch(60% 0.16 25);
+    --color-error-content: oklch(98% 0.005 25);
+    --radius-selector: 0.75rem;
     --radius-field: 0.5rem;
-    --radius-box: 1rem;
+    --radius-box: 0.75rem;
     --size-selector: 0.25rem;
     --size-field: 0.25rem;
     --border: 1px;
@@ -9093,26 +9358,26 @@
 @layer base {
   :root:has(input.theme-controller[value=business]:checked),[data-theme=business] {
     color-scheme: dark;
-    --color-base-100: oklch(8% 0.02 140);
-    --color-base-200: oklch(5% 0.025 140);
-    --color-base-300: oklch(3% 0.03 140);
-    --color-base-content: oklch(92% 0.008 140);
-    --color-primary: oklch(50% 0.18 145);
-    --color-primary-content: oklch(95% 0.01 145);
-    --color-secondary: oklch(55% 0.15 160);
-    --color-secondary-content: oklch(95% 0.01 160);
-    --color-accent: oklch(70% 0.22 80);
-    --color-accent-content: oklch(15% 0.02 80);
-    --color-neutral: oklch(10% 0.025 140);
-    --color-neutral-content: oklch(90% 0.008 140);
-    --color-info: oklch(65% 0.18 220);
-    --color-info-content: oklch(95% 0.01 220);
-    --color-success: oklch(60% 0.2 150);
-    --color-success-content: oklch(95% 0.01 150);
-    --color-warning: oklch(75% 0.18 75);
-    --color-warning-content: oklch(20% 0.02 75);
-    --color-error: oklch(60% 0.22 25);
-    --color-error-content: oklch(95% 0.01 25);
+    --color-base-100: oklch(8% 0.008 210);
+    --color-base-200: oklch(6% 0.012 210);
+    --color-base-300: oklch(4% 0.015 210);
+    --color-base-content: oklch(94% 0.005 210);
+    --color-primary: oklch(55% 0.12 210);
+    --color-primary-content: oklch(98% 0.005 210);
+    --color-secondary: oklch(65% 0.10 240);
+    --color-secondary-content: oklch(98% 0.005 240);
+    --color-accent: oklch(70% 0.15 160);
+    --color-accent-content: oklch(98% 0.005 160);
+    --color-neutral: oklch(12% 0.012 210);
+    --color-neutral-content: oklch(92% 0.005 210);
+    --color-info: oklch(65% 0.12 220);
+    --color-info-content: oklch(98% 0.005 220);
+    --color-success: oklch(60% 0.14 150);
+    --color-success-content: oklch(98% 0.005 150);
+    --color-warning: oklch(75% 0.12 70);
+    --color-warning-content: oklch(15% 0.02 70);
+    --color-error: oklch(65% 0.16 25);
+    --color-error-content: oklch(98% 0.005 25);
     --radius-selector: 0.5rem;
     --radius-field: 0.5rem;
     --radius-box: 0.75rem;
