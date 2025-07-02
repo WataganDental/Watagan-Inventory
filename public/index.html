@@ -428,29 +428,9 @@
         <section id="ordersSectionContainer" class="hidden mb-8 p-4 bg-white dark:bg-slate-800 shadow rounded-lg">
             <h2 class="text-2xl font-semibold mb-4 border-b pb-2 dark:border-slate-700">Orders & Reordering</h2>
 
-            <!-- Create Order Form -->
-            <div id="createOrderContainer" class="mb-8">
-                <h3 class="text-xl font-semibold mb-4">Create New Order</h3>
-                <form id="createOrderForm">
-                    <div>
-                        <label for="orderProductId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Product</label>
-                        <select id="orderProductId" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 w-full mb-2">
-                            <option value="">Loading products...</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="orderQuantity" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quantity</label>
-                        <input type="number" id="orderQuantity" placeholder="Quantity" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 w-full mb-2" required>
-                    </div>
-                    <button type="submit" id="submitOrderBtn" class="bg-green-500 hover:bg-green-600 text-white p-2 rounded dark:bg-green-700 dark:hover:bg-green-600">Submit Order</button>
-                </form>
-            </div>
-
-            <hr class="my-6 border-gray-300 dark:border-slate-700">
-
-            <!-- Orders Module Sections -->
+            <!-- Low Stock Alerts Section -->
             <section id="lowStockAlertsSection" class="mb-8">
-                <h2 class="text-xl font-semibold mb-4">Low Stock Alerts</h2>
+                <h3 class="text-xl font-semibold mb-4">Low Stock Alerts</h3>
                 <div class="overflow-x-auto rounded-lg max-h-60">
                     <table class="table table-sm w-full">
                         <thead class="bg-amber-100 dark:bg-amber-800">
@@ -468,9 +448,16 @@
                 </div>
             </section>
 
-            <section id="manageOrdersSection" class="mb-8">
-                <h2 class="text-xl font-semibold mb-4">Manage Orders</h2>
-                <form id="manageOrdersForm">
+            <!-- Create New Order Section -->
+            <section id="createOrderSection" class="mb-8">
+                <h3 class="text-xl font-semibold mb-4">Create New Order</h3>
+                <form id="createOrderForm">
+                    <div>
+                        <label for="orderProductId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Product</label>
+                        <select id="orderProductId" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 w-full mb-2">
+                            <option value="">Loading products...</option>
+                        </select>
+                    </div>
                     <div>
                         <label for="orderQuantity" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quantity</label>
                         <input type="number" id="orderQuantity" placeholder="Quantity" class="border dark:border-gray-600 p-2 rounded dark:bg-slate-700 dark:text-gray-200 w-full mb-2" required>
@@ -479,8 +466,9 @@
                 </form>
             </section>
 
+            <!-- Existing Orders Section -->
             <section id="existingOrdersSection" class="mb-8">
-                <h2 class="text-xl font-semibold mb-4">Existing Orders</h2>
+                <h3 class="text-xl font-semibold mb-4">Existing Orders</h3>
                 <div class="overflow-x-auto">
                     <table class="table table-sm w-full">
                         <thead>
