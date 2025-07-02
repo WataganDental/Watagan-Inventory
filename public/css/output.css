@@ -2,6 +2,197 @@
 @layer properties;
 @layer theme, base, components, utilities;
 
+/* ============================================
+   PROFESSIONAL THEME ENHANCEMENTS
+   ============================================ */
+
+/* Enhanced navbar for both themes */
+.navbar {
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid oklch(var(--color-base-300));
+}
+
+/* Professional sidebar enhancements */
+#sidebar {
+  border-right: 1px solid oklch(var(--color-base-300));
+  backdrop-filter: blur(8px);
+}
+
+/* Modern sidebar menu items */
+#sidebar ul li a {
+  border-radius: 0.75rem;
+  transition: all 0.2s ease-in-out;
+  position: relative;
+  overflow: hidden;
+}
+
+#sidebar ul li a:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px oklch(var(--color-primary) / 0.15);
+}
+
+#sidebar ul li a:active {
+  transform: translateY(0);
+}
+
+/* Icon color transitions and hover effects */
+#sidebar ul li a svg {
+  transition: all 0.2s ease-in-out;
+  filter: drop-shadow(0 1px 2px oklch(var(--color-base-300) / 0.3));
+}
+
+#sidebar ul li a:hover svg {
+  transform: scale(1.05);
+  filter: drop-shadow(0 2px 4px oklch(var(--color-primary) / 0.4));
+}
+
+/* Active menu item styling */
+#sidebar ul li a.active {
+  background: linear-gradient(135deg, 
+    oklch(var(--color-primary) / 0.15) 0%, 
+    oklch(var(--color-primary) / 0.08) 100%);
+  border: 1px solid oklch(var(--color-primary) / 0.2);
+  color: oklch(var(--color-primary));
+}
+
+#sidebar ul li a.active svg {
+  color: oklch(var(--color-primary));
+  filter: drop-shadow(0 2px 4px oklch(var(--color-primary) / 0.3));
+}
+
+/* Enhanced theme toggle positioning and style */
+#themeToggle {
+  transition: all 0.2s ease-in-out;
+  padding: 0.5rem;
+  border-radius: 0.75rem;
+}
+
+#themeToggle:hover {
+  background: oklch(var(--color-base-300) / 0.5);
+  transform: scale(1.05);
+}
+
+/* Professional cards and containers */
+.card {
+  border: 1px solid oklch(var(--color-base-300) / 0.5);
+  backdrop-filter: blur(4px);
+}
+
+/* Enhanced modal backdrop for dark theme */
+[data-theme="business"] .modal-backdrop {
+  background: oklch(var(--color-base-300) / 0.8);
+  backdrop-filter: blur(8px);
+}
+
+/* Professional button enhancements */
+.btn {
+  transition: all 0.2s ease-in-out;
+  border: 1px solid transparent;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px oklch(var(--color-primary) / 0.2);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+/* Enhanced input fields for dark theme */
+[data-theme="business"] .input,
+[data-theme="business"] .select,
+[data-theme="business"] .textarea {
+  border: 1px solid oklch(var(--color-base-300));
+  background: oklch(var(--color-base-200) / 0.8);
+  backdrop-filter: blur(4px);
+}
+
+[data-theme="business"] .input:focus,
+[data-theme="business"] .select:focus,
+[data-theme="business"] .textarea:focus {
+  border-color: oklch(var(--color-primary));
+  box-shadow: 0 0 0 3px oklch(var(--color-primary) / 0.1);
+}
+
+/* Professional table styling for dark theme */
+[data-theme="business"] .table {
+  background: oklch(var(--color-base-200) / 0.5);
+  backdrop-filter: blur(4px);
+}
+
+[data-theme="business"] .table thead {
+  background: oklch(var(--color-base-300) / 0.7);
+  border-bottom: 2px solid oklch(var(--color-primary) / 0.3);
+}
+
+[data-theme="business"] .table tbody tr:hover {
+  background: oklch(var(--color-base-300) / 0.3);
+}
+
+/* Enhanced stats for dark theme */
+[data-theme="business"] .stats {
+  background: oklch(var(--color-base-200) / 0.8);
+  border: 1px solid oklch(var(--color-base-300));
+  backdrop-filter: blur(8px);
+}
+
+[data-theme="business"] .stat {
+  border-color: oklch(var(--color-base-300) / 0.5);
+}
+
+/* Professional drawer overlay */
+[data-theme="business"] .drawer-overlay {
+  background: oklch(var(--color-base-300) / 0.8);
+  backdrop-filter: blur(8px);
+}
+
+/* Enhanced notification bar */
+#reorderNotificationBar {
+  border: 1px solid oklch(var(--color-warning) / 0.3);
+  backdrop-filter: blur(4px);
+}
+
+/* Smooth scrollbar for dark theme */
+[data-theme="business"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme="business"] ::-webkit-scrollbar-track {
+  background: oklch(var(--color-base-300) / 0.3);
+  border-radius: 4px;
+}
+
+[data-theme="business"] ::-webkit-scrollbar-thumb {
+  background: oklch(var(--color-primary) / 0.5);
+  border-radius: 4px;
+}
+
+[data-theme="business"] ::-webkit-scrollbar-thumb:hover {
+  background: oklch(var(--color-primary) / 0.7);
+}
+
+/* Professional responsive design */
+@media (max-width: 1024px) {
+  #themeToggle svg {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+}
+
+/* Enhanced loading states for dark theme */
+[data-theme="business"] .loading {
+  filter: hue-rotate(180deg) brightness(1.2);
+}
+
+/* Professional focus states */
+[data-theme="business"] *:focus-visible {
+  outline: 2px solid oklch(var(--color-primary));
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
 /* Professional Inventory Theme Enhancements */
 @layer components {
   /* Enhanced Card Styling */
@@ -9358,29 +9549,45 @@
 @layer base {
   :root:has(input.theme-controller[value=business]:checked),[data-theme=business] {
     color-scheme: dark;
-    --color-base-100: oklch(8% 0.008 210);
-    --color-base-200: oklch(6% 0.012 210);
-    --color-base-300: oklch(4% 0.015 210);
-    --color-base-content: oklch(94% 0.005 210);
-    --color-primary: oklch(55% 0.12 210);
-    --color-primary-content: oklch(98% 0.005 210);
-    --color-secondary: oklch(65% 0.10 240);
-    --color-secondary-content: oklch(98% 0.005 240);
-    --color-accent: oklch(70% 0.15 160);
-    --color-accent-content: oklch(98% 0.005 160);
-    --color-neutral: oklch(12% 0.012 210);
-    --color-neutral-content: oklch(92% 0.005 210);
-    --color-info: oklch(65% 0.12 220);
-    --color-info-content: oklch(98% 0.005 220);
-    --color-success: oklch(60% 0.14 150);
+    /* Professional modern dark theme - warmer, less harsh */
+    --color-base-100: oklch(14% 0.015 240); /* Warm dark blue-gray, not pure black */
+    --color-base-200: oklch(12% 0.018 240); /* Slightly darker */
+    --color-base-300: oklch(10% 0.02 240); /* Darker yet for depth */
+    --color-base-content: oklch(92% 0.008 240); /* Soft white with slight warmth */
+    
+    /* Professional primary color - sophisticated blue */
+    --color-primary: oklch(58% 0.15 240); /* Rich professional blue */
+    --color-primary-content: oklch(98% 0.005 240);
+    
+    /* Elegant secondary - purple-blue */
+    --color-secondary: oklch(65% 0.12 280); /* Sophisticated purple */
+    --color-secondary-content: oklch(98% 0.005 280);
+    
+    /* Modern accent - teal */
+    --color-accent: oklch(68% 0.14 180); /* Professional teal */
+    --color-accent-content: oklch(98% 0.005 180);
+    
+    /* Neutral with warmth */
+    --color-neutral: oklch(18% 0.015 240); /* Warm neutral */
+    --color-neutral-content: oklch(90% 0.008 240);
+    
+    /* Status colors - modern and professional */
+    --color-info: oklch(65% 0.15 230); /* Professional blue info */
+    --color-info-content: oklch(98% 0.005 230);
+    
+    --color-success: oklch(65% 0.16 150); /* Modern green */
     --color-success-content: oklch(98% 0.005 150);
-    --color-warning: oklch(75% 0.12 70);
-    --color-warning-content: oklch(15% 0.02 70);
-    --color-error: oklch(65% 0.16 25);
+    
+    --color-warning: oklch(75% 0.15 80); /* Professional amber */
+    --color-warning-content: oklch(20% 0.02 80);
+    
+    --color-error: oklch(68% 0.18 25); /* Modern red */
     --color-error-content: oklch(98% 0.005 25);
-    --radius-selector: 0.5rem;
-    --radius-field: 0.5rem;
-    --radius-box: 0.75rem;
+    
+    /* Modern rounded corners */
+    --radius-selector: 0.6rem;
+    --radius-field: 0.6rem;
+    --radius-box: 0.8rem;
     --size-selector: 0.25rem;
     --size-field: 0.25rem;
     --border: 1px;
