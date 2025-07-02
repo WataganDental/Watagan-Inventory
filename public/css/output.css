@@ -3,6 +3,134 @@
 @layer theme, base, components, utilities;
 
 /* ============================================
+   IMPROVED TABLE STYLING FOR DARK MODE
+   ============================================ */
+
+/* Better table contrast and theming */
+[data-theme="business"] .table {
+  background: oklch(var(--color-base-200) / 0.6);
+  border: 1px solid oklch(var(--color-base-300) / 0.4);
+  color: oklch(var(--color-base-content));
+}
+
+[data-theme="business"] .table thead {
+  background: oklch(var(--color-base-300) / 0.6);
+  border-bottom: 1px solid oklch(var(--color-base-300) / 0.6);
+  color: oklch(var(--color-base-content));
+}
+
+[data-theme="business"] .table thead th {
+  color: oklch(var(--color-base-content) / 0.9);
+  font-weight: 600;
+  padding: 1rem 0.75rem;
+}
+
+[data-theme="business"] .table tbody tr {
+  border-bottom: 1px solid oklch(var(--color-base-300) / 0.3);
+}
+
+[data-theme="business"] .table tbody tr:hover {
+  background: oklch(var(--color-base-300) / 0.2);
+  color: oklch(var(--color-base-content));
+}
+
+[data-theme="business"] .table tbody td {
+  color: oklch(var(--color-base-content) / 0.9);
+  padding: 0.75rem;
+}
+
+/* Specific styling for low stock alerts table */
+[data-theme="business"] .card.bg-amber-50 {
+  background: oklch(var(--color-warning) / 0.1) !important;
+  border: 1px solid oklch(var(--color-warning) / 0.2);
+  color: oklch(var(--color-base-content));
+}
+
+[data-theme="business"] .card.bg-amber-50 .table {
+  background: oklch(var(--color-base-200) / 0.8);
+  color: oklch(var(--color-base-content));
+}
+
+[data-theme="business"] .card.bg-amber-50 .table thead {
+  background: oklch(var(--color-warning) / 0.2);
+  color: oklch(var(--color-warning-content));
+}
+
+[data-theme="business"] .card.bg-amber-50 .table tbody tr:hover {
+  background: oklch(var(--color-warning) / 0.1);
+  color: oklch(var(--color-base-content));
+}
+
+/* User management table specific styling */
+[data-theme="business"] #userManagementTable {
+  background: oklch(var(--color-base-200) / 0.8);
+  border: 1px solid oklch(var(--color-base-300) / 0.4);
+}
+
+[data-theme="business"] #userManagementTable thead {
+  background: oklch(var(--color-base-300) / 0.7);
+  border-bottom: 2px solid oklch(var(--color-primary) / 0.3);
+}
+
+[data-theme="business"] #userManagementTable tbody tr:hover {
+  background: oklch(var(--color-base-300) / 0.3);
+  color: oklch(var(--color-base-content));
+}
+
+/* Better contrast for inventory table rows */
+[data-theme="business"] #inventoryTable tbody tr:hover {
+  background: oklch(var(--color-base-300) / 0.2);
+  color: oklch(var(--color-base-content));
+}
+
+[data-theme="business"] #inventoryTable tbody tr.selected {
+  background: oklch(var(--color-primary) / 0.1);
+  border: 1px solid oklch(var(--color-primary) / 0.3);
+}
+
+/* Fix bright warning alerts */
+[data-theme="business"] .bg-warning {
+  background: oklch(var(--color-warning) / 0.15) !important;
+  color: oklch(var(--color-base-content)) !important;
+}
+
+[data-theme="business"] .text-warning {
+  color: oklch(var(--color-warning)) !important;
+}
+
+/* Better card contrast */
+[data-theme="business"] .card {
+  background: oklch(var(--color-base-200) / 0.8);
+  border: 1px solid oklch(var(--color-base-300) / 0.4);
+  box-shadow: 0 2px 8px oklch(var(--color-base-300) / 0.2);
+}
+
+/* Improved navbar contrast */
+[data-theme="business"] .navbar {
+  background: oklch(var(--color-primary) / 0.9);
+  border-bottom: 1px solid oklch(var(--color-primary) / 0.3);
+}
+
+/* Better sidebar contrast */
+[data-theme="business"] #sidebar {
+  background: oklch(var(--color-base-200) / 0.9);
+  border-right: 1px solid oklch(var(--color-base-300) / 0.4);
+}
+
+/* Improved button hover states */
+[data-theme="business"] .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px oklch(var(--color-primary) / 0.15);
+}
+
+/* Better modal backdrop */
+[data-theme="business"] .modal-box {
+  background: oklch(var(--color-base-200) / 0.95);
+  border: 1px solid oklch(var(--color-base-300) / 0.4);
+  box-shadow: 0 8px 32px oklch(var(--color-base-300) / 0.3);
+}
+
+/* ============================================
    PROFESSIONAL THEME ENHANCEMENTS
    ============================================ */
 
@@ -43,11 +171,12 @@
 }
 
 #sidebar ul li a:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px oklch(var(--color-primary) / 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px oklch(var(--color-primary) / 0.1);
   background: linear-gradient(135deg, 
-    oklch(var(--color-base-300) / 0.8) 0%, 
-    oklch(var(--color-base-300) / 0.4) 100%);
+    oklch(var(--color-base-300) / 0.4) 0%, 
+    oklch(var(--color-base-300) / 0.2) 100%);
+  color: oklch(var(--color-base-content));
 }
 
 #sidebar ul li a:active {
@@ -9630,40 +9759,40 @@
 @layer base {
   :root:has(input.theme-controller[value=business]:checked),[data-theme=business] {
     color-scheme: dark;
-    /* Professional dark theme inspired by modern dashboards */
-    --color-base-100: oklch(22% 0.015 240); /* Rich dark blue-gray background */
-    --color-base-200: oklch(18% 0.018 240); /* Slightly darker for cards */
-    --color-base-300: oklch(15% 0.02 240); /* Darker borders and dividers */
-    --color-base-content: oklch(88% 0.008 240); /* Soft white text */
+    /* Professional dark theme with better contrast and depth */
+    --color-base-100: oklch(16% 0.012 240); /* Main background - dark but not black */
+    --color-base-200: oklch(20% 0.015 240); /* Cards/containers - significant contrast */
+    --color-base-300: oklch(25% 0.018 240); /* Borders/dividers - clear separation */
+    --color-base-content: oklch(88% 0.006 240); /* Text - readable but not harsh */
     
-    /* Vibrant professional colors */
-    --color-primary: oklch(65% 0.2 240); /* Bright professional blue */
-    --color-primary-content: oklch(98% 0.005 240);
+    /* Muted professional colors for dark mode */
+    --color-primary: oklch(48% 0.12 240); /* Darker blue for navbar */
+    --color-primary-content: oklch(95% 0.005 240);
     
-    /* Rich purple for secondary */
-    --color-secondary: oklch(68% 0.18 290); /* Vibrant purple */
-    --color-secondary-content: oklch(98% 0.005 290);
+    /* Subtle secondary purple */
+    --color-secondary: oklch(52% 0.10 280); /* Muted purple */
+    --color-secondary-content: oklch(95% 0.005 280);
     
-    /* Modern teal accent */
-    --color-accent: oklch(70% 0.16 180); /* Bright teal */
-    --color-accent-content: oklch(98% 0.005 180);
+    /* Gentle teal accent */
+    --color-accent: oklch(55% 0.12 180); /* Muted teal */
+    --color-accent-content: oklch(95% 0.005 180);
     
     /* Professional neutral */
-    --color-neutral: oklch(25% 0.015 240); /* Warm neutral gray */
-    --color-neutral-content: oklch(85% 0.008 240);
+    --color-neutral: oklch(28% 0.012 240); /* Good contrast neutral */
+    --color-neutral-content: oklch(82% 0.006 240);
     
-    /* Vibrant status colors for better visibility */
-    --color-info: oklch(68% 0.18 220); /* Bright info blue */
-    --color-info-content: oklch(98% 0.005 220);
+    /* Subtle status colors for dark mode */
+    --color-info: oklch(52% 0.14 220); /* Muted info blue */
+    --color-info-content: oklch(95% 0.005 220);
     
-    --color-success: oklch(68% 0.18 150); /* Vibrant green */
-    --color-success-content: oklch(98% 0.005 150);
+    --color-success: oklch(52% 0.14 150); /* Muted green */
+    --color-success-content: oklch(95% 0.005 150);
     
-    --color-warning: oklch(78% 0.16 85); /* Bright amber */
-    --color-warning-content: oklch(20% 0.02 85);
+    --color-warning: oklch(62% 0.12 80); /* Muted amber */
+    --color-warning-content: oklch(18% 0.015 80);
     
-    --color-error: oklch(70% 0.2 25); /* Vibrant red */
-    --color-error-content: oklch(98% 0.005 25);
+    --color-error: oklch(58% 0.16 25); /* Muted red */
+    --color-error-content: oklch(95% 0.005 25);
     
     /* Modern rounded corners */
     --radius-selector: 0.75rem;
