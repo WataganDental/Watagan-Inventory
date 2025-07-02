@@ -1068,11 +1068,29 @@ function showView(viewIdToShow, clickedMenuId) {
   // Now, show the target view
   const targetView = document.getElementById(viewIdToShow);
   if (targetView) {
+    console.log(`[showView] Before removing 'hidden' from ${viewIdToShow}, classList: ${targetView.classList}`);
     targetView.classList.remove('hidden');
-    console.log(`[showView] Made visible: ${targetView.id}`);
+    console.log(`[showView] Made visible: ${targetView.id}, classList after: ${targetView.classList}`);
 
     // VIEW SPECIFIC INITIALIZATIONS
-    if (targetView.id === 'inventoryViewContainer') {
+    if (targetView.id === 'dashboardViewContainer') {
+        console.log('[showView] Initializing dashboardViewContainer.');
+        // Log children state for dashboard
+        const dashboardChildrenIds = ['dashboardStatsBar', 'dashboardQuickActions', 'dashboardPendingOrdersSection', 'dashboardRecentActivity']; // Assuming these are IDs of main sections
+        const dashboardStatsBar = targetView.querySelector('.stats'); // First stats bar
+        const quickActionsGrid = targetView.querySelector('.grid.grid-cols-1.md\\:grid-cols-3'); // Quick actions grid
+        const pendingOrdersSection = document.getElementById('dashboardPendingOrdersSection'); // Specific ID
+        const recentActivitySection = targetView.querySelector('section:last-child .card-body #recentActivityList'); // More specific to recent activity list
+
+        console.log(`[showView] Dashboard children check:`);
+        if (dashboardStatsBar) console.log(`  Stats Bar: hidden? ${dashboardStatsBar.classList.contains('hidden')}, display: ${window.getComputedStyle(dashboardStatsBar).display}`); else console.log("  Stats Bar section not found by selector.");
+        if (quickActionsGrid) console.log(`  Quick Actions Grid: hidden? ${quickActionsGrid.classList.contains('hidden')}, display: ${window.getComputedStyle(quickActionsGrid).display}`); else console.log("  Quick Actions Grid not found by selector.");
+        if (pendingOrdersSection) console.log(`  Pending Orders Section: hidden? ${pendingOrdersSection.classList.contains('hidden')}, display: ${window.getComputedStyle(pendingOrdersSection).display}`); else console.log("  Pending Orders Section by ID not found.");
+        if (recentActivitySection) console.log(`  Recent Activity List container: hidden? ${recentActivitySection.parentElement.classList.contains('hidden')}, display: ${window.getComputedStyle(recentActivitySection.parentElement).display}`); else console.log("  Recent Activity List container not found by selector.");
+
+        if (typeof updateEnhancedDashboard === 'function') updateEnhancedDashboard(); else console.error("[showView] updateEnhancedDashboard is not defined");
+        if (typeof displayPendingOrdersOnDashboard === 'function') displayPendingOrdersOnDashboard(); else console.error("[showView] displayPendingOrdersOnDashboard is not defined");
+    } else if (targetView.id === 'inventoryViewContainer') {
         console.log('[showView] Initializing inventoryViewContainer.');
         if (typeof displayInventory === 'function') displayInventory(); else console.error("[showView] displayInventory is not defined");
         if (typeof updateInventoryDashboard === 'function') updateInventoryDashboard(); else console.error("[showView] updateInventoryDashboard is not defined");
