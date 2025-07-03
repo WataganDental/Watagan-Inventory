@@ -10036,11 +10036,11 @@ html[data-theme="business"] .dark\:bg-amber-900 {
 @layer base {
   :root:has(input.theme-controller[value=business]:checked),[data-theme=business] {
     color-scheme: dark;
-    /* Professional dark theme with lighter background and better contrast */
-    --color-base-100: oklch(16% 0.015 240); /* Lighter main background - no more pure black */
-    --color-base-200: oklch(20% 0.018 240); /* Cards/containers - subtle elevation */
-    --color-base-300: oklch(26% 0.020 240); /* Borders/dividers - good separation */
-    --color-base-content: oklch(94% 0.008 240); /* Text - excellent readability */
+    /* Professional dark theme matching reference design */
+    --color-base-100: oklch(12% 0.01 240); /* Dark background like reference */
+    --color-base-200: oklch(22% 0.015 240); /* Card elevation - clearly lighter */
+    --color-base-300: oklch(28% 0.02 240); /* Borders/accents - even lighter */
+    --color-base-content: oklch(95% 0.005 240); /* High contrast text */
     
     /* Professional navbar color - darker blue but not too bright */
     --color-primary: oklch(42% 0.15 240); /* Professional dark blue for navbar */
@@ -10381,29 +10381,40 @@ html[data-theme="business"] .dark\:bg-amber-900 {
 }
 
 /* ============================================
-   FINAL DARK MODE OVERRIDES - MAXIMUM PRIORITY
+   PROFESSIONAL DARK MODE - REFERENCE DESIGN MATCH
    ============================================ */
 
-/* FINAL OVERRIDE: Make cards MUCH lighter and more visible */
+/* Clean dark background similar to reference */
+html[data-theme="business"],
+html[data-theme="business"] body,
+[data-theme="business"],
+[data-theme="business"] body {
+  background: oklch(12% 0.01 240) !important;
+  background-color: oklch(12% 0.01 240) !important;
+}
+
+/* Cards should be significantly lighter like in reference */
 html[data-theme="business"] .card,
 html[data-theme="business"] .card-body,
 body[data-theme="business"] .card,
 body[data-theme="business"] .card-body,
 [data-theme="business"] .card,
 [data-theme="business"] .card-body {
-  background: oklch(35% 0.025 240) !important;
-  background-color: oklch(35% 0.025 240) !important;
-  border: 2px solid oklch(45% 0.030 240) !important;
-  color: oklch(96% 0.005 240) !important;
+  background: oklch(22% 0.015 240) !important;
+  background-color: oklch(22% 0.015 240) !important;
+  border: 1px solid oklch(28% 0.02 240) !important;
+  color: oklch(95% 0.005 240) !important;
+  box-shadow: 0 2px 12px oklch(8% 0.01 240 / 0.4) !important;
 }
 
-/* FINAL OVERRIDE: Make stats cards very visible */
+/* Stats cards with proper elevation like reference */
 html[data-theme="business"] .stats,
 body[data-theme="business"] .stats,
 [data-theme="business"] .stats {
-  background: oklch(35% 0.025 240) !important;
-  background-color: oklch(35% 0.025 240) !important;
-  border: 2px solid oklch(45% 0.030 240) !important;
+  background: oklch(22% 0.015 240) !important;
+  background-color: oklch(22% 0.015 240) !important;
+  border: 1px solid oklch(28% 0.02 240) !important;
+  box-shadow: 0 2px 12px oklch(8% 0.01 240 / 0.4) !important;
 }
 
 html[data-theme="business"] .stat,
@@ -10411,24 +10422,24 @@ body[data-theme="business"] .stat,
 [data-theme="business"] .stat {
   background: transparent !important;
   background-color: transparent !important;
-  border-right: 1px solid oklch(45% 0.030 240) !important;
-  color: oklch(96% 0.005 240) !important;
+  border-right: 1px solid oklch(28% 0.02 240) !important;
+  color: oklch(95% 0.005 240) !important;
 }
 
-/* FINAL OVERRIDE: Fix all table backgrounds to be much darker */
+/* Tables should be similar to cards but slightly darker for content distinction */
 html[data-theme="business"] .table,
 html[data-theme="business"] table,
 body[data-theme="business"] .table,
 body[data-theme="business"] table,
 [data-theme="business"] .table,
 [data-theme="business"] table {
-  background: oklch(18% 0.016 240) !important;
-  background-color: oklch(18% 0.016 240) !important;
-  border: 1px solid oklch(25% 0.020 240) !important;
-  color: oklch(94% 0.008 240) !important;
+  background: oklch(20% 0.013 240) !important;
+  background-color: oklch(20% 0.013 240) !important;
+  border: 1px solid oklch(26% 0.018 240) !important;
+  color: oklch(92% 0.008 240) !important;
 }
 
-/* FINAL OVERRIDE: Fix table headers to be darker */
+/* Table headers with subtle accent like reference */
 html[data-theme="business"] .table thead,
 html[data-theme="business"] .table thead tr,
 html[data-theme="business"] .table thead th,
@@ -10441,13 +10452,13 @@ body[data-theme="business"] .table thead th,
 [data-theme="business"] .table thead,
 [data-theme="business"] .table thead tr,
 [data-theme="business"] .table thead th {
-  background: oklch(25% 0.020 240) !important;
-  background-color: oklch(25% 0.020 240) !important;
-  color: oklch(94% 0.008 240) !important;
-  border-color: oklch(30% 0.022 240) !important;
+  background: oklch(24% 0.015 240) !important;
+  background-color: oklch(24% 0.015 240) !important;
+  color: oklch(92% 0.008 240) !important;
+  border-color: oklch(28% 0.02 240) !important;
 }
 
-/* FINAL OVERRIDE: Fix table hover states to be subtle and dark */
+/* Table hover states - subtle highlight like reference */
 html[data-theme="business"] .table tbody tr:hover,
 html[data-theme="business"] .table tbody tr:hover td,
 html[data-theme="business"] table tbody tr:hover,
@@ -10456,50 +10467,72 @@ body[data-theme="business"] .table tbody tr:hover,
 body[data-theme="business"] .table tbody tr:hover td,
 [data-theme="business"] .table tbody tr:hover,
 [data-theme="business"] .table tbody tr:hover td {
-  background: oklch(22% 0.018 240) !important;
-  background-color: oklch(22% 0.018 240) !important;
-  color: oklch(94% 0.008 240) !important;
+  background: oklch(23% 0.014 240) !important;
+  background-color: oklch(23% 0.014 240) !important;
+  color: oklch(92% 0.008 240) !important;
 }
 
-/* FINAL OVERRIDE: Fix specific problematic sections */
+/* Sidebar with proper elevation between background and cards */
+html[data-theme="business"] #sidebar,
+body[data-theme="business"] #sidebar,
+[data-theme="business"] #sidebar {
+  background: oklch(18% 0.012 240) !important;
+  background-color: oklch(18% 0.012 240) !important;
+  border-right: 1px solid oklch(24% 0.016 240) !important;
+}
+
+/* Special sections maintain card-like appearance */
 html[data-theme="business"] #ordersLowStockSection,
 html[data-theme="business"] #ordersLowStockSection .card,
 html[data-theme="business"] #ordersLowStockSection .card-body,
-html[data-theme="business"] #ordersLowStockSection .table,
 body[data-theme="business"] #ordersLowStockSection,
 body[data-theme="business"] #ordersLowStockSection .card,
 body[data-theme="business"] #ordersLowStockSection .card-body,
-body[data-theme="business"] #ordersLowStockSection .table,
 [data-theme="business"] #ordersLowStockSection,
 [data-theme="business"] #ordersLowStockSection .card,
-[data-theme="business"] #ordersLowStockSection .card-body,
-[data-theme="business"] #ordersLowStockSection .table {
-  background: oklch(18% 0.016 240) !important;
-  background-color: oklch(18% 0.016 240) !important;
-  border: 1px solid oklch(25% 0.020 240) !important;
-  color: oklch(94% 0.008 240) !important;
+[data-theme="business"] #ordersLowStockSection .card-body {
+  background: oklch(22% 0.015 240) !important;
+  background-color: oklch(22% 0.015 240) !important;
+  border: 1px solid oklch(35% 0.08 45) !important; /* Subtle warning accent */
+  color: oklch(95% 0.005 240) !important;
 }
 
-/* FINAL OVERRIDE: Fix User Management table */
+/* Low stock tables maintain readability */
+html[data-theme="business"] #ordersLowStockSection .table,
+body[data-theme="business"] #ordersLowStockSection .table,
+[data-theme="business"] #ordersLowStockSection .table {
+  background: oklch(20% 0.013 240) !important;
+  background-color: oklch(20% 0.013 240) !important;
+  border: 1px solid oklch(26% 0.018 240) !important;
+  color: oklch(92% 0.008 240) !important;
+}
+
+/* User Management follows same pattern */
 html[data-theme="business"] #userManagementContainer,
 html[data-theme="business"] #userManagementContainer .card,
 html[data-theme="business"] #userManagementContainer .card-body,
-html[data-theme="business"] #userManagementContainer .table,
 body[data-theme="business"] #userManagementContainer,
 body[data-theme="business"] #userManagementContainer .card,
 body[data-theme="business"] #userManagementContainer .card-body,
-body[data-theme="business"] #userManagementContainer .table,
 [data-theme="business"] #userManagementContainer,
 [data-theme="business"] #userManagementContainer .card,
-[data-theme="business"] #userManagementContainer .card-body,
-[data-theme="business"] #userManagementContainer .table {
-  background: oklch(18% 0.016 240) !important;
-  background-color: oklch(18% 0.016 240) !important;
-  border: 1px solid oklch(25% 0.020 240) !important;
-  color: oklch(94% 0.008 240) !important;
+[data-theme="business"] #userManagementContainer .card-body {
+  background: oklch(22% 0.015 240) !important;
+  background-color: oklch(22% 0.015 240) !important;
+  border: 1px solid oklch(28% 0.02 240) !important;
+  color: oklch(95% 0.005 240) !important;
 }
 
-/* FINAL OVERRIDE: Fix any remaining bright amber/yellow backgrounds */
+html[data-theme="business"] #userManagementContainer .table,
+body[data-theme="business"] #userManagementContainer .table,
+[data-theme="business"] #userManagementContainer .table {
+  background: oklch(20% 0.013 240) !important;
+  background-color: oklch(20% 0.013 240) !important;
+  border: 1px solid oklch(26% 0.018 240) !important;
+  color: oklch(92% 0.008 240) !important;
+}
+
+/* Override bright backgrounds to maintain dark theme consistency */
 html[data-theme="business"] .bg-amber-50,
 html[data-theme="business"] .bg-amber-100,
 html[data-theme="business"] .bg-amber-200,
@@ -10512,180 +10545,110 @@ body[data-theme="business"] .dark\:bg-amber-900,
 [data-theme="business"] .bg-amber-100,
 [data-theme="business"] .bg-amber-200,
 [data-theme="business"] .dark\:bg-amber-900 {
-  background: oklch(18% 0.016 240) !important;
-  background-color: oklch(18% 0.016 240) !important;
-  color: oklch(94% 0.008 240) !important;
+  background: oklch(22% 0.015 240) !important;
+  background-color: oklch(22% 0.015 240) !important;
+  color: oklch(95% 0.005 240) !important;
 }
 
-/* FINAL OVERRIDE: Ensure sidebar has proper contrast but not too bright */
-html[data-theme="business"] #sidebar,
-body[data-theme="business"] #sidebar,
-[data-theme="business"] #sidebar {
-  background: oklch(20% 0.017 240) !important;
-  background-color: oklch(20% 0.017 240) !important;
-  border-right: 2px solid oklch(30% 0.022 240) !important;
-}
-
-/* FINAL OVERRIDE: Make containers clearly different from background */
+/* Ensure card bodies are transparent to inherit card background */
 html[data-theme="business"] .card-body,
 body[data-theme="business"] .card-body,
 [data-theme="business"] .card-body {
   background: transparent !important;
   background-color: transparent !important;
-  color: oklch(96% 0.005 240) !important;
+  color: oklch(95% 0.005 240) !important;
 }
 
-/* FINAL OVERRIDE: Override any CSS variable-based backgrounds */
-html[data-theme="business"] *[class*="bg-base"],
-body[data-theme="business"] *[class*="bg-base"],
-[data-theme="business"] *[class*="bg-base"] {
-  background: oklch(35% 0.025 240) !important;
-  background-color: oklch(35% 0.025 240) !important;
-}
-
-html[data-theme="business"] *[class*="bg-base-100"],
-body[data-theme="business"] *[class*="bg-base-100"],
-[data-theme="business"] *[class*="bg-base-100"] {
-  background: oklch(16% 0.015 240) !important;
-  background-color: oklch(16% 0.015 240) !important;
-}
-
-/* === HIGHEST SPECIFICITY DARK MODE OVERRIDES - FINAL FIXES === */
-/* These rules MUST be at the end to override all other styles */
-
-/* Force clear visual hierarchy in dark mode */
-[data-theme="business"] .card,
-[data-theme="business"] .stats,
-[data-theme="business"] .stat,
-[data-theme="business"] .alert,
-[data-theme="business"] .modal-box,
-[data-theme="business"] .card-body,
-[data-theme="business"] .stats > .stat {
-  background: oklch(28% 0.025 240) !important; /* Much lighter than base-100 (16%) */
-  border: 1px solid oklch(32% 0.03 240) !important;
-  box-shadow: 0 2px 8px oklch(8% 0.02 240 / 0.3) !important;
-}
-
-/* Nested cards should be even lighter */
-[data-theme="business"] .card .card,
-[data-theme="business"] .card-body .card {
-  background: oklch(32% 0.03 240) !important;
-}
-
-/* Sidebar should be between background and cards */
-[data-theme="business"] .drawer-side .menu,
-[data-theme="business"] .sidebar {
-  background: oklch(22% 0.02 240) !important; /* Lighter than base-100 but darker than cards */
-}
-
-/* Tables should be DARKER than cards, not brighter */
-[data-theme="business"] .table,
-[data-theme="business"] table,
-[data-theme="business"] .table tbody tr,
-[data-theme="business"] table tbody tr {
-  background: oklch(18% 0.018 240) !important; /* Darker than base-100 */
-}
-
-/* Table headers should be slightly lighter than table body */
-[data-theme="business"] .table thead tr,
-[data-theme="business"] table thead tr,
-[data-theme="business"] .table thead th,
-[data-theme="business"] table thead th {
-  background: oklch(22% 0.02 240) !important;
-  border-bottom: 1px solid oklch(26% 0.025 240) !important;
-}
-
-/* Table hover states should be subtle */
-[data-theme="business"] .table tbody tr:hover,
-[data-theme="business"] table tbody tr:hover {
-  background: oklch(20% 0.02 240) !important; /* Slightly lighter than table base */
-}
-
-/* Fix table text contrast */
-[data-theme="business"] .table,
-[data-theme="business"] table,
-[data-theme="business"] .table td,
-[data-theme="business"] table td,
-[data-theme="business"] .table th,
-[data-theme="business"] table th {
-  color: oklch(90% 0.01 240) !important; /* Ensure good readability */
-}
-
-/* Button hover states */
-[data-theme="business"] .btn:hover {
-  background: oklch(30% 0.03 240) !important;
-}
-
-/* Input fields */
-[data-theme="business"] .input,
-[data-theme="business"] .select,
-[data-theme="business"] .textarea {
-  background: oklch(24% 0.022 240) !important;
-  border: 1px solid oklch(28% 0.025 240) !important;
-}
-
-/* Navbar should remain as designed */
-[data-theme="business"] .navbar {
-  background: var(--color-primary) !important;
-}
-
-/* Modal backdrop */
-[data-theme="business"] .modal-backdrop {
-  background: oklch(8% 0.01 240 / 0.8) !important;
-}
-
-/* Ensure dropdown menus are properly visible */
-[data-theme="business"] .dropdown-content,
-[data-theme="business"] .menu li > *:hover {
-  background: oklch(26% 0.024 240) !important;
-}
-
-/* Override hardcoded Tailwind dark classes from JavaScript */
+/* Update hardcoded Tailwind classes to match new scheme */
 [data-theme="business"] .dark\:bg-slate-700,
 [data-theme="business"] .dark\:bg-slate-800,
 [data-theme="business"] .dark\:bg-gray-700,
 [data-theme="business"] .dark\:bg-gray-800 {
-  background: oklch(28% 0.025 240) !important; /* Match our card background */
+  background: oklch(22% 0.015 240) !important; /* Match card background */
 }
 
 [data-theme="business"] .dark\:bg-blue-800 {
-  background: oklch(32% 0.1 240) !important; /* Blue variant for status */
+  background: oklch(25% 0.08 240) !important; /* Blue status variant */
 }
 
 [data-theme="business"] .dark\:bg-red-700,
 [data-theme="business"] .dark\:bg-red-800,
 [data-theme="business"] .dark\:bg-red-900 {
-  background: oklch(35% 0.15 30) !important; /* Red variants */
+  background: oklch(25% 0.12 30) !important; /* Red variants */
 }
 
 [data-theme="business"] .dark\:bg-green-700,
 [data-theme="business"] .dark\:bg-green-800 {
-  background: oklch(35% 0.12 140) !important; /* Green variants */
+  background: oklch(25% 0.10 140) !important; /* Green variants */
 }
 
 [data-theme="business"] .dark\:bg-yellow-700 {
-  background: oklch(45% 0.15 80) !important; /* Yellow variant */
+  background: oklch(28% 0.12 80) !important; /* Yellow variant */
 }
 
-/* Text color overrides for contrast */
+/* === PROFESSIONAL DARK MODE - REFERENCE DESIGN IMPLEMENTATION === */
+/* Clear visual hierarchy matching reference image */
+
+/* Cards and containers - clearly elevated above background */
+[data-theme="business"] .card,
+[data-theme="business"] .stats,
+[data-theme="business"] .stat,
+[data-theme="business"] .alert,
+[data-theme="business"] .modal-box {
+  background: oklch(22% 0.015 240) !important;
+  border: 1px solid oklch(28% 0.02 240) !important;
+  box-shadow: 0 2px 12px oklch(8% 0.01 240 / 0.4) !important;
+}
+
+/* Tables - readable but not overpowering */
+[data-theme="business"] .table,
+[data-theme="business"] table {
+  background: oklch(20% 0.013 240) !important;
+  color: oklch(92% 0.008 240) !important;
+}
+
+/* Table headers with subtle differentiation */
+[data-theme="business"] .table thead tr,
+[data-theme="business"] .table thead th {
+  background: oklch(24% 0.015 240) !important;
+}
+
+/* Subtle hover states */
+[data-theme="business"] .table tbody tr:hover {
+  background: oklch(23% 0.014 240) !important;
+}
+
+/* Interactive elements */
+[data-theme="business"] .input,
+[data-theme="business"] .select,
+[data-theme="business"] .textarea {
+  background: oklch(20% 0.013 240) !important;
+  border: 1px solid oklch(26% 0.018 240) !important;
+}
+
+/* Dropdown menus */
+[data-theme="business"] .dropdown-content {
+  background: oklch(22% 0.015 240) !important;
+  border: 1px solid oklch(28% 0.02 240) !important;
+}
+
+/* Text and interface overrides for consistency */
 [data-theme="business"] .dark\:text-gray-200,
 [data-theme="business"] .dark\:text-gray-300 {
-  color: oklch(88% 0.01 240) !important;
+  color: oklch(90% 0.01 240) !important;
 }
 
 [data-theme="business"] .dark\:text-white {
-  color: oklch(94% 0.008 240) !important;
+  color: oklch(95% 0.005 240) !important;
 }
 
-/* Border overrides */
 [data-theme="business"] .dark\:border-gray-600 {
-  border-color: oklch(32% 0.03 240) !important;
+  border-color: oklch(28% 0.02 240) !important;
 }
 
-/* Hover state overrides */
 [data-theme="business"] .dark\:hover\:bg-slate-700:hover,
 [data-theme="business"] .dark\:hover\:bg-gray-700:hover {
-  background: oklch(30% 0.027 240) !important;
+  background: oklch(24% 0.016 240) !important;
 }
 
 @property --tw-duration {
