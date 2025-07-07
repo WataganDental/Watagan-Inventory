@@ -532,12 +532,91 @@ function submitQuickStockBatch() { console.log('submitQuickStockBatch called - S
 function handleQuickStockProductSearch() { console.log('handleQuickStockProductSearch called - STUB'); }
 function handleQuickStockFileUpload() { console.log('handleQuickStockFileUpload called - STUB'); }
 function processQuickStockUploadedFile() { console.log('processQuickStockUploadedFile called - STUB'); }
-async function handleAddOrder() { // Made async to allow await for logActivity
-    console.log('handleAddOrder called - STUB');
-    // Conceptual: If order creation was successful:
-    // const orderIdPlaceholder = 'mockOrderId123'; // Placeholder
-    // const productNamePlaceholder = 'Mock Product for Order'; // Placeholder
-    // await logActivity('order_created', `Order for ${productNamePlaceholder} created.`, orderIdPlaceholder, productNamePlaceholder);
+async function handleAddOrder() {
+    console.log('[handleAddOrder] Initiated.');
+    const productId = document.getElementById('orderProductId').value;
+    const quantityInput = document.getElementById('orderQuantity');
+    const quantity = parseInt(quantityInput.value);
+
+    if (!productId) {
+        uiEnhancementManager.showToast('Please select a product to order.', 'warning');
+        console.warn('[handleAddOrder] No product selected.');
+        return;
+    }
+    if (isNaN(quantity) || quantity <= 0) {
+        uiEnhancementManager.showToast('Please enter a valid quantity greater than 0.', 'warning');
+        console.warn('[handleAddOrder] Invalid quantity:', quantityInput.value);
+        return;
+    }
+
+    const product = inventory.find(p => p.id === productId);
+    if (!product) {
+        uiEnhancementManager.showToast('Selected product not found in local inventory. Please refresh.', 'error');
+        console.error('[handleAddOrder] Product not found in local inventory array for ID:', productId);
+        return;
+    }
+
+    const user = firebase.auth().currentUser;
+    if (!user) {
+        uiEnhancementManager.showToast('You must be logged in to create an order.', 'error');
+        console.warn('[handleAddOrder] User not authenticated.');
+        return;
+    }
+
+    try {
+        const orderData = {
+            productId: productId,
+            productName: product.name,
+            quantity: quantity,
+            status: 'pending',
+            orderDate: firebase.firestore.Timestamp.now(), // Corrected to use orderDate as per other parts of the app
+            createdAt: firebase.firestore.Timestamp.now(), // Keep createdAt for consistency if used elsewhere
+            userId: user.uid,
+            supplier: product.supplier || null // Include supplier from product data
+        };
+
+        const orderRef = await db.collection('orders').add(orderData);
+        console.log('[handleAddOrder] Order created successfully in Firestore with ID:', orderRef.id);
+
+        // Atomically update quantityOrdered for the product
+        const productRef = db.collection('inventory').doc(productId);
+        await db.runTransaction(async (transaction) => {
+            const productDoc = await transaction.get(productRef);
+            if (!productDoc.exists) {
+                throw new Error(`Product document with ID ${productId} not found in inventory.`);
+            }
+            const currentQuantityOrdered = productDoc.data().quantityOrdered || 0;
+            transaction.update(productRef, { quantityOrdered: currentQuantityOrdered + quantity });
+        });
+        console.log(`[handleAddOrder] Successfully updated quantityOrdered for product ${productId} by ${quantity}.`);
+
+        await logActivity('order_created', `Order for ${quantity} of ${product.name} (Order ID: ${orderRef.id}) created.`, orderRef.id, product.name);
+        uiEnhancementManager.showToast(`Order for ${product.name} created successfully!`, 'success');
+
+        // Clear form fields
+        document.getElementById('orderProductId').value = '';
+        quantityInput.value = '';
+
+        // Refresh UI components
+        console.log('[handleAddOrder] Refreshing UI components...');
+        await loadAndDisplayOrders(); // Refresh orders list
+
+        inventory = await inventoryManager.loadInventory(); // Refresh global inventory
+        displayInventory(); // Refresh main inventory table
+        updateInventoryDashboard(); // Update dashboard stats
+        updateToOrderTable(); // Update "to order" table
+        populateProductsDropdown(); // Re-populate products dropdown for new orders
+        if (typeof displayPendingOrdersOnDashboard === "function") {
+            displayPendingOrdersOnDashboard(); // Refresh pending orders on dashboard
+        }
+
+
+        console.log('[handleAddOrder] Process completed successfully.');
+
+    } catch (error) {
+        console.error('[handleAddOrder] Error creating order:', error);
+        uiEnhancementManager.showToast(`Error creating order: ${error.message}`, 'error');
+    }
 }
 
 function switchQuickUpdateTab(tabIdToActivate) {
