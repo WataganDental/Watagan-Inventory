@@ -2582,6 +2582,7 @@ async function startPhotoCapture() {
     photoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     const video = document.getElementById('photoVideo');
     video.srcObject = photoStream;
+    video.play();
     video.classList.remove('hidden');
     document.getElementById('capturePhotoBtn').classList.add('hidden');
     document.getElementById('takePhotoBtn').classList.remove('hidden');
@@ -3894,6 +3895,7 @@ async function startModalPhotoCapture() {
     modalPhotoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     const video = document.getElementById('modalPhotoVideo');
     video.srcObject = modalPhotoStream;
+    video.play();
     video.classList.remove('hidden');
     document.getElementById('modalCapturePhotoBtn').classList.add('hidden');
     document.getElementById('modalTakePhotoBtn').classList.remove('hidden');
@@ -4615,6 +4617,7 @@ async function startScanToEditModalPhotoCapture() {
     scanToEditModalPhotoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     const video = document.getElementById('scanToEdit_photoVideo');
     video.srcObject = scanToEditModalPhotoStream;
+    video.play();
     video.classList.remove('hidden');
     document.getElementById('scanToEdit_capturePhotoBtn').classList.add('hidden');
     document.getElementById('scanToEdit_takePhotoBtn').classList.remove('hidden');
