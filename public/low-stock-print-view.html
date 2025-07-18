@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Low Stock Alert Report</title>
+    <style>
+        /* Print-specific styles */
+        @media print {
+            body { margin: 0; padding: 0; }
+            .no-print { display: none; }
+            .page-break { page-break-before: always; }
+            table { break-inside: avoid; }
+            tr { break-inside: avoid; }
+        }
+
+        /* Screen and print styles */
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.4;
+            color: #000;
+            background: white;
+            margin: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #dc3545;
+            padding-bottom: 15px;
+        }
+
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 24px;
+            color: #dc3545;
+        }
+
+        .header-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            font-size: 12px;
+        }
+
+        .alert-summary {
+            background: #f8d7da;
+            border: 1px solid #dc3545;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .alert-summary h2 {
+            margin: 0 0 10px 0;
+            color: #721c24;
+            font-size: 18px;
+        }
+
+        .alert-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #856404;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #856404;
+            margin-top: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 11px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #dc3545;
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+        }
+
+        .critical-stock {
+            background-color: #f8d7da;
+        }
+
+        .low-stock {
+            background-color: #fff3cd;
+        }
+
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .print-button:hover {
+            background: #c82333;
+        }
+
+        .action-required {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .no-alerts {
+            text-align: center;
+            padding: 50px;
+            color: #28a745;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        /* Hide print button when printing */
+        @media print {
+            .print-button { display: none; }
+        }
+
+        @media print {
+            .alert-summary {
+                background: #f8d7da !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .stat-item {
+                background: #fff3cd !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .critical-stock {
+                background-color: #f8d7da !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .low-stock {
+                background-color: #fff3cd !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            th {
+                background-color: #dc3545 !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">🖨️ Print as PDF</button>
+    
+    <div class="header">
+        <h1>⚠️ Low Stock Alert Report</h1>
+        <div class="header-info">
+            <div>Generated: <span id="dateGenerated"></span></div>
+            <div>Status: <span id="alertStatus"></span></div>
+            <div>Items Requiring Attention: <span id="alertCount"></span></div>
+        </div>
+    </div>
+
+    <div id="alertSummary" class="alert-summary">
+        <h2>⚠️ Immediate Attention Required</h2>
+        <p id="summaryText">Several items are running low on stock and need to be reordered.</p>
+    </div>
+
+    <div id="alertStats" class="alert-stats">
+        <div class="stat-item">
+            <div class="stat-value" id="outOfStockCount">0</div>
+            <div class="stat-label">Out of Stock</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="criticalStockCount">0</div>
+            <div class="stat-label">Critical Stock</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="lowStockCount">0</div>
+            <div class="stat-label">Low Stock</div>
+        </div>
+    </div>
+
+    <div id="noAlertsMessage" class="no-alerts" style="display: none;">
+        <h2>✅ All Good!</h2>
+        <p>No low stock alerts at this time. All products are adequately stocked.</p>
+    </div>
+
+    <div id="actionRequired" class="action-required" style="display: none;">
+        <h3>📋 Recommended Actions:</h3>
+        <ul id="actionList"></ul>
+    </div>
+
+    <table id="lowStockTable" style="display: none;">
+        <thead>
+            <tr>
+                <th>Priority</th>
+                <th>Product Name</th>
+                <th>Current Qty</th>
+                <th>Min Qty</th>
+                <th>Shortage</th>
+                <th>Location</th>
+                <th>Supplier</th>
+                <th>Unit Cost</th>
+                <th>Suggested Order</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody id="lowStockTableBody">
+            <!-- Low stock data will be populated here -->
+        </tbody>
+    </table>
+
+    <script>
+        // Get data from URL parameters or localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        const inventoryData = JSON.parse(urlParams.get('data') || localStorage.getItem('lowStockPrintData') || '[]');
+
+        // Debug logging
+        console.log('Low Stock Report loaded with data:', {
+            inventoryDataLength: inventoryData.length,
+            sampleItem: inventoryData[0] || 'No items'
+        });
+
+        // Set header information
+        document.getElementById('dateGenerated').textContent = new Date().toLocaleString();
+
+        // Filter for low stock items
+        function getLowStockItems() {
+            return inventoryData.filter(item => {
+                const quantity = parseInt(item.quantity) || 0;
+                const minQuantity = parseInt(item.minQuantity) || 0;
+                return quantity === 0 || (minQuantity > 0 && quantity <= minQuantity);
+            });
+        }
+
+        // Calculate and display summary statistics
+        function calculateStats() {
+            const lowStockItems = getLowStockItems();
+            let outOfStockCount = 0;
+            let criticalStockCount = 0;
+            let lowStockCount = 0;
+
+            lowStockItems.forEach(item => {
+                const quantity = parseInt(item.quantity) || 0;
+                const minQuantity = parseInt(item.minQuantity) || 0;
+
+                if (quantity === 0) {
+                    outOfStockCount++;
+                } else if (quantity <= Math.floor(minQuantity * 0.5)) {
+                    criticalStockCount++;
+                } else {
+                    lowStockCount++;
+                }
+            });
+
+            document.getElementById('outOfStockCount').textContent = outOfStockCount;
+            document.getElementById('criticalStockCount').textContent = criticalStockCount;
+            document.getElementById('lowStockCount').textContent = lowStockCount;
+            document.getElementById('alertCount').textContent = lowStockItems.length;
+
+            if (lowStockItems.length === 0) {
+                document.getElementById('alertStatus').textContent = 'All Good';
+                document.getElementById('alertSummary').style.display = 'none';
+                document.getElementById('alertStats').style.display = 'none';
+                document.getElementById('noAlertsMessage').style.display = 'block';
+            } else {
+                document.getElementById('alertStatus').textContent = 'Action Required';
+                generateActionItems(outOfStockCount, criticalStockCount, lowStockCount);
+            }
+        }
+
+        // Generate action items
+        function generateActionItems(outOfStock, critical, low) {
+            const actionList = document.getElementById('actionList');
+            const actions = [];
+
+            if (outOfStock > 0) {
+                actions.push(`<li><strong>URGENT:</strong> Reorder ${outOfStock} out-of-stock item(s) immediately</li>`);
+            }
+            if (critical > 0) {
+                actions.push(`<li><strong>HIGH PRIORITY:</strong> Review ${critical} critically low item(s) for emergency restocking</li>`);
+            }
+            if (low > 0) {
+                actions.push(`<li>Schedule reorders for ${low} low stock item(s) within the next week</li>`);
+            }
+
+            if (actions.length > 0) {
+                document.getElementById('actionRequired').style.display = 'block';
+                actionList.innerHTML = actions.join('');
+            }
+        }
+
+        // Populate low stock table
+        function populateTable() {
+            const lowStockItems = getLowStockItems();
+            const tableBody = document.getElementById('lowStockTableBody');
+            
+            if (lowStockItems.length === 0) {
+                return;
+            }
+
+            document.getElementById('lowStockTable').style.display = 'table';
+
+            // Sort by priority: out of stock first, then by shortage percentage
+            lowStockItems.sort((a, b) => {
+                const aQty = parseInt(a.quantity) || 0;
+                const bQty = parseInt(b.quantity) || 0;
+                const aMin = parseInt(a.minQuantity) || 0;
+                const bMin = parseInt(b.minQuantity) || 0;
+
+                if (aQty === 0 && bQty !== 0) return -1;
+                if (bQty === 0 && aQty !== 0) return 1;
+                if (aQty === 0 && bQty === 0) return 0;
+
+                const aShortage = aMin > 0 ? (aMin - aQty) / aMin : 0;
+                const bShortage = bMin > 0 ? (bMin - bQty) / bMin : 0;
+                return bShortage - aShortage;
+            });
+
+            let tableHTML = '';
+            
+            lowStockItems.forEach((item, index) => {
+                const quantity = parseInt(item.quantity) || 0;
+                const minQuantity = parseInt(item.minQuantity) || 0;
+                const cost = parseFloat(item.cost) || 0;
+                const shortage = Math.max(0, minQuantity - quantity);
+                const suggestedOrder = shortage + Math.ceil(minQuantity * 0.5); // Order shortage + 50% buffer
+
+                let priority = '';
+                let rowClass = '';
+                let status = '';
+
+                if (quantity === 0) {
+                    priority = '🔴 CRITICAL';
+                    rowClass = 'critical-stock';
+                    status = 'Out of Stock';
+                } else if (quantity <= Math.floor(minQuantity * 0.5)) {
+                    priority = '🟠 HIGH';
+                    rowClass = 'critical-stock';
+                    status = 'Critical Stock';
+                } else {
+                    priority = '🟡 MEDIUM';
+                    rowClass = 'low-stock';
+                    status = 'Low Stock';
+                }
+
+                tableHTML += `
+                    <tr class="${rowClass}">
+                        <td>${priority}</td>
+                        <td>${item.name || 'Unknown Product'}</td>
+                        <td>${quantity}</td>
+                        <td>${minQuantity}</td>
+                        <td>${shortage}</td>
+                        <td>${item.location || 'N/A'}</td>
+                        <td>${item.supplier || 'N/A'}</td>
+                        <td>$${cost.toFixed(2)}</td>
+                        <td>${suggestedOrder} units</td>
+                        <td>${status}</td>
+                    </tr>
+                `;
+            });
+
+            tableBody.innerHTML = tableHTML;
+        }
+
+        // Initialize the report
+        window.addEventListener('load', function() {
+            console.log('Low Stock Report: Page loaded');
+            calculateStats();
+            populateTable();
+        });
+
+        // Auto-print after 2 seconds (optional)
+        // setTimeout(() => window.print(), 2000);
+    </script>
+</body>
+</html>

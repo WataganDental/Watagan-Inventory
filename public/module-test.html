@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="garden">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module Test - Watagan Inventory</title>
+    <link href="./css/output.css" rel="stylesheet">
+    <style>
+        .test-section {
+            margin: 20px;
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body class="bg-base-100 text-base-content">
+    <div class="container mx-auto p-4">
+        <h1 class="text-3xl font-bold mb-6">Watagan Inventory - Module Test</h1>
+        
+        <div class="test-section">
+            <h2 class="text-xl font-semibold mb-4">Module Loading Test</h2>
+            <div id="moduleTestResults"></div>
+            <button id="runModuleTest" class="btn btn-primary">Run Module Test</button>
+        </div>
+        
+        <div class="test-section">
+            <h2 class="text-xl font-semibold mb-4">Event Handler Test</h2>
+            <div id="eventTestResults"></div>
+            <button id="testButton" class="btn btn-secondary">Test Button</button>
+            <button id="runEventTest" class="btn btn-primary">Run Event Test</button>
+        </div>
+        
+        <div class="test-section">
+            <h2 class="text-xl font-semibold mb-4">Utility Functions Test</h2>
+            <div id="utilityTestResults"></div>
+            <button id="runUtilityTest" class="btn btn-primary">Run Utility Test</button>
+        </div>
+        
+        <div class="test-section">
+            <h2 class="text-xl font-semibold mb-4">Global Access Test</h2>
+            <div id="globalTestResults"></div>
+            <button id="runGlobalTest" class="btn btn-primary">Run Global Access Test</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // Test module imports
+        import { eventHandlerManager } from './js/modules/event-handlers.js';
+        import { productManager } from './js/modules/product-manager.js';
+        import { inventoryDisplayManager } from './js/modules/inventory-display.js';
+        import { modalManager } from './js/modules/modal-manager.js';
+        import { ordersManager } from './js/modules/orders-manager.js';
+        import Utils from './js/modules/utils.js';
+
+        function addResult(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.textContent = message;
+            container.appendChild(div);
+        }
+
+        function clearResults(containerId) {
+            document.getElementById(containerId).innerHTML = '';
+        }
+
+        // Module loading test
+        document.getElementById('runModuleTest').addEventListener('click', () => {
+            clearResults('moduleTestResults');
+            
+            try {
+                addResult('moduleTestResults', '✓ Event Handler Manager loaded', 'success');
+                addResult('moduleTestResults', `✓ Product Manager loaded (isEditMode: ${productManager.isEditMode})`, 'success');
+                addResult('moduleTestResults', '✓ Inventory Display Manager loaded', 'success');
+                addResult('moduleTestResults', '✓ Modal Manager loaded', 'success');
+                addResult('moduleTestResults', '✓ Orders Manager loaded', 'success');
+                addResult('moduleTestResults', '✓ Utils loaded', 'success');
+                addResult('moduleTestResults', '✅ All modules loaded successfully!', 'success');
+            } catch (error) {
+                addResult('moduleTestResults', '❌ Module loading failed: ' + error.message, 'error');
+            }
+        });
+
+        // Event handler test
+        document.getElementById('runEventTest').addEventListener('click', () => {
+            clearResults('eventTestResults');
+            
+            try {
+                // Test event handler initialization
+                eventHandlerManager.init();
+                addResult('eventTestResults', '✓ Event handler manager initialized', 'success');
+                
+                // Test if a simple event can be attached
+                const testBtn = document.getElementById('testButton');
+                let eventFired = false;
+                
+                testBtn.addEventListener('click', () => {
+                    eventFired = true;
+                    addResult('eventTestResults', '✓ Test button click event fired', 'success');
+                });
+                
+                addResult('eventTestResults', '✓ Event listeners can be attached', 'success');
+                addResult('eventTestResults', 'Click the "Test Button" to verify event handling', 'info');
+                
+            } catch (error) {
+                addResult('eventTestResults', '❌ Event test failed: ' + error.message, 'error');
+            }
+        });
+
+        // Utility functions test
+        document.getElementById('runUtilityTest').addEventListener('click', () => {
+            clearResults('utilityTestResults');
+            
+            try {
+                // Test various utility functions
+                const testDate = new Date();
+                const formattedDate = Utils.formatDate(testDate);
+                addResult('utilityTestResults', `✓ Date formatting: ${formattedDate}`, 'success');
+                
+                const currency = Utils.formatCurrency(123.45);
+                addResult('utilityTestResults', `✓ Currency formatting: ${currency}`, 'success');
+                
+                const capitalized = Utils.capitalize('test string');
+                addResult('utilityTestResults', `✓ Capitalize: ${capitalized}`, 'success');
+                
+                const isValidEmail = Utils.isValidEmail('test@example.com');
+                addResult('utilityTestResults', `✓ Email validation: ${isValidEmail}`, 'success');
+                
+                const uniqueId = Utils.generateId('test-');
+                addResult('utilityTestResults', `✓ ID generation: ${uniqueId}`, 'success');
+                
+                addResult('utilityTestResults', '✅ All utility functions working!', 'success');
+                
+            } catch (error) {
+                addResult('utilityTestResults', '❌ Utility test failed: ' + error.message, 'error');
+            }
+        });
+
+        // Global access test
+        document.getElementById('runGlobalTest').addEventListener('click', () => {
+            clearResults('globalTestResults');
+            
+            try {
+                // Wait a moment for app to initialize
+                setTimeout(() => {
+                    // Test global app access
+                    if (window.app) {
+                        addResult('globalTestResults', '✓ window.app is accessible', 'success');
+                        
+                        if (window.app.productManager) {
+                            addResult('globalTestResults', '✓ window.app.productManager is accessible', 'success');
+                        }
+                        
+                        if (window.app.modalManager) {
+                            addResult('globalTestResults', '✓ window.app.modalManager is accessible', 'success');
+                        }
+                    } else {
+                        addResult('globalTestResults', '❌ window.app is not accessible', 'error');
+                    }
+                    
+                    // Test global function access
+                    if (typeof window.showView === 'function') {
+                        addResult('globalTestResults', '✓ window.showView function is accessible', 'success');
+                    } else {
+                        addResult('globalTestResults', '❌ window.showView function is not accessible', 'error');
+                    }
+                    
+                    if (typeof window.displayInventory === 'function') {
+                        addResult('globalTestResults', '✓ window.displayInventory function is accessible', 'success');
+                    } else {
+                        addResult('globalTestResults', '❌ window.displayInventory function is not accessible', 'error');
+                    }
+                    
+                    if (typeof window.debounce === 'function') {
+                        addResult('globalTestResults', '✓ window.debounce function is accessible', 'success');
+                    } else {
+                        addResult('globalTestResults', '❌ window.debounce function is not accessible', 'error');
+                    }
+                    
+                    addResult('globalTestResults', '✅ Global access test completed!', 'info');
+                }, 100);
+                
+            } catch (error) {
+                addResult('globalTestResults', '❌ Global access test failed: ' + error.message, 'error');
+            }
+        });
+
+        // Auto-run basic tests on load
+        window.addEventListener('load', () => {
+            document.getElementById('runModuleTest').click();
+            setTimeout(() => {
+                document.getElementById('runUtilityTest').click();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

@@ -1,949 +1,6 @@
 /*! tailwindcss v4.1.11 | MIT License | https://tailwindcss.com */
 @layer properties;
 @layer theme, base, components, utilities;
-
-/* ============================================
-   FORCE DARK MODE FIXES - MAXIMUM SPECIFICITY
-   ============================================ */
-
-/* Force body and main container background to be lighter */
-html[data-theme="business"],
-html[data-theme="business"] body,
-[data-theme="business"],
-[data-theme="business"] body,
-body[data-theme="business"] {
-  background: oklch(16% 0.015 240) !important;
-  background-color: oklch(16% 0.015 240) !important;
-}
-
-/* Force all table backgrounds to be properly themed - LIGHTER than background */
-[data-theme="business"] .table,
-[data-theme="business"] table,
-html[data-theme="business"] .table,
-html[data-theme="business"] table {
-  background: oklch(28% 0.020 240) !important;
-  background-color: oklch(28% 0.020 240) !important;
-  border: 1px solid oklch(35% 0.025 240) !important;
-  color: oklch(94% 0.008 240) !important;
-}
-
-/* Force table headers to be properly themed - EVEN LIGHTER */
-[data-theme="business"] .table thead,
-[data-theme="business"] .table thead tr,
-[data-theme="business"] .table thead th,
-[data-theme="business"] table thead,
-[data-theme="business"] table thead tr,
-[data-theme="business"] table thead th,
-html[data-theme="business"] .table thead,
-html[data-theme="business"] .table thead tr,
-html[data-theme="business"] .table thead th {
-  background: oklch(35% 0.025 240) !important;
-  background-color: oklch(35% 0.025 240) !important;
-  color: oklch(94% 0.008 240) !important;
-  border-color: oklch(40% 0.030 240) !important;
-}
-
-/* Force table body hover states to be subtle but visible */
-[data-theme="business"] .table tbody tr:hover,
-[data-theme="business"] .table tbody tr:hover td,
-[data-theme="business"] table tbody tr:hover,
-[data-theme="business"] table tbody tr:hover td,
-html[data-theme="business"] .table tbody tr:hover,
-html[data-theme="business"] .table tbody tr:hover td {
-  background: oklch(32% 0.022 240) !important;
-  background-color: oklch(32% 0.022 240) !important;
-  color: oklch(94% 0.008 240) !important;
-}
-
-/* Force Low Stock Alert section to be properly themed - LIGHTER than background */
-[data-theme="business"] #ordersLowStockSection,
-[data-theme="business"] #ordersLowStockSection .card,
-[data-theme="business"] #ordersLowStockSection .card-body,
-html[data-theme="business"] #ordersLowStockSection,
-html[data-theme="business"] #ordersLowStockSection .card,
-html[data-theme="business"] #ordersLowStockSection .card-body {
-  background: oklch(26% 0.020 240) !important;
-  background-color: oklch(26% 0.020 240) !important;
-  border: 1px solid oklch(35% 0.025 240) !important;
-  color: oklch(94% 0.008 240) !important;
-}
-
-/* Force User Management table to be properly themed - LIGHTER than background */
-[data-theme="business"] #userManagementContainer,
-[data-theme="business"] #userManagementContainer .card,
-[data-theme="business"] #userManagementContainer .card-body,
-[data-theme="business"] #userManagementContainer .table,
-html[data-theme="business"] #userManagementContainer,
-html[data-theme="business"] #userManagementContainer .card,
-html[data-theme="business"] #userManagementContainer .card-body,
-html[data-theme="business"] #userManagementContainer .table {
-  background: oklch(26% 0.020 240) !important;
-  background-color: oklch(26% 0.020 240) !important;
-  border: 1px solid oklch(35% 0.025 240) !important;
-  color: oklch(94% 0.008 240) !important;
-}
-
-/* Force all cards to have proper contrast - SIGNIFICANTLY LIGHTER than background */
-[data-theme="business"] .card,
-[data-theme="business"] .card-body,
-html[data-theme="business"] .card,
-html[data-theme="business"] .card-body {
-  background: oklch(26% 0.020 240) !important;
-  background-color: oklch(26% 0.020 240) !important;
-  border: 1px solid oklch(35% 0.025 240) !important;
-  color: oklch(94% 0.008 240) !important;
-}
-
-/* Force navbar to be less bright */
-[data-theme="business"] .navbar,
-[data-theme="business"] #appNavbar,
-html[data-theme="business"] .navbar,
-html[data-theme="business"] #appNavbar {
-  background: oklch(42% 0.15 240) !important;
-  background-color: oklch(42% 0.15 240) !important;
-}
-
-/* Force sidebar theming - slightly lighter than background for depth */
-[data-theme="business"] #sidebar,
-html[data-theme="business"] #sidebar {
-  background: oklch(22% 0.018 240) !important;
-  background-color: oklch(22% 0.018 240) !important;
-  border-right: 1px solid oklch(35% 0.025 240) !important;
-}
-
-/* Override any bright amber/yellow backgrounds - make them LIGHTER than main background */
-[data-theme="business"] .bg-amber-50,
-[data-theme="business"] .bg-amber-100,
-[data-theme="business"] .bg-amber-200,
-[data-theme="business"] .dark\:bg-amber-900,
-html[data-theme="business"] .bg-amber-50,
-html[data-theme="business"] .bg-amber-100,
-html[data-theme="business"] .bg-amber-200,
-html[data-theme="business"] .dark\:bg-amber-900 {
-  background: oklch(26% 0.020 240) !important;
-  background-color: oklch(26% 0.020 240) !important;
-  color: oklch(94% 0.008 240) !important;
-}
-
-[data-theme="business"] .input:focus,
-[data-theme="business"] .select:focus,
-[data-theme="business"] .textarea:focus {
-  border-color: oklch(var(--color-primary) / 0.7);
-  box-shadow: 0 0 0 2px oklch(var(--color-primary) / 0.1);
-}
-
-/* Fix modal backgrounds */
-[data-theme="business"] .modal-backdrop {
-  background: oklch(var(--color-base-300) / 0.6) !important;
-  backdrop-filter: blur(8px);
-}
-
-[data-theme="business"] .modal-box {
-  background: oklch(var(--color-base-200) / 0.95) !important;
-  border: 1px solid oklch(var(--color-base-300) / 0.4);
-  backdrop-filter: blur(10px);
-}
-
-/* ============================================
-   DARK MODE FIXES FOR BETTER CONTRAST
-   ============================================ */
-
-/* Fix bright navbar in dark mode */
-[data-theme="business"] .navbar {
-  background: oklch(var(--color-primary) / 0.9) !important;
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid oklch(var(--color-base-300) / 0.5);
-}
-
-/* Better card contrast in dark mode */
-[data-theme="business"] .card {
-  background: oklch(var(--color-base-200) / 0.8) !important;
-  border: 1px solid oklch(var(--color-base-300) / 0.6);
-  backdrop-filter: blur(8px);
-}
-
-/* Fix table hover states - much more subtle */
-[data-theme="business"] .table tbody tr:hover {
-  background: oklch(var(--color-base-300) / 0.2) !important;
-  color: oklch(var(--color-base-content)) !important;
-}
-
-/* Fix sidebar hover states - more subtle */
-[data-theme="business"] #sidebar ul li a:hover {
-  background: oklch(var(--color-base-300) / 0.3) !important;
-  color: oklch(var(--color-base-content)) !important;
-  transform: none !important;
-  box-shadow: none !important;
-}
-
-/* Fix Low Stock Alerts table - much darker */
-[data-theme="business"] #ordersLowStockSection {
-  background: oklch(var(--color-base-200) / 0.6) !important;
-  border: 1px solid oklch(var(--color-warning) / 0.3) !important;
-}
-
-[data-theme="business"] #ordersLowStockSection .table {
-  background: oklch(var(--color-base-100) / 0.8) !important;
-  color: oklch(var(--color-base-content)) !important;
-}
-
-[data-theme="business"] #ordersLowStockSection .table thead {
-  background: oklch(var(--color-base-300) / 0.8) !important;
-  border-bottom: 2px solid oklch(var(--color-warning) / 0.4) !important;
-}
-
-[data-theme="business"] #ordersLowStockSection .table thead th {
-  color: oklch(var(--color-base-content) / 0.9) !important;
-}
-
-/* Fix User Management table */
-[data-theme="business"] .table {
-  background: oklch(var(--color-base-100) / 0.8) !important;
-  color: oklch(var(--color-base-content)) !important;
-}
-
-[data-theme="business"] .table thead {
-  background: oklch(var(--color-base-300) / 0.8) !important;
-  border-bottom: 2px solid oklch(var(--color-primary) / 0.4) !important;
-}
-
-[data-theme="business"] .table thead th {
-  color: oklch(var(--color-base-content) / 0.9) !important;
-  font-weight: 600;
-}
-
-[data-theme="business"] .table tbody td {
-  color: oklch(var(--color-base-content) / 0.85) !important;
-  border-bottom: 1px solid oklch(var(--color-base-300) / 0.3) !important;
-}
-
-/* Fix bright alert backgrounds */
-[data-theme="business"] .bg-amber-50 {
-  background: oklch(var(--color-base-200) / 0.6) !important;
-}
-
-[data-theme="business"] .dark\:bg-amber-900 {
-  background: oklch(var(--color-base-200) / 0.6) !important;
-}
-
-/* Fix stats cards for better contrast */
-[data-theme="business"] .stats {
-  background: oklch(var(--color-base-200) / 0.7) !important;
-  border: 1px solid oklch(var(--color-base-300) / 0.5);
-}
-
-[data-theme="business"] .stat {
-  border-color: oklch(var(--color-base-300) / 0.4) !important;
-}
-
-/* Fix input and select elements */
-[data-theme="business"] .input,
-[data-theme="business"] .select,
-[data-theme="business"] .textarea {
-  background: oklch(var(--color-base-100) / 0.8) !important;
-  border: 1px solid oklch(var(--color-base-300) / 0.6) !important;
-  color: oklch(var(--color-base-content)) !important;
-}
-
-[data-theme="business"] .input:focus,
-[data-theme="business"] .select:focus,
-[data-theme="business"] .textarea:focus {
-  border-color: oklch(var(--color-primary) / 0.8) !important;
-  box-shadow: 0 0 0 3px oklch(var(--color-primary) / 0.15) !important;
-}
-
-/* Fix dropdown backgrounds */
-[data-theme="business"] .dropdown-content {
-  background: oklch(var(--color-base-200) / 0.95) !important;
-  border: 1px solid oklch(var(--color-base-300) / 0.6) !important;
-  backdrop-filter: blur(12px);
-}
-
-/* Fix button hover states to be more subtle */
-[data-theme="business"] .btn:hover {
-  transform: none !important;
-  box-shadow: 0 2px 8px oklch(var(--color-primary) / 0.15) !important;
-}
-
-/* Fix modal backgrounds */
-[data-theme="business"] .modal-box {
-  background: oklch(var(--color-base-200) / 0.95) !important;
-  border: 1px solid oklch(var(--color-base-300) / 0.6) !important;
-  backdrop-filter: blur(12px);
-}
-
-/* Fix reorder notification bar */
-[data-theme="business"] #reorderNotificationBar {
-  background: oklch(var(--color-base-200) / 0.8) !important;
-  border: 1px solid oklch(var(--color-warning) / 0.4) !important;
-  color: oklch(var(--color-warning-content)) !important;
-}
-
-/* ============================================
-   IMPROVED TABLE STYLING FOR DARK MODE
-   ============================================ */
-
-/* Better table contrast and theming */
-[data-theme="business"] .table {
-  background: oklch(var(--color-base-200) / 0.6);
-  border: 1px solid oklch(var(--color-base-300) / 0.4);
-  color: oklch(var(--color-base-content));
-}
-
-[data-theme="business"] .table thead {
-  background: oklch(var(--color-base-300) / 0.6);
-  border-bottom: 1px solid oklch(var(--color-base-300) / 0.6);
-  color: oklch(var(--color-base-content));
-}
-
-[data-theme="business"] .table thead th {
-  color: oklch(var(--color-base-content) / 0.9);
-  font-weight: 600;
-  padding: 1rem 0.75rem;
-}
-
-[data-theme="business"] .table tbody tr {
-  border-bottom: 1px solid oklch(var(--color-base-300) / 0.3);
-}
-
-[data-theme="business"] .table tbody tr:hover {
-  background: oklch(var(--color-base-300) / 0.2);
-  color: oklch(var(--color-base-content));
-}
-
-[data-theme="business"] .table tbody td {
-  color: oklch(var(--color-base-content) / 0.9);
-  padding: 0.75rem;
-}
-
-/* Specific styling for low stock alerts table */
-[data-theme="business"] .card.bg-amber-50 {
-  background: oklch(var(--color-warning) / 0.1) !important;
-  border: 1px solid oklch(var(--color-warning) / 0.2);
-  color: oklch(var(--color-base-content));
-}
-
-[data-theme="business"] .card.bg-amber-50 .table {
-  background: oklch(var(--color-base-200) / 0.8);
-  color: oklch(var(--color-base-content));
-}
-
-[data-theme="business"] .card.bg-amber-50 .table thead {
-  background: oklch(var(--color-warning) / 0.2);
-  color: oklch(var(--color-warning-content));
-}
-
-[data-theme="business"] .card.bg-amber-50 .table tbody tr:hover {
-  background: oklch(var(--color-warning) / 0.1);
-  color: oklch(var(--color-base-content));
-}
-
-/* User management table specific styling */
-[data-theme="business"] #userManagementTable {
-  background: oklch(var(--color-base-200) / 0.8);
-  border: 1px solid oklch(var(--color-base-300) / 0.4);
-}
-
-[data-theme="business"] #userManagementTable thead {
-  background: oklch(var(--color-base-300) / 0.7);
-  border-bottom: 2px solid oklch(var(--color-primary) / 0.3);
-}
-
-[data-theme="business"] #userManagementTable tbody tr:hover {
-  background: oklch(var(--color-base-300) / 0.3);
-  color: oklch(var(--color-base-content));
-}
-
-/* Better contrast for inventory table rows */
-[data-theme="business"] #inventoryTable tbody tr:hover {
-  background: oklch(var(--color-base-300) / 0.2);
-  color: oklch(var(--color-base-content));
-}
-
-[data-theme="business"] #inventoryTable tbody tr.selected {
-  background: oklch(var(--color-primary) / 0.1);
-  border: 1px solid oklch(var(--color-primary) / 0.3);
-}
-
-/* Fix bright warning alerts */
-[data-theme="business"] .bg-warning {
-  background: oklch(var(--color-warning) / 0.15) !important;
-  color: oklch(var(--color-base-content)) !important;
-}
-
-[data-theme="business"] .text-warning {
-  color: oklch(var(--color-warning)) !important;
-}
-
-/* Better card contrast */
-[data-theme="business"] .card {
-  background: oklch(var(--color-base-200) / 0.8);
-  border: 1px solid oklch(var(--color-base-300) / 0.4);
-  box-shadow: 0 2px 8px oklch(var(--color-base-300) / 0.2);
-}
-
-/* Improved navbar contrast */
-[data-theme="business"] .navbar {
-  background: oklch(var(--color-primary) / 0.9);
-  border-bottom: 1px solid oklch(var(--color-primary) / 0.3);
-}
-
-/* Better sidebar contrast */
-[data-theme="business"] #sidebar {
-  background: oklch(var(--color-base-200) / 0.9);
-  border-right: 1px solid oklch(var(--color-base-300) / 0.4);
-}
-
-/* Improved button hover states */
-[data-theme="business"] .btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px oklch(var(--color-primary) / 0.15);
-}
-
-/* Better modal backdrop */
-[data-theme="business"] .modal-box {
-  background: oklch(var(--color-base-200) / 0.95);
-  border: 1px solid oklch(var(--color-base-300) / 0.4);
-  box-shadow: 0 8px 32px oklch(var(--color-base-300) / 0.3);
-}
-
-/* ============================================
-   PROFESSIONAL THEME ENHANCEMENTS
-   ============================================ */
-
-/* Enhanced navbar for both themes */
-.navbar {
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid oklch(var(--color-base-300));
-}
-
-/* Professional dark theme specific styling */
-[data-theme="business"] .navbar {
-  background: linear-gradient(135deg, 
-    oklch(var(--color-base-200) / 0.95) 0%, 
-    oklch(var(--color-base-300) / 0.9) 100%);
-  border-bottom: 1px solid oklch(var(--color-primary) / 0.2);
-}
-
-/* Professional sidebar enhancements */
-#sidebar {
-  border-right: 1px solid oklch(var(--color-base-300));
-  backdrop-filter: blur(8px);
-}
-
-[data-theme="business"] #sidebar {
-  background: linear-gradient(180deg, 
-    oklch(var(--color-base-200) / 0.95) 0%, 
-    oklch(var(--color-base-300) / 0.9) 100%);
-  border-right: 1px solid oklch(var(--color-primary) / 0.15);
-}
-
-/* Modern sidebar menu items */
-#sidebar ul li a {
-  border-radius: 0.75rem;
-  transition: all 0.3s ease-in-out;
-  position: relative;
-  overflow: hidden;
-  backdrop-filter: blur(4px);
-}
-
-#sidebar ul li a:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px oklch(var(--color-primary) / 0.1);
-  background: linear-gradient(135deg, 
-    oklch(var(--color-base-300) / 0.4) 0%, 
-    oklch(var(--color-base-300) / 0.2) 100%);
-  color: oklch(var(--color-base-content));
-}
-
-#sidebar ul li a:active {
-  transform: translateY(0);
-}
-
-/* Icon color transitions and hover effects */
-#sidebar ul li a svg {
-  transition: all 0.3s ease-in-out;
-  filter: drop-shadow(0 2px 4px oklch(var(--color-base-300) / 0.4));
-}
-
-#sidebar ul li a:hover svg {
-  transform: scale(1.1);
-  filter: drop-shadow(0 4px 8px oklch(var(--color-primary) / 0.5));
-}
-
-/* Active menu item styling */
-#sidebar ul li a.active {
-  background: linear-gradient(135deg, 
-    oklch(var(--color-primary) / 0.2) 0%, 
-    oklch(var(--color-primary) / 0.1) 100%);
-  border: 1px solid oklch(var(--color-primary) / 0.3);
-  color: oklch(var(--color-primary));
-  box-shadow: 0 4px 15px oklch(var(--color-primary) / 0.25);
-}
-
-#sidebar ul li a.active svg {
-  color: oklch(var(--color-primary));
-  filter: drop-shadow(0 3px 6px oklch(var(--color-primary) / 0.4));
-  transform: scale(1.05);
-}
-
-/* Enhanced theme toggle positioning and style */
-#themeToggle {
-  transition: all 0.3s ease-in-out;
-  padding: 0.5rem;
-  border-radius: 0.75rem;
-}
-
-#themeToggle:hover {
-  background: oklch(var(--color-base-300) / 0.6);
-  transform: scale(1.1);
-  box-shadow: 0 4px 12px oklch(var(--color-primary) / 0.2);
-}
-
-/* Professional cards and containers */
-.card {
-  border: 1px solid oklch(var(--color-base-300) / 0.6);
-  backdrop-filter: blur(8px);
-  transition: all 0.3s ease-in-out;
-}
-
-[data-theme="business"] .card {
-  background: linear-gradient(135deg, 
-    oklch(var(--color-base-200) / 0.8) 0%, 
-    oklch(var(--color-base-300) / 0.6) 100%);
-  border: 1px solid oklch(var(--color-primary) / 0.1);
-}
-
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 30px oklch(var(--color-base-300) / 0.3);
-}
-
-/* Enhanced modal backdrop for dark theme */
-[data-theme="business"] .modal-backdrop {
-  background: oklch(var(--color-base-300) / 0.85);
-  backdrop-filter: blur(12px);
-}
-
-/* Professional button enhancements */
-.btn {
-  transition: all 0.3s ease-in-out;
-  border: 1px solid transparent;
-  backdrop-filter: blur(4px);
-}
-
-.btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px oklch(var(--color-primary) / 0.25);
-}
-
-.btn:active {
-  transform: translateY(0);
-}
-
-/* Enhanced input fields for dark theme */
-[data-theme="business"] .input,
-[data-theme="business"] .select,
-[data-theme="business"] .textarea {
-  border: 1px solid oklch(var(--color-base-300) / 0.6);
-  background: linear-gradient(135deg, 
-    oklch(var(--color-base-200) / 0.9) 0%, 
-    oklch(var(--color-base-300) / 0.7) 100%);
-  backdrop-filter: blur(6px);
-  transition: all 0.3s ease-in-out;
-}
-
-[data-theme="business"] .input:focus,
-[data-theme="business"] .select:focus,
-[data-theme="business"] .textarea:focus {
-  border-color: oklch(var(--color-primary));
-  box-shadow: 0 0 0 4px oklch(var(--color-primary) / 0.15);
-  background: oklch(var(--color-base-200) / 0.95);
-}
-
-/* Professional table styling for dark theme */
-[data-theme="business"] .table {
-  background: linear-gradient(135deg, 
-    oklch(var(--color-base-200) / 0.8) 0%, 
-    oklch(var(--color-base-300) / 0.6) 100%);
-  backdrop-filter: blur(8px);
-  border: 1px solid oklch(var(--color-base-300) / 0.6);
-}
-
-[data-theme="business"] .table thead {
-  background: linear-gradient(135deg, 
-    oklch(var(--color-base-300) / 0.9) 0%, 
-    oklch(var(--color-primary) / 0.1) 100%);
-  border-bottom: 2px solid oklch(var(--color-primary) / 0.4);
-}
-
-[data-theme="business"] .table tbody tr:hover {
-  background: linear-gradient(135deg, 
-    oklch(var(--color-base-300) / 0.5) 0%, 
-    oklch(var(--color-primary) / 0.05) 100%);
-}
-
-/* Enhanced stats for dark theme */
-[data-theme="business"] .stats {
-  background: linear-gradient(135deg, 
-    oklch(var(--color-base-200) / 0.9) 0%, 
-    oklch(var(--color-base-300) / 0.8) 100%);
-  border: 1px solid oklch(var(--color-primary) / 0.2);
-  backdrop-filter: blur(12px);
-}
-
-[data-theme="business"] .stat {
-  border-color: oklch(var(--color-base-300) / 0.6);
-  transition: all 0.3s ease-in-out;
-}
-
-[data-theme="business"] .stat:hover {
-  background: oklch(var(--color-primary) / 0.05);
-  transform: scale(1.02);
-}
-
-/* Professional drawer overlay */
-[data-theme="business"] .drawer-overlay {
-  background: oklch(var(--color-base-300) / 0.9);
-  backdrop-filter: blur(15px);
-}
-
-/* Enhanced notification bar */
-#reorderNotificationBar {
-  border: 1px solid oklch(var(--color-warning) / 0.4);
-  backdrop-filter: blur(6px);
-  background: linear-gradient(135deg, 
-    oklch(var(--color-warning) / 0.15) 0%, 
-    oklch(var(--color-warning) / 0.08) 100%);
-}
-
-/* Professional scrollbar for dark theme */
-[data-theme="business"] ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-[data-theme="business"] ::-webkit-scrollbar-track {
-  background: oklch(var(--color-base-300) / 0.4);
-  border-radius: 6px;
-}
-
-[data-theme="business"] ::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, 
-    oklch(var(--color-primary) / 0.6) 0%, 
-    oklch(var(--color-primary) / 0.8) 100%);
-  border-radius: 6px;
-  border: 2px solid oklch(var(--color-base-300) / 0.4);
-}
-
-[data-theme="business"] ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, 
-    oklch(var(--color-primary) / 0.8) 0%, 
-    oklch(var(--color-primary) / 1) 100%);
-}
-
-/* Professional responsive design */
-@media (max-width: 1024px) {
-  #themeToggle svg {
-    width: 1.75rem;
-    height: 1.75rem;
-  }
-}
-
-/* Enhanced loading states for dark theme */
-[data-theme="business"] .loading {
-  filter: hue-rotate(180deg) brightness(1.3) saturate(1.2);
-}
-
-/* Professional focus states */
-[data-theme="business"] *:focus-visible {
-  outline: 2px solid oklch(var(--color-primary));
-  outline-offset: 3px;
-  border-radius: 0.5rem;
-}
-
-/* Glassmorphism effect for modals and overlays */
-[data-theme="business"] .modal-box {
-  background: linear-gradient(135deg, 
-    oklch(var(--color-base-200) / 0.95) 0%, 
-    oklch(var(--color-base-300) / 0.9) 100%);
-  backdrop-filter: blur(20px);
-  border: 1px solid oklch(var(--color-primary) / 0.2);
-}
-
-/* Enhanced dropdown menus */
-[data-theme="business"] .dropdown-content {
-  background: linear-gradient(135deg, 
-    oklch(var(--color-base-200) / 0.95) 0%, 
-    oklch(var(--color-base-300) / 0.9) 100%);
-  backdrop-filter: blur(15px);
-  border: 1px solid oklch(var(--color-primary) / 0.15);
-}
-
-/* Professional Inventory Theme Enhancements */
-@layer components {
-  /* Enhanced Card Styling */
-  .card {
-    border: 1px solid oklch(var(--b3));
-    box-shadow: 0 2px 8px oklch(var(--b3) / 0.1), 0 1px 4px oklch(var(--b3) / 0.08);
-  }
-  
-  .card:hover {
-    box-shadow: 0 4px 12px oklch(var(--b3) / 0.15), 0 2px 6px oklch(var(--b3) / 0.1);
-    transform: translateY(-1px);
-    transition: all 0.2s ease;
-  }
-  
-  /* Enhanced Stats Cards */
-  .stats .stat {
-    border: 1px solid oklch(var(--b3));
-    background: oklch(var(--b1));
-  }
-
-  /* Professional Dashboard Grid Enhancements */
-  .stats {
-    gap: 1rem;
-  }
-  
-  .stats .stat {
-    background: oklch(var(--b1));
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .stats .stat::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, oklch(var(--p)), oklch(var(--s)), oklch(var(--a)));
-  }
-  
-  /* Professional Quick Actions Grid */
-  .grid .card {
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .grid .card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: currentColor;
-    opacity: 0.6;
-  }
-  
-  /* Enhanced Typography */
-  h1, h2, h3, h4, h5, h6 {
-    font-weight: 700;
-    letter-spacing: -0.025em;
-  }
-  
-  .stat-title {
-    font-weight: 600;
-    font-size: 0.875rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    opacity: 0.8;
-  }
-  
-  .stat-value {
-    font-weight: 700;
-    font-size: 2rem;
-    line-height: 1.2;
-  }
-  
-  .stat-desc {
-    font-size: 0.75rem;
-    opacity: 0.7;
-  }
-  
-  /* Professional Form Styling */
-  .form-control {
-    margin-bottom: 1rem;
-  }
-  
-  .label-text {
-    font-weight: 600;
-    font-size: 0.875rem;
-    color: oklch(var(--bc));
-    margin-bottom: 0.5rem;
-  }
-  
-  /* Enhanced Professional Spacing */
-  .card-body {
-    padding: 1.5rem;
-  }
-  
-  .card-title {
-    font-size: 1.125rem;
-    font-weight: 700;
-    margin-bottom: 0.75rem;
-  }
-  
-  /* Professional Badge System */
-  .badge-outline {
-    border: 1.5px solid currentColor;
-    background: transparent;
-  }
-  
-  /* Enhanced Table Professional Styling */
-  .table thead tr {
-    border-bottom: 2px solid oklch(var(--b3));
-  }
-  
-  .table tbody tr {
-    border-bottom: 1px solid oklch(var(--b2));
-  }
-  
-  .table tbody tr:last-child {
-    border-bottom: none;
-  }
-  
-  /* Professional Modal Backdrop */
-  .modal-backdrop, [class*="bg-gray-900"] {
-    background: oklch(var(--b1) / 0.8);
-    backdrop-filter: blur(4px);
-  }
-  
-  /* Professional Loading States */
-  .skeleton {
-    background: linear-gradient(
-      90deg,
-      oklch(var(--b2)) 25%,
-      oklch(var(--b3)) 50%,
-      oklch(var(--b2)) 75%
-    );
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-  }
-  
-  @keyframes loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-  }
-  
-  /* Professional Focus States */
-  *:focus {
-    outline: 2px solid oklch(var(--p));
-    outline-offset: 2px;
-  }
-  
-  .btn:focus,
-  .input:focus,
-  .select:focus,
-  .textarea:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px oklch(var(--p) / 0.2);
-  }
-
-  /* Professional Sidebar Styling */
-  #sidebar {
-    background: oklch(var(--b2));
-    border-right: 1px solid oklch(var(--b3));
-    box-shadow: 2px 0 8px oklch(var(--b3) / 0.1);
-  }
-  
-  /* Enhanced Menu Items */
-  #sidebar .menu li a {
-    border-radius: 0.5rem;
-    margin-bottom: 0.25rem;
-    transition: all 0.2s ease;
-  }
-  
-  #sidebar .menu li a:hover {
-    background: oklch(var(--b3));
-    transform: translateX(2px);
-  }
-  
-  #sidebar .menu li a.active {
-    background: oklch(var(--p) / 0.1);
-    border-left: 3px solid oklch(var(--p));
-    color: oklch(var(--p));
-  }
-  
-  /* Professional Button Styling */
-  .btn {
-    font-weight: 600;
-    letter-spacing: 0.025em;
-    box-shadow: 0 1px 3px oklch(var(--b3) / 0.2);
-  }
-  
-  .btn:hover {
-    box-shadow: 0 2px 6px oklch(var(--b3) / 0.25);
-    transform: translateY(-1px);
-  }
-  
-  /* Enhanced Table Styling */
-  .table {
-    border: 1px solid oklch(var(--b3));
-  }
-  
-  .table th {
-    background: oklch(var(--b2));
-    font-weight: 600;
-    color: oklch(var(--bc));
-    border-bottom: 2px solid oklch(var(--b3));
-  }
-  
-  .table tr:hover {
-    background: oklch(var(--b2) / 0.5);
-  }
-  
-  /* Professional Modal Styling */
-  .modal-box, [class*="bg-white"], [class*="bg-base-100"] {
-    background: oklch(var(--b1));
-    border: 1px solid oklch(var(--b3));
-    box-shadow: 0 8px 32px oklch(var(--b3) / 0.2);
-  }
-  
-  /* Enhanced Input Styling */
-  .input, .select, .textarea {
-    border: 1px solid oklch(var(--b3));
-    background: oklch(var(--b1));
-    transition: all 0.2s ease;
-  }
-  
-  .input:focus, .select:focus, .textarea:focus {
-    border-color: oklch(var(--p));
-    box-shadow: 0 0 0 2px oklch(var(--p) / 0.1);
-  }
-  
-  /* Professional Status Colors */
-  .badge {
-    font-weight: 600;
-    letter-spacing: 0.025em;
-  }
-  
-  /* Enhanced Dashboard Layout */
-  #mainContent {
-    background: oklch(var(--b1));
-    min-height: calc(100vh - 4rem);
-  }
-  
-  /* Professional Navbar */
-  .navbar {
-    background: oklch(var(--p));
-    border-bottom: 1px solid oklch(var(--p) / 0.2);
-    box-shadow: 0 2px 8px oklch(var(--p) / 0.1);
-  }
-  
-  /* Enhanced Loading States */
-  .loading {
-    color: oklch(var(--p));
-  }
-  
-  /* Professional Alert Styling */
-  .alert {
-    border: 1px solid oklch(var(--b3));
-    box-shadow: 0 2px 8px oklch(var(--b3) / 0.1);
-  }
-}
 @layer theme {
   :root, :host {
     --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
@@ -998,10 +55,8 @@ html[data-theme="business"] .dark\:bg-amber-900 {
     --color-blue-900: oklch(37.9% 0.146 265.522);
     --color-indigo-500: oklch(58.5% 0.233 277.117);
     --color-purple-50: oklch(97.7% 0.014 308.299);
-    --color-purple-400: oklch(71.4% 0.203 305.504);
     --color-purple-500: oklch(62.7% 0.265 303.9);
     --color-purple-600: oklch(55.8% 0.288 302.321);
-    --color-purple-700: oklch(49.6% 0.265 301.924);
     --color-slate-500: oklch(55.4% 0.046 257.417);
     --color-slate-600: oklch(44.6% 0.043 257.281);
     --color-slate-700: oklch(37.2% 0.044 257.287);
@@ -1043,6 +98,8 @@ html[data-theme="business"] .dark\:bg-amber-900 {
     --text-3xl--line-height: calc(2.25 / 1.875);
     --text-4xl: 2.25rem;
     --text-4xl--line-height: calc(2.5 / 2.25);
+    --text-6xl: 3.75rem;
+    --text-6xl--line-height: 1;
     --font-weight-medium: 500;
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
@@ -1050,6 +107,7 @@ html[data-theme="business"] .dark\:bg-amber-900 {
     --radius-md: 0.375rem;
     --radius-lg: 0.5rem;
     --ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
     --animate-spin: spin 1s linear infinite;
     --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     --blur-sm: 8px;
@@ -4276,9 +3334,6 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .inset-0 {
     inset: calc(var(--spacing) * 0);
   }
-  .inset-y-0 {
-    inset-block: calc(var(--spacing) * 0);
-  }
   .dropdown-right {
     --anchor-h: right;
     --anchor-v: span-bottom;
@@ -4439,6 +3494,9 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .top-0 {
     top: calc(var(--spacing) * 0);
   }
+  .top-2 {
+    top: calc(var(--spacing) * 2);
+  }
   .top-4 {
     top: calc(var(--spacing) * 4);
   }
@@ -4447,6 +3505,9 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   }
   .right-0 {
     right: calc(var(--spacing) * 0);
+  }
+  .right-2 {
+    right: calc(var(--spacing) * 2);
   }
   .right-4 {
     right: calc(var(--spacing) * 4);
@@ -5653,9 +4714,6 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .mb-8 {
     margin-bottom: calc(var(--spacing) * 8);
   }
-  .-ml-1 {
-    margin-left: calc(var(--spacing) * -1);
-  }
   .ml-2 {
     margin-left: calc(var(--spacing) * 2);
   }
@@ -6004,6 +5062,61 @@ html[data-theme="business"] .dark\:bg-amber-900 {
       border: 4px solid var(--color-base-100);
     }
   }
+  .prose {
+    :root & {
+      --tw-prose-body: var(--color-base-content);
+      @supports (color: color-mix(in lab, red, red)) {
+        --tw-prose-body: color-mix(in oklab, var(--color-base-content) 80%, #0000);
+      }
+      --tw-prose-headings: var(--color-base-content);
+      --tw-prose-lead: var(--color-base-content);
+      --tw-prose-links: var(--color-base-content);
+      --tw-prose-bold: var(--color-base-content);
+      --tw-prose-counters: var(--color-base-content);
+      --tw-prose-bullets: var(--color-base-content);
+      @supports (color: color-mix(in lab, red, red)) {
+        --tw-prose-bullets: color-mix(in oklab, var(--color-base-content) 50%, #0000);
+      }
+      --tw-prose-hr: var(--color-base-content);
+      @supports (color: color-mix(in lab, red, red)) {
+        --tw-prose-hr: color-mix(in oklab, var(--color-base-content) 20%, #0000);
+      }
+      --tw-prose-quotes: var(--color-base-content);
+      --tw-prose-quote-borders: var(--color-base-content);
+      @supports (color: color-mix(in lab, red, red)) {
+        --tw-prose-quote-borders: color-mix(in oklab, var(--color-base-content) 20%, #0000);
+      }
+      --tw-prose-captions: var(--color-base-content);
+      @supports (color: color-mix(in lab, red, red)) {
+        --tw-prose-captions: color-mix(in oklab, var(--color-base-content) 50%, #0000);
+      }
+      --tw-prose-code: var(--color-base-content);
+      --tw-prose-pre-code: var(--color-neutral-content);
+      --tw-prose-pre-bg: var(--color-neutral);
+      --tw-prose-th-borders: var(--color-base-content);
+      @supports (color: color-mix(in lab, red, red)) {
+        --tw-prose-th-borders: color-mix(in oklab, var(--color-base-content) 50%, #0000);
+      }
+      --tw-prose-td-borders: var(--color-base-content);
+      @supports (color: color-mix(in lab, red, red)) {
+        --tw-prose-td-borders: color-mix(in oklab, var(--color-base-content) 20%, #0000);
+      }
+      --tw-prose-kbd: var(--color-base-content);
+      @supports (color: color-mix(in lab, red, red)) {
+        --tw-prose-kbd: color-mix(in oklab, var(--color-base-content) 80%, #0000);
+      }
+      :where(code):not(pre > code) {
+        background-color: var(--color-base-200);
+        border-radius: var(--radius-selector);
+        border: var(--border) solid var(--color-base-300);
+        padding-inline: 0.5em;
+        font-weight: inherit;
+        &:before, &:after {
+          display: none;
+        }
+      }
+    }
+  }
   .mask {
     display: inline-block;
     vertical-align: middle;
@@ -6195,6 +5308,10 @@ html[data-theme="business"] .dark\:bg-amber-900 {
     width: var(--size);
     height: var(--size);
   }
+  .size-4 {
+    width: calc(var(--spacing) * 4);
+    height: calc(var(--spacing) * 4);
+  }
   .status-lg {
     width: calc(0.25rem * 3);
     height: calc(0.25rem * 3);
@@ -6221,6 +5338,9 @@ html[data-theme="business"] .dark\:bg-amber-900 {
     .dock-label {
       font-size: 0.6875rem;
     }
+  }
+  .h-3 {
+    height: calc(var(--spacing) * 3);
   }
   .h-4 {
     height: calc(var(--spacing) * 4);
@@ -6270,6 +5390,9 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .max-h-60 {
     max-height: calc(var(--spacing) * 60);
   }
+  .max-h-64 {
+    max-height: calc(var(--spacing) * 64);
+  }
   .max-h-80 {
     max-height: calc(var(--spacing) * 80);
   }
@@ -6287,6 +5410,9 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   }
   .min-h-\[36px\] {
     min-height: 36px;
+  }
+  .min-h-\[300px\] {
+    min-height: 300px;
   }
   .min-h-full {
     min-height: 100%;
@@ -6400,6 +5526,9 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .loading-xs {
     width: calc(var(--size-selector, 0.25rem) * 4);
   }
+  .w-3 {
+    width: calc(var(--spacing) * 3);
+  }
   .w-4 {
     width: calc(var(--spacing) * 4);
   }
@@ -6414,6 +5543,12 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   }
   .w-10 {
     width: calc(var(--spacing) * 10);
+  }
+  .w-11 {
+    width: calc(var(--spacing) * 11);
+  }
+  .w-11\/12 {
+    width: calc(11/12 * 100%);
   }
   .w-12 {
     width: calc(var(--spacing) * 12);
@@ -6442,6 +5577,9 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .w-80 {
     width: calc(var(--spacing) * 80);
   }
+  .w-96 {
+    width: calc(var(--spacing) * 96);
+  }
   .w-auto {
     width: auto;
   }
@@ -6457,14 +5595,17 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .max-w-4xl {
     max-width: var(--container-4xl);
   }
+  .max-w-\[calc\(100vw-4rem\)\] {
+    max-width: calc(100vw - 4rem);
+  }
+  .max-w-\[calc\(100vw-16rem\)\] {
+    max-width: calc(100vw - 16rem);
+  }
   .max-w-lg {
     max-width: var(--container-lg);
   }
   .max-w-md {
     max-width: var(--container-md);
-  }
-  .max-w-sm {
-    max-width: var(--container-sm);
   }
   .max-w-xs {
     max-width: var(--container-xs);
@@ -6472,8 +5613,14 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .min-w-full {
     min-width: 100%;
   }
+  .min-w-max {
+    min-width: max-content;
+  }
   .flex-1 {
     flex: 1;
+  }
+  .flex-shrink {
+    flex-shrink: 1;
   }
   .shrink-0 {
     flex-shrink: 0;
@@ -6483,6 +5630,9 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   }
   .grow {
     flex-grow: 1;
+  }
+  .border-collapse {
+    border-collapse: collapse;
   }
   .swap-rotate {
     .swap-on, input:indeterminate ~ .swap-on {
@@ -6551,6 +5701,9 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   }
   .cursor-pointer {
     cursor: pointer;
+  }
+  .resize {
+    resize: both;
   }
   .carousel-horizontal {
     flex-direction: row;
@@ -6758,6 +5911,9 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   }
   .overflow-x-auto {
     overflow-x: auto;
+  }
+  .overflow-x-hidden {
+    overflow-x: hidden;
   }
   .overflow-y-auto {
     overflow-y: auto;
@@ -7006,6 +6162,15 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .border-base-300 {
     border-color: var(--color-base-300);
   }
+  .border-base-content {
+    border-color: var(--color-base-content);
+  }
+  .border-base-content\/20 {
+    border-color: var(--color-base-content);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-base-content) 20%, transparent);
+    }
+  }
   .border-blue-200 {
     border-color: var(--color-blue-200);
   }
@@ -7124,9 +6289,6 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .bg-amber-100 {
     background-color: var(--color-amber-100);
   }
-  .bg-amber-200 {
-    background-color: var(--color-amber-200);
-  }
   .bg-base-100 {
     background-color: var(--color-base-100);
   }
@@ -7150,6 +6312,9 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   }
   .bg-blue-600 {
     background-color: var(--color-blue-600);
+  }
+  .bg-error {
+    background-color: var(--color-error);
   }
   .bg-error\/20 {
     background-color: var(--color-error);
@@ -7210,6 +6375,9 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   }
   .bg-red-600 {
     background-color: var(--color-red-600);
+  }
+  .bg-warning {
+    background-color: var(--color-warning);
   }
   .bg-warning\/20 {
     background-color: var(--color-warning);
@@ -7357,6 +6525,9 @@ html[data-theme="business"] .dark\:bg-amber-900 {
       mask-position: left;
     }
   }
+  .mask-repeat {
+    mask-repeat: repeat;
+  }
   .fill-current {
     fill: currentcolor;
   }
@@ -7424,9 +6595,6 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   }
   .p-2 {
     padding: calc(var(--spacing) * 2);
-  }
-  .p-3 {
-    padding: calc(var(--spacing) * 3);
   }
   .p-4 {
     padding: calc(var(--spacing) * 4);
@@ -7657,6 +6825,10 @@ html[data-theme="business"] .dark\:bg-amber-900 {
     font-size: var(--text-4xl);
     line-height: var(--tw-leading, var(--text-4xl--line-height));
   }
+  .text-6xl {
+    font-size: var(--text-6xl);
+    line-height: var(--tw-leading, var(--text-6xl--line-height));
+  }
   .text-base {
     font-size: var(--text-base);
     line-height: var(--tw-leading, var(--text-base--line-height));
@@ -7732,10 +6904,6 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .textarea-xs {
     font-size: 0.6875rem;
   }
-  .leading-5 {
-    --tw-leading: calc(var(--spacing) * 5);
-    line-height: calc(var(--spacing) * 5);
-  }
   .leading-6 {
     --tw-leading: calc(var(--spacing) * 6);
     line-height: calc(var(--spacing) * 6);
@@ -7759,6 +6927,9 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .tracking-wider {
     --tw-tracking: var(--tracking-wider);
     letter-spacing: var(--tracking-wider);
+  }
+  .text-wrap {
+    text-wrap: wrap;
   }
   .whitespace-nowrap {
     white-space: nowrap;
@@ -8023,6 +7194,18 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .text-base-content {
     color: var(--color-base-content);
   }
+  .text-base-content\/60 {
+    color: var(--color-base-content);
+    @supports (color: color-mix(in lab, red, red)) {
+      color: color-mix(in oklab, var(--color-base-content) 60%, transparent);
+    }
+  }
+  .text-base-content\/70 {
+    color: var(--color-base-content);
+    @supports (color: color-mix(in lab, red, red)) {
+      color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+    }
+  }
   .text-blue-400 {
     color: var(--color-blue-400);
   }
@@ -8080,6 +7263,9 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .text-info-content {
     color: var(--color-info-content);
   }
+  .text-neutral {
+    color: var(--color-neutral);
+  }
   .text-neutral-content {
     color: var(--color-neutral-content);
   }
@@ -8088,9 +7274,6 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   }
   .text-primary-content {
     color: var(--color-primary-content);
-  }
-  .text-purple-600 {
-    color: var(--color-purple-600);
   }
   .text-red-400 {
     color: var(--color-red-400);
@@ -8187,6 +7370,9 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .opacity-70 {
     opacity: 70%;
   }
+  .opacity-80 {
+    opacity: 80%;
+  }
   .shadow {
     --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
@@ -8248,6 +7434,10 @@ html[data-theme="business"] .dark\:bg-amber-900 {
     -webkit-backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);
     backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);
   }
+  .backdrop-filter {
+    -webkit-backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);
+    backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);
+  }
   .transition {
     transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to, opacity, box-shadow, transform, translate, scale, rotate, filter, -webkit-backdrop-filter, backdrop-filter, display, visibility, content-visibility, overlay, pointer-events;
     transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
@@ -8263,6 +7453,16 @@ html[data-theme="business"] .dark\:bg-amber-900 {
     transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
     transition-duration: var(--tw-duration, var(--default-transition-duration));
   }
+  .transition-opacity {
+    transition-property: opacity;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+  }
+  .transition-shadow {
+    transition-property: box-shadow;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+  }
   .duration-150 {
     --tw-duration: 150ms;
     transition-duration: 150ms;
@@ -8270,6 +7470,10 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .duration-300 {
     --tw-duration: 300ms;
     transition-duration: 300ms;
+  }
+  .ease-in-out {
+    --tw-ease: var(--ease-in-out);
+    transition-timing-function: var(--ease-in-out);
   }
   .ease-out {
     --tw-ease: var(--ease-out);
@@ -8902,6 +8106,13 @@ html[data-theme="business"] .dark\:bg-amber-900 {
       }
     }
   }
+  .hover\:bg-base-300 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-base-300);
+      }
+    }
+  }
   .hover\:bg-base-300\/50 {
     &:hover {
       @media (hover: hover) {
@@ -9065,10 +8276,10 @@ html[data-theme="business"] .dark\:bg-amber-900 {
       }
     }
   }
-  .hover\:text-blue-500 {
+  .hover\:text-base-content {
     &:hover {
       @media (hover: hover) {
-        color: var(--color-blue-500);
+        color: var(--color-base-content);
       }
     }
   }
@@ -9107,16 +8318,19 @@ html[data-theme="business"] .dark\:bg-amber-900 {
       }
     }
   }
-  .hover\:underline {
+  .hover\:opacity-100 {
     &:hover {
       @media (hover: hover) {
-        text-decoration-line: underline;
+        opacity: 100%;
       }
     }
   }
-  .focus\:border-blue-500 {
-    &:focus {
-      border-color: var(--color-blue-500);
+  .hover\:shadow-md {
+    &:hover {
+      @media (hover: hover) {
+        --tw-shadow: 0 4px 6px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 2px 4px -2px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
+        box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+      }
     }
   }
   .focus\:border-indigo-500 {
@@ -9150,14 +8364,14 @@ html[data-theme="business"] .dark\:bg-amber-900 {
       --tw-ring-color: var(--color-green-300);
     }
   }
-  .focus\:ring-green-500 {
-    &:focus {
-      --tw-ring-color: var(--color-green-500);
-    }
-  }
   .focus\:ring-indigo-500 {
     &:focus {
       --tw-ring-color: var(--color-indigo-500);
+    }
+  }
+  .focus\:ring-primary {
+    &:focus {
+      --tw-ring-color: var(--color-primary);
     }
   }
   .focus\:ring-offset-2 {
@@ -9274,11 +8488,6 @@ html[data-theme="business"] .dark\:bg-amber-900 {
       }
     }
   }
-  .md\:col-span-2 {
-    @media (width >= 48rem) {
-      grid-column: span 2 / span 2;
-    }
-  }
   .md\:hidden {
     @media (width >= 48rem) {
       display: none;
@@ -9297,6 +8506,11 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .md\:grid-cols-3 {
     @media (width >= 48rem) {
       grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  .md\:grid-cols-4 {
+    @media (width >= 48rem) {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
   .lg\:drawer-open {
@@ -9353,6 +8567,16 @@ html[data-theme="business"] .dark\:bg-amber-900 {
         background-color: var(--color-base-100);
         box-shadow: 0 1px 3px 0 oklch(0% 0 0/0.1), 0 1px 2px -1px oklch(0% 0 0/0.1);
       }
+    }
+  }
+  .lg\:col-span-1 {
+    @media (width >= 64rem) {
+      grid-column: span 1 / span 1;
+    }
+  }
+  .lg\:col-span-2 {
+    @media (width >= 64rem) {
+      grid-column: span 2 / span 2;
     }
   }
   .lg\:join-horizontal {
@@ -9431,6 +8655,11 @@ html[data-theme="business"] .dark\:bg-amber-900 {
       }
     }
   }
+  .lg\:grid-cols-2 {
+    @media (width >= 64rem) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
   .lg\:grid-cols-3 {
     @media (width >= 64rem) {
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -9441,17 +8670,15 @@ html[data-theme="business"] .dark\:bg-amber-900 {
       display: table-cell;
     }
   }
+  .xl\:grid-cols-5 {
+    @media (width >= 80rem) {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+  }
   .dark\:divide-gray-700 {
     @media (prefers-color-scheme: dark) {
       :where(& > :not(:last-child)) {
         border-color: var(--color-gray-700);
-      }
-    }
-  }
-  .dark\:divide-slate-700 {
-    @media (prefers-color-scheme: dark) {
-      :where(& > :not(:last-child)) {
-        border-color: var(--color-slate-700);
       }
     }
   }
@@ -9498,11 +8725,6 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .dark\:border-yellow-700 {
     @media (prefers-color-scheme: dark) {
       border-color: var(--color-yellow-700);
-    }
-  }
-  .dark\:bg-amber-700 {
-    @media (prefers-color-scheme: dark) {
-      background-color: var(--color-amber-700);
     }
   }
   .dark\:bg-amber-800 {
@@ -9584,16 +8806,6 @@ html[data-theme="business"] .dark\:bg-amber-900 {
       }
     }
   }
-  .dark\:bg-purple-700 {
-    @media (prefers-color-scheme: dark) {
-      background-color: var(--color-purple-700);
-    }
-  }
-  .dark\:bg-red-200 {
-    @media (prefers-color-scheme: dark) {
-      background-color: var(--color-red-200);
-    }
-  }
   .dark\:bg-red-700 {
     @media (prefers-color-scheme: dark) {
       background-color: var(--color-red-700);
@@ -9648,11 +8860,6 @@ html[data-theme="business"] .dark\:bg-amber-900 {
       @supports (color: color-mix(in lab, red, red)) {
         background-color: color-mix(in oklab, var(--color-yellow-900) 20%, transparent);
       }
-    }
-  }
-  .dark\:text-amber-100 {
-    @media (prefers-color-scheme: dark) {
-      color: var(--color-amber-100);
     }
   }
   .dark\:text-amber-200 {
@@ -9715,11 +8922,6 @@ html[data-theme="business"] .dark\:bg-amber-900 {
       color: var(--color-green-400);
     }
   }
-  .dark\:text-purple-400 {
-    @media (prefers-color-scheme: dark) {
-      color: var(--color-purple-400);
-    }
-  }
   .dark\:text-red-200 {
     @media (prefers-color-scheme: dark) {
       color: var(--color-red-200);
@@ -9728,11 +8930,6 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   .dark\:text-red-400 {
     @media (prefers-color-scheme: dark) {
       color: var(--color-red-400);
-    }
-  }
-  .dark\:text-red-800 {
-    @media (prefers-color-scheme: dark) {
-      color: var(--color-red-800);
     }
   }
   .dark\:text-white {
@@ -9802,15 +8999,6 @@ html[data-theme="business"] .dark\:bg-amber-900 {
       }
     }
   }
-  .dark\:hover\:bg-purple-600 {
-    @media (prefers-color-scheme: dark) {
-      &:hover {
-        @media (hover: hover) {
-          background-color: var(--color-purple-600);
-        }
-      }
-    }
-  }
   .dark\:hover\:bg-red-600 {
     @media (prefers-color-scheme: dark) {
       &:hover {
@@ -9834,15 +9022,6 @@ html[data-theme="business"] .dark\:bg-amber-900 {
       &:hover {
         @media (hover: hover) {
           background-color: var(--color-slate-500);
-        }
-      }
-    }
-  }
-  .dark\:hover\:bg-slate-600 {
-    @media (prefers-color-scheme: dark) {
-      &:hover {
-        @media (hover: hover) {
-          background-color: var(--color-slate-600);
         }
       }
     }
@@ -9910,13 +9089,6 @@ html[data-theme="business"] .dark\:bg-amber-900 {
       }
     }
   }
-  .dark\:focus\:ring-slate-600 {
-    @media (prefers-color-scheme: dark) {
-      &:focus {
-        --tw-ring-color: var(--color-slate-600);
-      }
-    }
-  }
   .dark\:focus\:ring-offset-slate-800 {
     @media (prefers-color-scheme: dark) {
       &:focus {
@@ -9933,35 +9105,35 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   }
 }
 @layer base {
-  :where(:root),:root:has(input.theme-controller[value=garden]:checked),[data-theme=garden] {
+  :where(:root),:root:has(input.theme-controller[value=cupcake]:checked),[data-theme=cupcake] {
     color-scheme: light;
-    --color-base-100: oklch(99% 0.005 210);
-    --color-base-200: oklch(96% 0.008 210);
-    --color-base-300: oklch(92% 0.012 210);
-    --color-base-content: oklch(20% 0.015 210);
-    --color-primary: oklch(45% 0.12 210);
-    --color-primary-content: oklch(98% 0.005 210);
-    --color-secondary: oklch(65% 0.10 240);
-    --color-secondary-content: oklch(98% 0.005 240);
-    --color-accent: oklch(70% 0.15 160);
-    --color-accent-content: oklch(98% 0.005 160);
-    --color-neutral: oklch(25% 0.02 210);
-    --color-neutral-content: oklch(96% 0.008 210);
-    --color-info: oklch(60% 0.12 220);
-    --color-info-content: oklch(98% 0.005 220);
-    --color-success: oklch(55% 0.14 150);
-    --color-success-content: oklch(98% 0.005 150);
-    --color-warning: oklch(75% 0.12 70);
-    --color-warning-content: oklch(22% 0.02 70);
-    --color-error: oklch(60% 0.16 25);
-    --color-error-content: oklch(98% 0.005 25);
-    --radius-selector: 0.75rem;
-    --radius-field: 0.5rem;
-    --radius-box: 0.75rem;
+    --color-base-100: oklch(97.788% 0.004 56.375);
+    --color-base-200: oklch(93.982% 0.007 61.449);
+    --color-base-300: oklch(91.586% 0.006 53.44);
+    --color-base-content: oklch(23.574% 0.066 313.189);
+    --color-primary: oklch(85% 0.138 181.071);
+    --color-primary-content: oklch(43% 0.078 188.216);
+    --color-secondary: oklch(89% 0.061 343.231);
+    --color-secondary-content: oklch(45% 0.187 3.815);
+    --color-accent: oklch(90% 0.076 70.697);
+    --color-accent-content: oklch(47% 0.157 37.304);
+    --color-neutral: oklch(27% 0.006 286.033);
+    --color-neutral-content: oklch(92% 0.004 286.32);
+    --color-info: oklch(68% 0.169 237.323);
+    --color-info-content: oklch(29% 0.066 243.157);
+    --color-success: oklch(69% 0.17 162.48);
+    --color-success-content: oklch(26% 0.051 172.552);
+    --color-warning: oklch(79% 0.184 86.047);
+    --color-warning-content: oklch(28% 0.066 53.813);
+    --color-error: oklch(64% 0.246 16.439);
+    --color-error-content: oklch(27% 0.105 12.094);
+    --radius-selector: 1rem;
+    --radius-field: 2rem;
+    --radius-box: 1rem;
     --size-selector: 0.25rem;
     --size-field: 0.25rem;
-    --border: 1px;
-    --depth: 0;
+    --border: 2px;
+    --depth: 1;
     --noise: 0;
   }
 }
@@ -9969,112 +9141,96 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   @media (prefers-color-scheme: dark) {
     :root {
       color-scheme: dark;
-      --color-base-100: oklch(24.353% 0 0);
-      --color-base-200: oklch(22.648% 0 0);
-      --color-base-300: oklch(20.944% 0 0);
-      --color-base-content: oklch(84.87% 0 0);
-      --color-primary: oklch(41.703% 0.099 251.473);
-      --color-primary-content: oklch(88.34% 0.019 251.473);
-      --color-secondary: oklch(64.092% 0.027 229.389);
-      --color-secondary-content: oklch(12.818% 0.005 229.389);
-      --color-accent: oklch(67.271% 0.167 35.791);
-      --color-accent-content: oklch(13.454% 0.033 35.791);
-      --color-neutral: oklch(27.441% 0.013 253.041);
-      --color-neutral-content: oklch(85.488% 0.002 253.041);
-      --color-info: oklch(62.616% 0.143 240.033);
-      --color-info-content: oklch(12.523% 0.028 240.033);
-      --color-success: oklch(70.226% 0.094 156.596);
-      --color-success-content: oklch(14.045% 0.018 156.596);
-      --color-warning: oklch(77.482% 0.115 81.519);
-      --color-warning-content: oklch(15.496% 0.023 81.519);
-      --color-error: oklch(51.61% 0.146 29.674);
-      --color-error-content: oklch(90.322% 0.029 29.674);
-      --radius-selector: 0rem;
+      --color-base-100: oklch(25.33% 0.016 252.42);
+      --color-base-200: oklch(23.26% 0.014 253.1);
+      --color-base-300: oklch(21.15% 0.012 254.09);
+      --color-base-content: oklch(97.807% 0.029 256.847);
+      --color-primary: oklch(58% 0.233 277.117);
+      --color-primary-content: oklch(96% 0.018 272.314);
+      --color-secondary: oklch(65% 0.241 354.308);
+      --color-secondary-content: oklch(94% 0.028 342.258);
+      --color-accent: oklch(77% 0.152 181.912);
+      --color-accent-content: oklch(38% 0.063 188.416);
+      --color-neutral: oklch(14% 0.005 285.823);
+      --color-neutral-content: oklch(92% 0.004 286.32);
+      --color-info: oklch(74% 0.16 232.661);
+      --color-info-content: oklch(29% 0.066 243.157);
+      --color-success: oklch(76% 0.177 163.223);
+      --color-success-content: oklch(37% 0.077 168.94);
+      --color-warning: oklch(82% 0.189 84.429);
+      --color-warning-content: oklch(41% 0.112 45.904);
+      --color-error: oklch(71% 0.194 13.428);
+      --color-error-content: oklch(27% 0.105 12.094);
+      --radius-selector: 0.5rem;
       --radius-field: 0.25rem;
-      --radius-box: 0.25rem;
+      --radius-box: 0.5rem;
       --size-selector: 0.25rem;
       --size-field: 0.25rem;
       --border: 1px;
-      --depth: 0;
+      --depth: 1;
       --noise: 0;
     }
   }
 }
 @layer base {
-  :root:has(input.theme-controller[value=garden]:checked),[data-theme=garden] {
+  :root:has(input.theme-controller[value=cupcake]:checked),[data-theme=cupcake] {
     color-scheme: light;
-    --color-base-100: oklch(92.951% 0.002 17.197);
-    --color-base-200: oklch(86.445% 0.002 17.197);
-    --color-base-300: oklch(79.938% 0.001 17.197);
-    --color-base-content: oklch(16.961% 0.001 17.32);
-    --color-primary: oklch(62.45% 0.278 3.836);
-    --color-primary-content: oklch(100% 0 0);
-    --color-secondary: oklch(48.495% 0.11 355.095);
-    --color-secondary-content: oklch(89.699% 0.022 355.095);
-    --color-accent: oklch(56.273% 0.054 154.39);
-    --color-accent-content: oklch(100% 0 0);
-    --color-neutral: oklch(24.155% 0.049 89.07);
-    --color-neutral-content: oklch(92.951% 0.002 17.197);
-    --color-info: oklch(72.06% 0.191 231.6);
-    --color-info-content: oklch(0% 0 0);
-    --color-success: oklch(64.8% 0.15 160);
-    --color-success-content: oklch(0% 0 0);
-    --color-warning: oklch(84.71% 0.199 83.87);
-    --color-warning-content: oklch(0% 0 0);
-    --color-error: oklch(71.76% 0.221 22.18);
-    --color-error-content: oklch(0% 0 0);
+    --color-base-100: oklch(97.788% 0.004 56.375);
+    --color-base-200: oklch(93.982% 0.007 61.449);
+    --color-base-300: oklch(91.586% 0.006 53.44);
+    --color-base-content: oklch(23.574% 0.066 313.189);
+    --color-primary: oklch(85% 0.138 181.071);
+    --color-primary-content: oklch(43% 0.078 188.216);
+    --color-secondary: oklch(89% 0.061 343.231);
+    --color-secondary-content: oklch(45% 0.187 3.815);
+    --color-accent: oklch(90% 0.076 70.697);
+    --color-accent-content: oklch(47% 0.157 37.304);
+    --color-neutral: oklch(27% 0.006 286.033);
+    --color-neutral-content: oklch(92% 0.004 286.32);
+    --color-info: oklch(68% 0.169 237.323);
+    --color-info-content: oklch(29% 0.066 243.157);
+    --color-success: oklch(69% 0.17 162.48);
+    --color-success-content: oklch(26% 0.051 172.552);
+    --color-warning: oklch(79% 0.184 86.047);
+    --color-warning-content: oklch(28% 0.066 53.813);
+    --color-error: oklch(64% 0.246 16.439);
+    --color-error-content: oklch(27% 0.105 12.094);
     --radius-selector: 1rem;
-    --radius-field: 0.5rem;
+    --radius-field: 2rem;
     --radius-box: 1rem;
     --size-selector: 0.25rem;
     --size-field: 0.25rem;
-    --border: 1px;
-    --depth: 0;
+    --border: 2px;
+    --depth: 1;
     --noise: 0;
   }
 }
 @layer base {
-  :root:has(input.theme-controller[value=business]:checked),[data-theme=business] {
+  :root:has(input.theme-controller[value=dark]:checked),[data-theme=dark] {
     color-scheme: dark;
-    /* Professional dark theme matching reference design */
-    --color-base-100: oklch(12% 0.01 240); /* Dark background like reference */
-    --color-base-200: oklch(22% 0.015 240); /* Card elevation - clearly lighter */
-    --color-base-300: oklch(28% 0.02 240); /* Borders/accents - even lighter */
-    --color-base-content: oklch(95% 0.005 240); /* High contrast text */
-    
-    /* Professional navbar color - darker blue but not too bright */
-    --color-primary: oklch(42% 0.15 240); /* Professional dark blue for navbar */
-    --color-primary-content: oklch(98% 0.005 240);
-    
-    /* Professional secondary purple */
-    --color-secondary: oklch(48% 0.12 280); /* Professional purple */
-    --color-secondary-content: oklch(98% 0.005 280);
-    
-    /* Professional teal accent */
-    --color-accent: oklch(52% 0.14 180); /* Professional teal */
-    --color-accent-content: oklch(98% 0.005 180);
-    
-    /* Professional neutral with good contrast */
-    --color-neutral: oklch(24% 0.015 240); /* Better contrast neutral */
-    --color-neutral-content: oklch(90% 0.008 240);
-    
-    /* Professional status colors */
-    --color-info: oklch(48% 0.16 220); /* Professional info blue */
-    --color-info-content: oklch(98% 0.005 220);
-    
-    --color-success: oklch(48% 0.16 150); /* Professional green */
-    --color-success-content: oklch(98% 0.005 150);
-    
-    --color-warning: oklch(58% 0.14 80); /* Professional amber */
-    --color-warning-content: oklch(16% 0.015 80);
-    
-    --color-error: oklch(52% 0.18 25); /* Professional red */
-    --color-error-content: oklch(98% 0.005 25);
-    
-    /* Modern rounded corners */
-    --radius-selector: 0.75rem;
-    --radius-field: 0.75rem;
-    --radius-box: 1rem;
+    --color-base-100: oklch(25.33% 0.016 252.42);
+    --color-base-200: oklch(23.26% 0.014 253.1);
+    --color-base-300: oklch(21.15% 0.012 254.09);
+    --color-base-content: oklch(97.807% 0.029 256.847);
+    --color-primary: oklch(58% 0.233 277.117);
+    --color-primary-content: oklch(96% 0.018 272.314);
+    --color-secondary: oklch(65% 0.241 354.308);
+    --color-secondary-content: oklch(94% 0.028 342.258);
+    --color-accent: oklch(77% 0.152 181.912);
+    --color-accent-content: oklch(38% 0.063 188.416);
+    --color-neutral: oklch(14% 0.005 285.823);
+    --color-neutral-content: oklch(92% 0.004 286.32);
+    --color-info: oklch(74% 0.16 232.661);
+    --color-info-content: oklch(29% 0.066 243.157);
+    --color-success: oklch(76% 0.177 163.223);
+    --color-success-content: oklch(37% 0.077 168.94);
+    --color-warning: oklch(82% 0.189 84.429);
+    --color-warning-content: oklch(41% 0.112 45.904);
+    --color-error: oklch(71% 0.194 13.428);
+    --color-error-content: oklch(27% 0.105 12.094);
+    --radius-selector: 0.5rem;
+    --radius-field: 0.25rem;
+    --radius-box: 0.5rem;
     --size-selector: 0.25rem;
     --size-field: 0.25rem;
     --border: 1px;
@@ -10379,463 +9535,6 @@ html[data-theme="business"] .dark\:bg-amber-900 {
   syntax: "*";
   inherits: false;
 }
-
-/* ==========================================================================
-   FINAL ULTIMATE OVERRIDES - MAXIMUM SPECIFICITY - MUST BE LAST IN FILE
-   ========================================================================== */
-
-/* Body background - absolute priority */
-html[data-theme="business"] body,
-body[data-theme="business"] {
-  background-color: oklch(12% 0.01 240) !important;
-  background: oklch(12% 0.01 240) !important;
-}
-
-/* Sidebar - absolute priority */
-html[data-theme="business"] body #sidebar,
-body[data-theme="business"] #sidebar {
-  background-color: oklch(18% 0.012 240) !important;
-  background: oklch(18% 0.012 240) !important;
-  border-right: 1px solid oklch(24% 0.016 240) !important;
-}
-
-/* Cards and containers - absolute priority */
-html[data-theme="business"] body .card,
-body[data-theme="business"] .card,
-html[data-theme="business"] body .stats,
-body[data-theme="business"] .stats {
-  background-color: oklch(22% 0.015 240) !important;
-  background: oklch(22% 0.015 240) !important;
-  border: 1px solid oklch(28% 0.02 240) !important;
-  box-shadow: 0 2px 12px oklch(8% 0.01 240 / 0.4) !important;
-}
-
-/* Tables - absolute priority */
-html[data-theme="business"] body .table,
-body[data-theme="business"] .table {
-  background-color: oklch(20% 0.013 240) !important;
-  background: oklch(20% 0.013 240) !important;
-  color: oklch(92% 0.008 240) !important;
-}
-
-/* Universal base color override - nuclear option */
-html[data-theme="business"] body [class*="bg-base"],
-body[data-theme="business"] [class*="bg-base"] {
-  background-color: oklch(22% 0.015 240) !important;
-  background: oklch(22% 0.015 240) !important;
-}
-
-/* Specific class overrides with maximum specificity */
-html[data-theme="business"] body .bg-base-100,
-body[data-theme="business"] .bg-base-100 {
-  background-color: oklch(12% 0.01 240) !important;
-  background: oklch(12% 0.01 240) !important;
-}
-
-html[data-theme="business"] body .bg-base-200,
-body[data-theme="business"] .bg-base-200 {
-  background-color: oklch(22% 0.015 240) !important;
-  background: oklch(22% 0.015 240) !important;
-}
-
-html[data-theme="business"] body .bg-base-300,
-body[data-theme="business"] .bg-base-300 {
-  background-color: oklch(28% 0.02 240) !important;
-  background: oklch(28% 0.02 240) !important;
-}
-
-/* Hover states - absolute priority */
-html[data-theme="business"] body .hover\:bg-base-300:hover,
-body[data-theme="business"] .hover\:bg-base-300:hover {
-  background-color: oklch(28% 0.02 240) !important;
-  background: oklch(28% 0.02 240) !important;
-}
-
-/* Text content color - absolute priority */
-html[data-theme="business"] body .text-base-content,
-body[data-theme="business"] .text-base-content,
-html[data-theme="business"] body [class*="text-base-content"],
-body[data-theme="business"] [class*="text-base-content"] {
-  color: oklch(95% 0.005 240) !important;
-}
-
-/* ============================================
-   ULTIMATE PRIORITY OVERRIDES - FORCE DARK MODE WITH HIGHEST SPECIFICITY
-   ============================================ */
-
-/* Body and main background - use extreme specificity */
-html[data-theme="business"] body.bg-base-100,
-html[data-theme="business"] div.bg-base-100,
-[data-theme="business"] body.bg-base-100,
-[data-theme="business"] div.bg-base-100,
-body[data-theme="business"].bg-base-100,
-div[data-theme="business"].bg-base-100 {
-  background-color: oklch(12% 0.01 240) !important;
-  background: oklch(12% 0.01 240) !important;
-}
-
-/* Auth container and main containers */
-html[data-theme="business"] #authContainer.bg-base-100,
-[data-theme="business"] #authContainer.bg-base-100 {
-  background-color: oklch(12% 0.01 240) !important;
-  background: oklch(12% 0.01 240) !important;
-}
-
-/* Sidebar - force proper dark tone */
-html[data-theme="business"] aside#sidebar.bg-base-200,
-[data-theme="business"] aside#sidebar.bg-base-200,
-html[data-theme="business"] #sidebar.bg-base-200,
-[data-theme="business"] #sidebar.bg-base-200 {
-  background-color: oklch(18% 0.012 240) !important;
-  background: oklch(18% 0.012 240) !important;
-  border-right: 1px solid oklch(24% 0.016 240) !important;
-}
-
-/* All cards and sections - force lighter appearance */
-html[data-theme="business"] section.card.bg-base-100,
-html[data-theme="business"] div.card.bg-base-100,
-[data-theme="business"] section.card.bg-base-100,
-[data-theme="business"] div.card.bg-base-100,
-html[data-theme="business"] .card.bg-base-100,
-[data-theme="business"] .card.bg-base-100 {
-  background-color: oklch(22% 0.015 240) !important;
-  background: oklch(22% 0.015 240) !important;
-  border: 1px solid oklch(28% 0.02 240) !important;
-  box-shadow: 0 2px 12px oklch(8% 0.01 240 / 0.4) !important;
-}
-
-/* Auth card and modals */
-html[data-theme="business"] div.bg-base-200,
-[data-theme="business"] div.bg-base-200 {
-  background-color: oklch(22% 0.015 240) !important;
-  background: oklch(22% 0.015 240) !important;
-}
-
-/* Collapsible elements */
-html[data-theme="business"] .collapse.bg-base-100,
-[data-theme="business"] .collapse.bg-base-100 {
-  background-color: oklch(22% 0.015 240) !important;
-  background: oklch(22% 0.015 240) !important;
-}
-
-/* Hover states */
-html[data-theme="business"] a.hover\:bg-base-300:hover,
-[data-theme="business"] a.hover\:bg-base-300:hover {
-  background-color: oklch(28% 0.02 240) !important;
-  background: oklch(28% 0.02 240) !important;
-}
-
-/* Universal override for any bg-base-* classes */
-html[data-theme="business"] [class*="bg-base-100"],
-[data-theme="business"] [class*="bg-base-100"] {
-  background-color: oklch(22% 0.015 240) !important;
-  background: oklch(22% 0.015 240) !important;
-}
-
-html[data-theme="business"] [class*="bg-base-200"],
-[data-theme="business"] [class*="bg-base-200"] {
-  background-color: oklch(22% 0.015 240) !important;
-  background: oklch(22% 0.015 240) !important;
-}
-
-/* Specific overrides for known problematic elements */
-html[data-theme="business"] body {
-  background-color: oklch(12% 0.01 240) !important;
-  background: oklch(12% 0.01 240) !important;
-}
-
-html[data-theme="business"] #sidebar {
-  background-color: oklch(18% 0.012 240) !important;
-  background: oklch(18% 0.012 240) !important;
-}
-
-/* Force all stats to be lighter */
-html[data-theme="business"] .stats,
-[data-theme="business"] .stats {
-  background-color: oklch(22% 0.015 240) !important;
-  background: oklch(22% 0.015 240) !important;
-  border: 1px solid oklch(28% 0.02 240) !important;
-}
-
-/* Force all cards to be lighter */
-html[data-theme="business"] .card,
-[data-theme="business"] .card {
-  background-color: oklch(22% 0.015 240) !important;
-  background: oklch(22% 0.015 240) !important;
-  border: 1px solid oklch(28% 0.02 240) !important;
-}
-
-/* ============================================
-   PROFESSIONAL DARK MODE - REFERENCE DESIGN MATCH
-   ============================================ */
-
-/* Clean dark background similar to reference */
-html[data-theme="business"],
-html[data-theme="business"] body,
-[data-theme="business"],
-[data-theme="business"] body {
-  background: oklch(12% 0.01 240) !important;
-  background-color: oklch(12% 0.01 240) !important;
-}
-
-/* Cards should be significantly lighter like in reference */
-html[data-theme="business"] .card,
-html[data-theme="business"] .card-body,
-body[data-theme="business"] .card,
-body[data-theme="business"] .card-body,
-[data-theme="business"] .card,
-[data-theme="business"] .card-body {
-  background: oklch(22% 0.015 240) !important;
-  background-color: oklch(22% 0.015 240) !important;
-  border: 1px solid oklch(28% 0.02 240) !important;
-  color: oklch(95% 0.005 240) !important;
-  box-shadow: 0 2px 12px oklch(8% 0.01 240 / 0.4) !important;
-}
-
-/* Stats cards with proper elevation like reference */
-html[data-theme="business"] .stats,
-body[data-theme="business"] .stats,
-[data-theme="business"] .stats {
-  background: oklch(22% 0.015 240) !important;
-  background-color: oklch(22% 0.015 240) !important;
-  border: 1px solid oklch(28% 0.02 240) !important;
-  box-shadow: 0 2px 12px oklch(8% 0.01 240 / 0.4) !important;
-}
-
-html[data-theme="business"] .stat,
-body[data-theme="business"] .stat,
-[data-theme="business"] .stat {
-  background: transparent !important;
-  background-color: transparent !important;
-  border-right: 1px solid oklch(28% 0.02 240) !important;
-  color: oklch(95% 0.005 240) !important;
-}
-
-/* Tables should be similar to cards but slightly darker for content distinction */
-html[data-theme="business"] .table,
-html[data-theme="business"] table,
-body[data-theme="business"] .table,
-body[data-theme="business"] table,
-[data-theme="business"] .table,
-[data-theme="business"] table {
-  background: oklch(20% 0.013 240) !important;
-  background-color: oklch(20% 0.013 240) !important;
-  border: 1px solid oklch(26% 0.018 240) !important;
-  color: oklch(92% 0.008 240) !important;
-}
-
-/* Table headers with subtle accent like reference */
-html[data-theme="business"] .table thead,
-html[data-theme="business"] .table thead tr,
-html[data-theme="business"] .table thead th,
-html[data-theme="business"] table thead,
-html[data-theme="business"] table thead tr,
-html[data-theme="business"] table thead th,
-body[data-theme="business"] .table thead,
-body[data-theme="business"] .table thead tr,
-body[data-theme="business"] .table thead th,
-[data-theme="business"] .table thead,
-[data-theme="business"] .table thead tr,
-[data-theme="business"] .table thead th {
-  background: oklch(24% 0.015 240) !important;
-  background-color: oklch(24% 0.015 240) !important;
-  color: oklch(92% 0.008 240) !important;
-  border-color: oklch(28% 0.02 240) !important;
-}
-
-/* Table hover states - subtle highlight like reference */
-html[data-theme="business"] .table tbody tr:hover,
-html[data-theme="business"] .table tbody tr:hover td,
-html[data-theme="business"] table tbody tr:hover,
-html[data-theme="business"] table tbody tr:hover td,
-body[data-theme="business"] .table tbody tr:hover,
-body[data-theme="business"] .table tbody tr:hover td,
-[data-theme="business"] .table tbody tr:hover,
-[data-theme="business"] .table tbody tr:hover td {
-  background: oklch(23% 0.014 240) !important;
-  background-color: oklch(23% 0.014 240) !important;
-  color: oklch(92% 0.008 240) !important;
-}
-
-/* Sidebar with proper elevation between background and cards */
-html[data-theme="business"] #sidebar,
-body[data-theme="business"] #sidebar,
-[data-theme="business"] #sidebar {
-  background: oklch(18% 0.012 240) !important;
-  background-color: oklch(18% 0.012 240) !important;
-  border-right: 1px solid oklch(24% 0.016 240) !important;
-}
-
-/* Special sections maintain card-like appearance */
-html[data-theme="business"] #ordersLowStockSection,
-html[data-theme="business"] #ordersLowStockSection .card,
-html[data-theme="business"] #ordersLowStockSection .card-body,
-body[data-theme="business"] #ordersLowStockSection,
-body[data-theme="business"] #ordersLowStockSection .card,
-body[data-theme="business"] #ordersLowStockSection .card-body,
-[data-theme="business"] #ordersLowStockSection,
-[data-theme="business"] #ordersLowStockSection .card,
-[data-theme="business"] #ordersLowStockSection .card-body {
-  background: oklch(22% 0.015 240) !important;
-  background-color: oklch(22% 0.015 240) !important;
-  border: 1px solid oklch(35% 0.08 45) !important; /* Subtle warning accent */
-  color: oklch(95% 0.005 240) !important;
-}
-
-/* Low stock tables maintain readability */
-html[data-theme="business"] #ordersLowStockSection .table,
-body[data-theme="business"] #ordersLowStockSection .table,
-[data-theme="business"] #ordersLowStockSection .table {
-  background: oklch(20% 0.013 240) !important;
-  background-color: oklch(20% 0.013 240) !important;
-  border: 1px solid oklch(26% 0.018 240) !important;
-  color: oklch(92% 0.008 240) !important;
-}
-
-/* User Management follows same pattern */
-html[data-theme="business"] #userManagementContainer,
-html[data-theme="business"] #userManagementContainer .card,
-html[data-theme="business"] #userManagementContainer .card-body,
-body[data-theme="business"] #userManagementContainer,
-body[data-theme="business"] #userManagementContainer .card,
-body[data-theme="business"] #userManagementContainer .card-body,
-[data-theme="business"] #userManagementContainer,
-[data-theme="business"] #userManagementContainer .card,
-[data-theme="business"] #userManagementContainer .card-body {
-  background: oklch(22% 0.015 240) !important;
-  background-color: oklch(22% 0.015 240) !important;
-  border: 1px solid oklch(28% 0.02 240) !important;
-  color: oklch(95% 0.005 240) !important;
-}
-
-html[data-theme="business"] #userManagementContainer .table,
-body[data-theme="business"] #userManagementContainer .table,
-[data-theme="business"] #userManagementContainer .table {
-  background: oklch(20% 0.013 240) !important;
-  background-color: oklch(20% 0.013 240) !important;
-  border: 1px solid oklch(26% 0.018 240) !important;
-  color: oklch(92% 0.008 240) !important;
-}
-
-/* Override bright backgrounds to maintain dark theme consistency */
-html[data-theme="business"] .bg-amber-50,
-html[data-theme="business"] .bg-amber-100,
-html[data-theme="business"] .bg-amber-200,
-html[data-theme="business"] .dark\:bg-amber-900,
-body[data-theme="business"] .bg-amber-50,
-body[data-theme="business"] .bg-amber-100,
-body[data-theme="business"] .bg-amber-200,
-body[data-theme="business"] .dark\:bg-amber-900,
-[data-theme="business"] .bg-amber-50,
-[data-theme="business"] .bg-amber-100,
-[data-theme="business"] .bg-amber-200,
-[data-theme="business"] .dark\:bg-amber-900 {
-  background: oklch(22% 0.015 240) !important;
-  background-color: oklch(22% 0.015 240) !important;
-  color: oklch(95% 0.005 240) !important;
-}
-
-/* Ensure card bodies are transparent to inherit card background */
-html[data-theme="business"] .card-body,
-body[data-theme="business"] .card-body,
-[data-theme="business"] .card-body {
-  background: transparent !important;
-  background-color: transparent !important;
-  color: oklch(95% 0.005 240) !important;
-}
-
-/* Update hardcoded Tailwind classes to match new scheme */
-[data-theme="business"] .dark\:bg-slate-700,
-[data-theme="business"] .dark\:bg-slate-800,
-[data-theme="business"] .dark\:bg-gray-700,
-[data-theme="business"] .dark\:bg-gray-800 {
-  background: oklch(22% 0.015 240) !important; /* Match card background */
-}
-
-[data-theme="business"] .dark\:bg-blue-800 {
-  background: oklch(25% 0.08 240) !important; /* Blue status variant */
-}
-
-[data-theme="business"] .dark\:bg-red-700,
-[data-theme="business"] .dark\:bg-red-800,
-[data-theme="business"] .dark\:bg-red-900 {
-  background: oklch(25% 0.12 30) !important; /* Red variants */
-}
-
-[data-theme="business"] .dark\:bg-green-700,
-[data-theme="business"] .dark\:bg-green-800 {
-  background: oklch(25% 0.10 140) !important; /* Green variants */
-}
-
-[data-theme="business"] .dark\:bg-yellow-700 {
-  background: oklch(28% 0.12 80) !important; /* Yellow variant */
-}
-
-/* === PROFESSIONAL DARK MODE - REFERENCE DESIGN IMPLEMENTATION === */
-/* Clear visual hierarchy matching reference image */
-
-/* Cards and containers - clearly elevated above background */
-[data-theme="business"] .card,
-[data-theme="business"] .stats,
-[data-theme="business"] .stat,
-[data-theme="business"] .alert,
-[data-theme="business"] .modal-box {
-  background: oklch(22% 0.015 240) !important;
-  border: 1px solid oklch(28% 0.02 240) !important;
-  box-shadow: 0 2px 12px oklch(8% 0.01 240 / 0.4) !important;
-}
-
-/* Tables - readable but not overpowering */
-[data-theme="business"] .table,
-[data-theme="business"] table {
-  background: oklch(20% 0.013 240) !important;
-  color: oklch(92% 0.008 240) !important;
-}
-
-/* Table headers with subtle differentiation */
-[data-theme="business"] .table thead tr,
-[data-theme="business"] .table thead th {
-  background: oklch(24% 0.015 240) !important;
-}
-
-/* Subtle hover states */
-[data-theme="business"] .table tbody tr:hover {
-  background: oklch(23% 0.014 240) !important;
-}
-
-/* Interactive elements */
-[data-theme="business"] .input,
-[data-theme="business"] .select,
-[data-theme="business"] .textarea {
-  background: oklch(20% 0.013 240) !important;
-  border: 1px solid oklch(26% 0.018 240) !important;
-}
-
-/* Dropdown menus */
-[data-theme="business"] .dropdown-content {
-  background: oklch(22% 0.015 240) !important;
-  border: 1px solid oklch(28% 0.02 240) !important;
-}
-
-/* Text and interface overrides for consistency */
-[data-theme="business"] .dark\:text-gray-200,
-[data-theme="business"] .dark\:text-gray-300 {
-  color: oklch(90% 0.01 240) !important;
-}
-
-[data-theme="business"] .dark\:text-white {
-  color: oklch(95% 0.005 240) !important;
-}
-
-[data-theme="business"] .dark\:border-gray-600 {
-  border-color: oklch(28% 0.02 240) !important;
-}
-
-[data-theme="business"] .dark\:hover\:bg-slate-700:hover,
-[data-theme="business"] .dark\:hover\:bg-gray-700:hover {
-  background: oklch(24% 0.016 240) !important;
-}
-
 @property --tw-duration {
   syntax: "*";
   inherits: false;

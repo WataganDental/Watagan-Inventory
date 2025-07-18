@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Report Print View</title>
+    <style>
+        @media print {
+            body { margin: 0; padding: 0; }
+            .no-print { display: none; }
+            .page-break { page-break-before: always; }
+            .order-item { break-inside: avoid; }
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.4;
+            color: #000;
+            background: white;
+            margin: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+        }
+
+        .order-grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .order-item {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .order-details h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+
+        .order-details p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .qr-section {
+            text-align: center;
+        }
+
+        .qr-code {
+            border: 1px solid #eee;
+        }
+
+        .qr-label {
+            font-size: 10px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .print-button:hover {
+            background: #218838;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-cancelled { background: #f8d7da; color: #721c24; }
+    </style>
+    <!-- Load QRCode library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">🖨️ Print as PDF</button>
+    
+    <div class="header">
+        <h1>Order Report with QR Codes</h1>
+        <p>Generated: <span id="dateGenerated"></span></p>
+        <p>Total Orders: <span id="orderCount"></span></p>
+    </div>
+
+    <div id="orderContainer" class="order-grid">
+        <!-- Orders will be generated here -->
+    </div>
+
+    <script>
+        // Get order data from localStorage
+        const orderData = JSON.parse(localStorage.getItem('orderPrintData') || '[]');
+
+        // Set header information
+        document.getElementById('dateGenerated').textContent = new Date().toLocaleString();
+        document.getElementById('orderCount').textContent = orderData.length;
+
+        // Generate order report
+        async function generateOrderReport() {
+            const container = document.getElementById('orderContainer');
+            
+            for (let i = 0; i < orderData.length; i++) {
+                const order = orderData[i];
+                
+                const orderItem = document.createElement('div');
+                orderItem.className = 'order-item';
+                
+                // Order details section
+                const orderDetails = document.createElement('div');
+                orderDetails.className = 'order-details';
+                orderDetails.innerHTML = `
+                    <h3>Order #${i + 1}</h3>
+                    <p><strong>Product:</strong> ${order.productName || 'Unknown Product'}</p>
+                    <p><strong>Quantity:</strong> ${order.quantity || 0}</p>
+                    <p><strong>Status:</strong> <span class="status-badge status-${order.status || 'pending'}">${(order.status || 'pending').toUpperCase()}</span></p>
+                    <p><strong>Date:</strong> ${new Date(order.dateCreated).toLocaleString()}</p>
+                    ${order.supplier ? `<p><strong>Supplier:</strong> ${order.supplier}</p>` : ''}
+                `;
+                
+                // QR code section
+                const qrSection = document.createElement('div');
+                qrSection.className = 'qr-section';
+                
+                const qrCanvas = document.createElement('canvas');
+                qrCanvas.className = 'qr-code';
+                
+                const qrLabel = document.createElement('div');
+                qrLabel.className = 'qr-label';
+                const qrValue = order.productId || order.id || order.productName || 'Order';
+                qrLabel.textContent = `QR: ${qrValue.substring(0, 15)}`;
+                
+                qrSection.appendChild(qrCanvas);
+                qrSection.appendChild(qrLabel);
+                
+                orderItem.appendChild(orderDetails);
+                orderItem.appendChild(qrSection);
+                container.appendChild(orderItem);
+                
+                // Generate QR code using qrcode-generator
+                try {
+                    if (typeof qrcode !== 'undefined') {
+                        const qr = qrcode(0, 'M');
+                        qr.addData(qrValue);
+                        qr.make();
+                        
+                        // Create QR as image instead of canvas
+                        const qrImage = document.createElement('img');
+                        qrImage.src = qr.createDataURL(4, 0);
+                        qrImage.className = 'qr-code';
+                        qrImage.style.width = '100px';
+                        qrImage.style.height = '100px';
+                        qrImage.alt = `QR Code for ${qrValue}`;
+                        
+                        // Replace canvas with image
+                        qrSection.removeChild(qrCanvas);
+                        qrSection.insertBefore(qrImage, qrLabel);
+                        
+                        console.log('QR code generated for order:', qrValue);
+                    } else {
+                        throw new Error('qrcode library not available');
+                    }
+                } catch (error) {
+                    console.error('QR generation failed:', error);
+                    qrCanvas.style.border = '1px solid #ccc';
+                    qrCanvas.style.background = '#f0f0f0';
+                    qrCanvas.width = 100;
+                    qrCanvas.height = 100;
+                }
+            }
+        }
+
+        // Wait for qrcode library to load, then generate codes
+        function initOrderGeneration() {
+            if (typeof qrcode !== 'undefined') {
+                console.log('qrcode library loaded, generating order report...');
+                generateOrderReport();
+            } else {
+                console.log('Waiting for qrcode library...');
+                setTimeout(initOrderGeneration, 200);
+            }
+        }
+
+        // Start generation when page loads
+        window.addEventListener('load', function() {
+            console.log('Page loaded, initializing order generation...');
+            setTimeout(initOrderGeneration, 100);
+        });
+
+        // Fallback: also try after DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM ready, checking order generation...');
+            setTimeout(initOrderGeneration, 100);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supplier Report</title>
+    <style>
+        /* Print-specific styles */
+        @media print {
+            body { margin: 0; padding: 0; }
+            .no-print { display: none; }
+            .page-break { page-break-before: always; }
+            .supplier-section { break-inside: avoid; }
+            table { break-inside: avoid; }
+        }
+
+        /* Screen and print styles */
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.4;
+            color: #000;
+            background: white;
+            margin: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+        }
+
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 24px;
+        }
+
+        .header-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            font-size: 12px;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .supplier-section {
+            margin: 30px 0;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .supplier-header {
+            background: #007bff;
+            color: white;
+            padding: 15px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .supplier-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+        }
+
+        .supplier-stat {
+            text-align: center;
+        }
+
+        .supplier-stat-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .supplier-stat-label {
+            font-size: 11px;
+            color: #6c757d;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            font-size: 10px;
+        }
+
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .print-button:hover {
+            background: #0056b3;
+        }
+
+        .no-suppliers {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        .low-stock-item {
+            background-color: #fff3cd;
+        }
+
+        .out-of-stock-item {
+            background-color: #f8d7da;
+        }
+
+        /* Hide print button when printing */
+        @media print {
+            .print-button { display: none; }
+        }
+
+        @media print {
+            .summary-stats, .supplier-stats {
+                background: none !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .supplier-header {
+                background-color: #007bff !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .low-stock-item {
+                background-color: #fff3cd !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .out-of-stock-item {
+                background-color: #f8d7da !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">🖨️ Print as PDF</button>
+    
+    <div class="header">
+        <h1>Supplier Analysis Report</h1>
+        <div class="header-info">
+            <div>Generated: <span id="dateGenerated"></span></div>
+            <div>Total Suppliers: <span id="totalSuppliers"></span></div>
+            <div>Total Products: <span id="totalProducts"></span></div>
+        </div>
+    </div>
+
+    <div class="summary-stats">
+        <div class="stat-item">
+            <div class="stat-value" id="activeSuppliers">0</div>
+            <div class="stat-label">Active Suppliers</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="totalValue">$0</div>
+            <div class="stat-label">Total Inventory Value</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="avgProductsPerSupplier">0</div>
+            <div class="stat-label">Avg Products/Supplier</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="totalLowStock">0</div>
+            <div class="stat-label">Items Needing Reorder</div>
+        </div>
+    </div>
+
+    <div id="noSuppliersMessage" class="no-suppliers" style="display: none;">
+        <h2>No Supplier Data Available</h2>
+        <p>No inventory items have supplier information assigned.</p>
+    </div>
+
+    <div id="suppliersContainer">
+        <!-- Supplier sections will be generated here -->
+    </div>
+
+    <script>
+        // Get data from URL parameters or localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        const inventoryData = JSON.parse(urlParams.get('data') || localStorage.getItem('supplierPrintData') || '[]');
+
+        // Debug logging
+        console.log('Supplier Report loaded with data:', {
+            inventoryDataLength: inventoryData.length,
+            sampleItem: inventoryData[0] || 'No items'
+        });
+
+        // Set header information
+        document.getElementById('dateGenerated').textContent = new Date().toLocaleString();
+
+        // Group inventory by supplier
+        function groupBySupplier() {
+            const supplierGroups = {};
+            
+            inventoryData.forEach(item => {
+                const supplier = item.supplier || 'Unknown Supplier';
+                if (!supplierGroups[supplier]) {
+                    supplierGroups[supplier] = [];
+                }
+                supplierGroups[supplier].push(item);
+            });
+
+            return supplierGroups;
+        }
+
+        // Calculate and display summary statistics
+        function calculateStats() {
+            const supplierGroups = groupBySupplier();
+            const suppliers = Object.keys(supplierGroups);
+            
+            let totalValue = 0;
+            let totalLowStock = 0;
+
+            inventoryData.forEach(item => {
+                const cost = parseFloat(item.cost) || 0;
+                const quantity = parseInt(item.quantity) || 0;
+                const minQuantity = parseInt(item.minQuantity) || 0;
+
+                totalValue += cost * quantity;
+
+                if (quantity === 0 || (minQuantity > 0 && quantity <= minQuantity)) {
+                    totalLowStock++;
+                }
+            });
+
+            const activeSuppliers = suppliers.filter(s => s !== 'Unknown Supplier').length;
+            const avgProductsPerSupplier = suppliers.length > 0 ? Math.round(inventoryData.length / suppliers.length) : 0;
+
+            document.getElementById('totalSuppliers').textContent = suppliers.length;
+            document.getElementById('totalProducts').textContent = inventoryData.length;
+            document.getElementById('activeSuppliers').textContent = activeSuppliers;
+            document.getElementById('totalValue').textContent = `$${totalValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('avgProductsPerSupplier').textContent = avgProductsPerSupplier;
+            document.getElementById('totalLowStock').textContent = totalLowStock;
+        }
+
+        // Generate supplier sections
+        function generateSupplierSections() {
+            const supplierGroups = groupBySupplier();
+            const suppliers = Object.keys(supplierGroups);
+            const container = document.getElementById('suppliersContainer');
+
+            if (suppliers.length === 0) {
+                document.getElementById('noSuppliersMessage').style.display = 'block';
+                return;
+            }
+
+            // Sort suppliers by total value (descending)
+            suppliers.sort((a, b) => {
+                const aValue = supplierGroups[a].reduce((sum, item) => sum + (parseFloat(item.cost) || 0) * (parseInt(item.quantity) || 0), 0);
+                const bValue = supplierGroups[b].reduce((sum, item) => sum + (parseFloat(item.cost) || 0) * (parseInt(item.quantity) || 0), 0);
+                return bValue - aValue;
+            });
+
+            suppliers.forEach(supplier => {
+                const items = supplierGroups[supplier];
+                const section = createSupplierSection(supplier, items);
+                container.appendChild(section);
+            });
+        }
+
+        // Create individual supplier section
+        function createSupplierSection(supplierName, items) {
+            const section = document.createElement('div');
+            section.className = 'supplier-section';
+
+            // Calculate supplier stats
+            let totalValue = 0;
+            let lowStockCount = 0;
+            let outOfStockCount = 0;
+
+            items.forEach(item => {
+                const cost = parseFloat(item.cost) || 0;
+                const quantity = parseInt(item.quantity) || 0;
+                const minQuantity = parseInt(item.minQuantity) || 0;
+
+                totalValue += cost * quantity;
+
+                if (quantity === 0) {
+                    outOfStockCount++;
+                } else if (minQuantity > 0 && quantity <= minQuantity) {
+                    lowStockCount++;
+                }
+            });
+
+            // Create supplier header
+            const header = document.createElement('div');
+            header.className = 'supplier-header';
+            header.textContent = `${supplierName} (${items.length} products)`;
+
+            // Create supplier stats
+            const stats = document.createElement('div');
+            stats.className = 'supplier-stats';
+            stats.innerHTML = `
+                <div class="supplier-stat">
+                    <div class="supplier-stat-value">$${totalValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                    <div class="supplier-stat-label">Total Value</div>
+                </div>
+                <div class="supplier-stat">
+                    <div class="supplier-stat-value">${lowStockCount}</div>
+                    <div class="supplier-stat-label">Low Stock Items</div>
+                </div>
+                <div class="supplier-stat">
+                    <div class="supplier-stat-value">${outOfStockCount}</div>
+                    <div class="supplier-stat-label">Out of Stock</div>
+                </div>
+            `;
+
+            // Create products table
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Product Name</th>
+                        <th>Category</th>
+                        <th>Current Qty</th>
+                        <th>Min Qty</th>
+                        <th>Unit Cost</th>
+                        <th>Total Value</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${items.map(item => {
+                        const quantity = parseInt(item.quantity) || 0;
+                        const minQuantity = parseInt(item.minQuantity) || 0;
+                        const cost = parseFloat(item.cost) || 0;
+                        const itemValue = cost * quantity;
+
+                        let rowClass = '';
+                        let status = 'In Stock';
+
+                        if (quantity === 0) {
+                            rowClass = 'out-of-stock-item';
+                            status = 'Out of Stock';
+                        } else if (minQuantity > 0 && quantity <= minQuantity) {
+                            rowClass = 'low-stock-item';
+                            status = 'Low Stock';
+                        }
+
+                        return `
+                            <tr class="${rowClass}">
+                                <td>${item.name || 'Unknown Product'}</td>
+                                <td>${item.category || 'N/A'}</td>
+                                <td>${quantity}</td>
+                                <td>${minQuantity}</td>
+                                <td>$${cost.toFixed(2)}</td>
+                                <td>$${itemValue.toFixed(2)}</td>
+                                <td>${item.location || 'N/A'}</td>
+                                <td>${status}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            `;
+
+            section.appendChild(header);
+            section.appendChild(stats);
+            section.appendChild(table);
+
+            return section;
+        }
+
+        // Initialize the report
+        window.addEventListener('load', function() {
+            console.log('Supplier Report: Page loaded');
+            calculateStats();
+            generateSupplierSections();
+        });
+
+        // Auto-print after 2 seconds (optional)
+        // setTimeout(() => window.print(), 2000);
+    </script>
+</body>
+</html>

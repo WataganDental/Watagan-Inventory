@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory App Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .pass { color: green; }
+        .fail { color: red; }
+        .warning { color: orange; }
+    </style>
+</head>
+<body>
+    <h1>Inventory App Function Tests</h1>
+    
+    <div class="test-section">
+        <h2>Global Functions Test</h2>
+        <div id="function-tests"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Element ID Tests</h2>
+        <div id="element-tests"></div>
+    </div>
+
+    <script>
+        // Test global functions
+        const functionTests = [
+            'showView',
+            'displayInventory',
+            'submitProduct',
+            'updateDashboard',
+            'updateInventoryStats',
+            'updateLowStockAlerts',
+            'viewQRCode',
+            'generateUUID',
+            'debounce',
+            'logActivity',
+            'toggleSidebar'
+        ];
+
+        // Test dashboard element IDs
+        const dashboardElements = [
+            'dashboardTotalProducts',
+            'dashboardLowStockItems',
+            'dashboardOutOfStockItems',
+            'dashboardTotalValue',
+            'recentActivityList'
+        ];
+
+        // Test inventory filter elements
+        const inventoryElements = [
+            'inventorySearchInput',
+            'filterSupplier',
+            'filterLocation',
+            'inventoryTable'
+        ];
+
+        function runTests() {
+            const functionTestDiv = document.getElementById('function-tests');
+            const elementTestDiv = document.getElementById('element-tests');
+            
+            let functionResults = '<h3>Global Functions:</h3>';
+            functionTests.forEach(func => {
+                const exists = typeof window[func] === 'function';
+                functionResults += `<div class="${exists ? 'pass' : 'fail'}">
+                    ${func}: ${exists ? 'PASS' : 'FAIL'}
+                </div>`;
+            });
+            
+            let elementResults = '<h3>Dashboard Elements:</h3>';
+            dashboardElements.forEach(id => {
+                const exists = document.getElementById(id) !== null;
+                elementResults += `<div class="${exists ? 'pass' : 'fail'}">
+                    ${id}: ${exists ? 'FOUND' : 'MISSING'}
+                </div>`;
+            });
+            
+            elementResults += '<h3>Inventory Elements:</h3>';
+            inventoryElements.forEach(id => {
+                const exists = document.getElementById(id) !== null;
+                elementResults += `<div class="${exists ? 'pass' : 'fail'}">
+                    ${id}: ${exists ? 'FOUND' : 'MISSING'}
+                </div>`;
+            });
+            
+            functionTestDiv.innerHTML = functionResults;
+            elementTestDiv.innerHTML = elementResults;
+        }
+
+        // Run tests when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                runTests();
+            }, 2000); // Wait for app to initialize
+        });
+    </script>
+
+    <!-- Include the main app -->
+    <script type="module" src="./js/app-new.js"></script>
+</body>
+</html>

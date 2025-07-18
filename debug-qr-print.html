@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug QR Print Issue</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; background: #f9f9f9; }
+        button { padding: 10px 20px; margin: 10px; background: #007bff; color: white; border: none; cursor: pointer; }
+        pre { background: #f5f5f5; padding: 10px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>Debug QR Print Issue</h1>
+    
+    <div class="debug-section">
+        <h2>LocalStorage Debug</h2>
+        <button onclick="checkLocalStorage()">Check LocalStorage</button>
+        <button onclick="clearLocalStorage()">Clear LocalStorage</button>
+        <button onclick="setTestData()">Set Test Data</button>
+        <pre id="localStorage-result"></pre>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Test QR Print Views</h2>
+        <button onclick="testQRPrint()">Test QR Print View</button>
+        <button onclick="testOrderPrint()">Test Order Print View</button>
+        <pre id="test-result"></pre>
+    </div>
+    
+    <script>
+        function checkLocalStorage() {
+            const result = document.getElementById('localStorage-result');
+            const data = {
+                printData: localStorage.getItem('printData'),
+                orderPrintData: localStorage.getItem('orderPrintData'),
+                inventoryPrintData: localStorage.getItem('inventoryPrintData'),
+                qrPrintData: localStorage.getItem('qrPrintData'),
+                allKeys: Object.keys(localStorage)
+            };
+            
+            result.textContent = JSON.stringify(data, null, 2);
+        }
+        
+        function clearLocalStorage() {
+            localStorage.clear();
+            document.getElementById('localStorage-result').textContent = 'LocalStorage cleared.';
+        }
+        
+        function setTestData() {
+            const testData = [
+                { id: 'TEST001', name: 'Test Product 1', quantity: 10, location: 'A1', cost: 15.99, supplier: 'Test Supplier' },
+                { id: 'TEST002', name: 'Test Product 2', quantity: 5, location: 'B2', cost: 25.50, supplier: 'Another Supplier' },
+                { id: 'TEST003', name: 'Test Product 3', quantity: 8, location: 'C3', cost: 12.75, supplier: 'Third Supplier' }
+            ];
+            
+            localStorage.setItem('printData', JSON.stringify(testData));
+            localStorage.setItem('orderPrintData', JSON.stringify(testData));
+            
+            document.getElementById('localStorage-result').textContent = 'Test data stored in localStorage.';
+        }
+        
+        function testQRPrint() {
+            const result = document.getElementById('test-result');
+            result.textContent = 'Opening QR Print View...';
+            
+            const printWindow = window.open('public/qr-print-view.html', '_blank');
+            
+            if (printWindow) {
+                result.textContent = 'QR Print View opened. Check console for errors.';
+            } else {
+                result.textContent = 'Failed to open QR Print View. Check popup blocker.';
+            }
+        }
+        
+        function testOrderPrint() {
+            const result = document.getElementById('test-result');
+            result.textContent = 'Opening Order Print View...';
+            
+            const printWindow = window.open('public/order-print-view.html', '_blank');
+            
+            if (printWindow) {
+                result.textContent = 'Order Print View opened. Check console for errors.';
+            } else {
+                result.textContent = 'Failed to open Order Print View. Check popup blocker.';
+            }
+        }
+        
+        // Auto-check localStorage on load
+        window.addEventListener('load', function() {
+            checkLocalStorage();
+        });
+    </script>
+</body>
+</html>

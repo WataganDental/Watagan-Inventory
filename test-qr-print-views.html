@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Print Views Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        button { padding: 10px 20px; margin: 10px; background: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin-top: 10px; padding: 10px; background: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <h1>QR Print Views Test</h1>
+    
+    <div class="test-section">
+        <h2>QR Print View Test</h2>
+        <p>This will test the main QR print view with sample data.</p>
+        <button onclick="testQRPrintView()">Test QR Print View</button>
+        <div id="qr-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Order Print View Test</h2>
+        <p>This will test the order print view with sample order data.</p>
+        <button onclick="testOrderPrintView()">Test Order Print View</button>
+        <div id="order-result" class="result"></div>
+    </div>
+    
+    <script>
+        function testQRPrintView() {
+            const resultDiv = document.getElementById('qr-result');
+            resultDiv.innerHTML = 'Testing QR Print View...';
+            
+            // Set sample data for QR print
+            const sampleData = [
+                { id: 'TEST001', name: 'Test Item 1', location: 'A1', quantity: 10 },
+                { id: 'TEST002', name: 'Test Item 2', location: 'B2', quantity: 5 },
+                { id: 'TEST003', name: 'Test Item 3', location: 'C3', quantity: 15 }
+            ];
+            
+            localStorage.setItem('printData', JSON.stringify(sampleData));
+            
+            // Open QR print view
+            const printWindow = window.open('qr-print-view.html', '_blank');
+            
+            // Check if window opened successfully
+            if (printWindow) {
+                resultDiv.innerHTML = 'QR Print View opened. Check for QR codes generation.';
+                
+                // Set up a check for the window
+                setTimeout(() => {
+                    if (printWindow.closed) {
+                        resultDiv.innerHTML = 'QR Print View was opened and closed.';
+                    } else {
+                        resultDiv.innerHTML = 'QR Print View is still open. Check for QR codes.';
+                    }
+                }, 3000);
+            } else {
+                resultDiv.innerHTML = 'Failed to open QR Print View. Check popup blocker.';
+            }
+        }
+        
+        function testOrderPrintView() {
+            const resultDiv = document.getElementById('order-result');
+            resultDiv.innerHTML = 'Testing Order Print View...';
+            
+            // Set sample order data
+            const sampleOrderData = [
+                { id: 'ORDER001', productId: 'PROD001', productName: 'Product 1', quantity: 2, location: 'A1' },
+                { id: 'ORDER002', productId: 'PROD002', productName: 'Product 2', quantity: 1, location: 'B2' },
+                { id: 'ORDER003', productId: 'PROD003', productName: 'Product 3', quantity: 3, location: 'C3' }
+            ];
+            
+            localStorage.setItem('orderPrintData', JSON.stringify(sampleOrderData));
+            
+            // Open order print view
+            const printWindow = window.open('order-print-view.html', '_blank');
+            
+            // Check if window opened successfully
+            if (printWindow) {
+                resultDiv.innerHTML = 'Order Print View opened. Check for QR codes generation.';
+                
+                // Set up a check for the window
+                setTimeout(() => {
+                    if (printWindow.closed) {
+                        resultDiv.innerHTML = 'Order Print View was opened and closed.';
+                    } else {
+                        resultDiv.innerHTML = 'Order Print View is still open. Check for QR codes.';
+                    }
+                }, 3000);
+            } else {
+                resultDiv.innerHTML = 'Failed to open Order Print View. Check popup blocker.';
+            }
+        }
+        
+        // Clean up function
+        function clearTestData() {
+            localStorage.removeItem('printData');
+            localStorage.removeItem('orderPrintData');
+            document.getElementById('qr-result').innerHTML = '';
+            document.getElementById('order-result').innerHTML = '';
+        }
+        
+        // Add cleanup button
+        window.addEventListener('load', function() {
+            const cleanupButton = document.createElement('button');
+            cleanupButton.textContent = 'Clear Test Data';
+            cleanupButton.onclick = clearTestData;
+            cleanupButton.style.background = '#dc3545';
+            document.body.appendChild(cleanupButton);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orders Debug Test</title>
+    <script src="https://www.gstatic.com/firebasejs/9.20.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.20.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.20.0/firebase-auth-compat.js"></script>
+    <link href="./css/output.css" rel="stylesheet">
+</head>
+<body class="bg-base-100">
+    <div class="container mx-auto p-4">
+        <h1 class="text-2xl font-bold mb-4">Orders Debug Test</h1>
+        
+        <div class="mb-4">
+            <h3 class="font-bold mb-2">Authentication Test:</h3>
+            <input type="email" id="testEmail" placeholder="Email" class="input input-bordered mr-2" value="test@example.com">
+            <input type="password" id="testPassword" placeholder="Password" class="input input-bordered mr-2" value="password123">
+            <button id="signInBtn" class="btn btn-primary">Sign In</button>
+            <button id="signOutBtn" class="btn btn-secondary">Sign Out</button>
+            <div id="authStatus" class="mt-2 text-sm"></div>
+        </div>
+            <label class="label">
+                <span class="label-text">Status Filter:</span>
+            </label>
+            <select id="filterOrderStatus" class="select select-bordered w-full max-w-xs">
+                <option value="">All Orders</option>
+                <option value="pending" selected>Pending</option>
+                <option value="received">Received</option>
+                <option value="backordered">Backordered</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+        </div>
+        
+        <button id="loadOrdersBtn" class="btn btn-primary mb-4">Load Orders</button>
+        <button id="testDatabaseBtn" class="btn btn-secondary mb-4 ml-2">Test Database Connection</button>
+        
+        <div id="debugOutput" class="bg-gray-100 p-4 rounded mb-4 max-h-64 overflow-y-auto">
+            <h3 class="font-bold">Debug Output:</h3>
+            <div id="debugLog"></div>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="table table-zebra w-full">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Supplier</th>
+                        <th>Items</th>
+                        <th>Total Value</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="ordersTableBody">
+                    <tr>
+                        <td colspan="7" class="text-center p-4">Click "Load Orders" to test</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDblv8_lDl7XjgJYTxOkhFSf-MJJhMbFUg",
+            authDomain: "inventory-management-86c7c.firebaseapp.com",
+            projectId: "inventory-management-86c7c",
+            storageBucket: "inventory-management-86c7c.appspot.com",
+            messagingSenderId: "1038718006800",
+            appId: "1:1038718006800:web:e1da3eea3b63f1b4c3b7e8"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        window.db = firebase.firestore();
+
+        // Auth state monitoring
+        firebase.auth().onAuthStateChanged((user) => {
+            const authStatus = document.getElementById('authStatus');
+            if (user) {
+                authStatus.innerHTML = `<span class="text-green-600">Signed in as: ${user.email || user.uid}</span>`;
+                addDebugLog(`User signed in: ${user.email || user.uid}`);
+            } else {
+                authStatus.innerHTML = `<span class="text-red-600">Not signed in</span>`;
+                addDebugLog('User signed out');
+            }
+        });
+
+        // Sign in button
+        document.getElementById('signInBtn').addEventListener('click', async () => {
+            const email = document.getElementById('testEmail').value;
+            const password = document.getElementById('testPassword').value;
+            
+            try {
+                addDebugLog(`Attempting to sign in with email: ${email}`);
+                await firebase.auth().signInWithEmailAndPassword(email, password);
+                addDebugLog('Sign in successful');
+            } catch (error) {
+                addDebugLog(`Sign in failed: ${error.message}`);
+            }
+        });
+
+        // Sign out button
+        document.getElementById('signOutBtn').addEventListener('click', async () => {
+            try {
+                await firebase.auth().signOut();
+                addDebugLog('Signed out successfully');
+            } catch (error) {
+                addDebugLog(`Sign out failed: ${error.message}`);
+            }
+        });
+
+        // Debug logging
+        let debugLog = [];
+        function addDebugLog(message) {
+            debugLog.push(`[${new Date().toLocaleTimeString()}] ${message}`);
+            document.getElementById('debugLog').innerHTML = debugLog.join('<br>');
+            console.log(message);
+        }
+
+        // Import orders manager
+        import('./js/modules/orders-manager.js').then(module => {
+            window.ordersManager = new module.OrdersManager();
+            addDebugLog('Orders manager loaded successfully');
+        }).catch(error => {
+            addDebugLog(`Error loading orders manager: ${error.message}`);
+        });
+
+        // Test database connection
+        document.getElementById('testDatabaseBtn').addEventListener('click', async () => {
+            try {                
+                addDebugLog('Testing database connection...');
+                
+                // Check if user is authenticated
+                const user = firebase.auth().currentUser;
+                if (!user) {
+                    addDebugLog('ERROR: No user authenticated. Please sign in first.');
+                    return;
+                } else {
+                    addDebugLog(`User authenticated: ${user.email || user.uid}`);
+                }
+                
+                const snapshot = await window.db.collection('orders').limit(1).get();
+                addDebugLog(`Database test successful. Total orders available: ${snapshot.docs.length > 0 ? 'at least 1' : '0'}`);
+                
+                // Try to get total count
+                const allSnapshot = await window.db.collection('orders').get();
+                addDebugLog(`Total orders in database: ${allSnapshot.size}`);
+                
+                // Show sample orders if available
+                if (!allSnapshot.empty) {
+                    addDebugLog('Sample orders:');
+                    allSnapshot.docs.slice(0, 3).forEach(doc => {
+                        const data = doc.data();
+                        addDebugLog(`- Order ${doc.id}: status="${data.status}", supplier="${data.supplier}"`);
+                    });
+                } else {
+                    addDebugLog('No orders found in database');
+                }
+            } catch (error) {
+                addDebugLog(`Database test failed: ${error.message}`);
+                addDebugLog(`Error code: ${error.code}`);
+                if (error.code === 'permission-denied') {
+                    addDebugLog('This is likely a permissions issue. Check Firestore rules or user role.');
+                }
+            }
+        });
+
+        // Load orders button
+        document.getElementById('loadOrdersBtn').addEventListener('click', async () => {
+            if (!window.ordersManager) {
+                addDebugLog('Orders manager not available');
+                return;
+            }
+
+            const statusFilter = document.getElementById('filterOrderStatus').value;
+            addDebugLog(`Loading orders with status filter: "${statusFilter}"`);
+
+            try {
+                await window.ordersManager.displayOrders(statusFilter, '');
+                addDebugLog('Orders loaded successfully');
+            } catch (error) {
+                addDebugLog(`Error loading orders: ${error.message}`);
+            }
+        });
+
+        // Ready message
+        setTimeout(() => {
+            addDebugLog('Page loaded. Please sign in first, then test database connection.');
+        }, 1000);
+    </script>
+</body>
+</html>

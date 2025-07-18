@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Function Test - Watagan Inventory</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .pass { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .fail { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        button { margin: 5px; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Watagan Inventory - Function Test Page</h1>
+    <p>This page tests if the main functions are properly exported and accessible.</p>
+    
+    <div id="test-results"></div>
+    
+    <h2>Manual Function Tests</h2>
+    <button onclick="testPhotoCapture()">Test Photo Capture</button>
+    <button onclick="testReports()">Test PDF Reports</button>
+    <button onclick="testInventoryDisplay()">Test Inventory Display</button>
+    
+    <script>
+        function addTestResult(name, passed, details = '') {
+            const resultsDiv = document.getElementById('test-results');
+            const div = document.createElement('div');
+            div.className = `test-result ${passed ? 'pass' : 'fail'}`;
+            div.innerHTML = `<strong>${name}:</strong> ${passed ? 'PASS' : 'FAIL'} ${details}`;
+            resultsDiv.appendChild(div);
+        }
+        
+        function runTests() {
+            console.log('Running function availability tests...');
+            
+            // Test if global functions exist
+            addTestResult('window.startPhotoCapture', typeof window.startPhotoCapture === 'function');
+            addTestResult('window.takePhoto', typeof window.takePhoto === 'function');
+            addTestResult('window.cancelPhoto', typeof window.cancelPhoto === 'function');
+            addTestResult('window.generateFastOrderReportPDF', typeof window.generateFastOrderReportPDF === 'function');
+            addTestResult('window.generateOrderReportPDFWithQRCodes', typeof window.generateOrderReportPDFWithQRCodes === 'function');
+            addTestResult('window.generateAllQRCodesPDF', typeof window.generateAllQRCodesPDF === 'function');
+            addTestResult('window.generateProductUsageChart', typeof window.generateProductUsageChart === 'function');
+            addTestResult('window.displayInventory', typeof window.displayInventory === 'function');
+            
+            // Test if app instance exists
+            addTestResult('window.app exists', typeof window.app === 'object' && window.app !== null);
+            
+            if (window.app) {
+                addTestResult('app.productManager', typeof window.app.productManager === 'object');
+                addTestResult('app.inventoryDisplay', typeof window.app.inventoryDisplay === 'object');
+                addTestResult('app.ordersManager', typeof window.app.ordersManager === 'object');
+                addTestResult('app.reportsManager', typeof window.app.reportsManager === 'object');
+            }
+            
+            // Test key HTML elements exist
+            addTestResult('totalProductsCount element', document.getElementById('totalProductsCount') !== null);
+            addTestResult('lowStockCount element', document.getElementById('lowStockCount') !== null);
+            addTestResult('outOfStockCount element', document.getElementById('outOfStockCount') !== null);
+            addTestResult('ordersTableBody element', document.getElementById('ordersTableBody') !== null);
+            addTestResult('inventoryTable element', document.getElementById('inventoryTable') !== null);
+        }
+        
+        function testPhotoCapture() {
+            if (typeof window.startPhotoCapture === 'function') {
+                try {
+                    window.startPhotoCapture();
+                    addTestResult('Photo Capture Test', true, '- Function called successfully');
+                } catch (error) {
+                    addTestResult('Photo Capture Test', false, `- Error: ${error.message}`);
+                }
+            } else {
+                addTestResult('Photo Capture Test', false, '- Function not available');
+            }
+        }
+        
+        function testReports() {
+            if (typeof window.generateFastOrderReportPDF === 'function') {
+                try {
+                    window.generateFastOrderReportPDF();
+                    addTestResult('PDF Report Test', true, '- Function called successfully');
+                } catch (error) {
+                    addTestResult('PDF Report Test', false, `- Error: ${error.message}`);
+                }
+            } else {
+                addTestResult('PDF Report Test', false, '- Function not available');
+            }
+        }
+        
+        function testInventoryDisplay() {
+            if (typeof window.displayInventory === 'function') {
+                try {
+                    window.displayInventory('', '', '');
+                    addTestResult('Inventory Display Test', true, '- Function called successfully');
+                } catch (error) {
+                    addTestResult('Inventory Display Test', false, `- Error: ${error.message}`);
+                }
+            } else {
+                addTestResult('Inventory Display Test', false, '- Function not available');
+            }
+        }
+        
+        // Wait for page load and run tests
+        window.addEventListener('load', () => {
+            setTimeout(runTests, 2000); // Wait 2 seconds for app to initialize
+        });
+    </script>
+</body>
+</html>

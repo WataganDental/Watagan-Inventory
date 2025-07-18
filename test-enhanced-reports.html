@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Reports Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/tailwind.min.css"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
+</head>
+<body class="bg-base-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-2xl font-bold mb-6">Enhanced Reports Test</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Test QR Generation -->
+            <div class="card bg-base-200 shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title">QR Code PDF Generation</h2>
+                    <div class="space-y-3">
+                        <button id="testAllQRBtn" class="btn btn-primary w-full">Test All QR Codes PDF</button>
+                        <button id="testLocationQRBtn" class="btn btn-secondary w-full">Test Location QR PDF</button>
+                        <button id="testOrderQRBtn" class="btn btn-accent w-full">Test Order Report with QR</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Results -->
+            <div class="card bg-base-300 shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title">Test Results</h2>
+                    <div id="testResults" class="space-y-2">
+                        <p class="text-sm">Click buttons to test PDF generation...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import our enhanced reports manager
+        import { ReportsManager } from './public/js/modules/reports-manager.js';
+
+        // Create mock data for testing
+        const mockInventory = [
+            { id: 'TEST001', name: 'Test Product 1', quantity: 10, minQuantity: 5, location: 'Storage A' },
+            { id: 'TEST002', name: 'Test Product 2', quantity: 3, minQuantity: 8, location: 'Storage B' },
+            { id: 'TEST003', name: 'Test Product 3', quantity: 15, minQuantity: 10, location: 'Storage A' }
+        ];
+
+        const mockOrders = [
+            { id: 'ORD001', productId: 'TEST001', productName: 'Test Product 1', quantity: 5, status: 'pending', dateCreated: new Date() },
+            { id: 'ORD002', productId: 'TEST002', productName: 'Test Product 2', quantity: 10, status: 'completed', dateCreated: new Date() }
+        ];
+
+        // Initialize reports manager
+        const reportsManager = new ReportsManager();
+        reportsManager.setData(mockInventory, mockOrders, [], []);
+
+        // Test event handlers
+        document.getElementById('testAllQRBtn').addEventListener('click', async () => {
+            addResult('Testing All QR Codes PDF generation...');
+            try {
+                await reportsManager.generateAllQRCodesPDF();
+                addResult('✅ All QR Codes PDF generated successfully!', 'success');
+            } catch (error) {
+                addResult('❌ Error: ' + error.message, 'error');
+            }
+        });
+
+        document.getElementById('testLocationQRBtn').addEventListener('click', async () => {
+            addResult('Testing Location-specific QR PDF generation...');
+            try {
+                await reportsManager.generateQRCodesByLocationPDF('Storage A');
+                addResult('✅ Location QR PDF generated successfully!', 'success');
+            } catch (error) {
+                addResult('❌ Error: ' + error.message, 'error');
+            }
+        });
+
+        document.getElementById('testOrderQRBtn').addEventListener('click', async () => {
+            addResult('Testing Order Report with QR codes...');
+            try {
+                await reportsManager.generateOrderReportPDFWithQRCodes();
+                addResult('✅ Order Report with QR codes generated successfully!', 'success');
+            } catch (error) {
+                addResult('❌ Error: ' + error.message, 'error');
+            }
+        });
+
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('testResults');
+            const p = document.createElement('p');
+            p.className = `text-sm ${type === 'error' ? 'text-error' : type === 'success' ? 'text-success' : 'text-base-content'}`;
+            p.textContent = message;
+            resultsDiv.appendChild(p);
+            
+            // Auto-scroll to bottom
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        // Initial message
+        addResult('Enhanced Reports Test Page Loaded');
+        addResult(`Mock data: ${mockInventory.length} products, ${mockOrders.length} orders`);
+    </script>
+</body>
+</html>

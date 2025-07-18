@@ -7,7 +7,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script> <!-- Changed to CDN path -->
-    <!-- jsPDF will be loaded dynamically by app.js -->
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 </head>
 <body>
     <h1>Testing PDF Generation</h1>
@@ -51,7 +51,7 @@
     <button id="emailOrderReportBtn">Email Order Report</button>
     <button id="generateQRCodePDFBtn">Generate QR Code PDF</button>
 
-    <script src="js/app.js"></script> <!-- Changed to relative path -->
+    <script src="js/app-legacy-backup.js"></script> <!-- Using legacy backup for testing -->
     <script>
         async function testPdfFunctions() {
             console.log('testPdfFunctions started.');

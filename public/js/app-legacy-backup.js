@@ -2355,7 +2355,6 @@ function updateSupplierDropdown() {
   const filterSupplierDropdown = document.getElementById('filterSupplier');
   const filterToOrderSupplierDropdown = document.getElementById('filterToOrderSupplier');
   const filterOrderSupplierDropdown = document.getElementById('filterOrderSupplierDropdown'); // Added this line
-  const qrOrderSupplierSelect = document.getElementById('qrOrderSupplierSelect'); // Added for Order QR generation
 
   const populate = (dropdown, includeAllOption) => {
     if (!dropdown) return;
@@ -2376,7 +2375,6 @@ function updateSupplierDropdown() {
   populate(filterSupplierDropdown, true);
   populate(filterToOrderSupplierDropdown, true);
   populate(filterOrderSupplierDropdown, true); // Added this line
-  populate(qrOrderSupplierSelect, true); // Added for Order QR generation
   console.log('Supplier dropdowns updated.');
 }
 
@@ -4135,60 +4133,6 @@ function setUpdateStockModalLastActionFeedback(message, isError = false) {
 // END: Update Stock Modal Functions
 
 // START: Create Order Modal Functions
-// Opens the Create Order modal and pre-selects product and quantity if provided
-function openCreateOrderModalWithProduct(productId, reorderQty) {
-    const modal = document.getElementById('createOrderModal');
-    if (!modal) {
-        console.error("Create Order Modal element not found.");
-        return;
-    }
-    console.log("Opening Create Order Modal with product:", productId, "qty:", reorderQty);
-
-    // Reset form fields
-    const productDropdown = document.getElementById('modalOrderProductId');
-    productDropdown.innerHTML = '<option value="">Loading products...</option>'; // Placeholder
-    document.getElementById('modalOrderQuantity').value = '';
-    document.getElementById('modalOrderSupplierInfo').classList.add('hidden');
-    document.getElementById('modalOrderSelectedProductSupplier').textContent = 'N/A';
-
-    // Populate product dropdown
-    if (inventory && inventory.length > 0) {
-        productDropdown.innerHTML = '<option value="">Select Product</option>';
-        inventory.sort((a,b) => (a.name || a.id).localeCompare(b.name || b.id)).forEach(product => {
-            const option = document.createElement('option');
-            option.value = product.id;
-            option.textContent = `${product.name} (Stock: ${product.quantity}, Min: ${product.minQuantity})`;
-            option.dataset.supplier = product.supplier || 'N/A';
-            productDropdown.appendChild(option);
-        });
-        // Pre-select product if provided
-        if (productId) {
-            productDropdown.value = productId;
-            // Trigger change event to show supplier info
-            productDropdown.dispatchEvent(new Event('change'));
-        }
-    } else {
-        productDropdown.innerHTML = '<option value="">No products available</option>';
-    }
-
-    // Pre-fill quantity if provided
-    if (reorderQty) {
-        document.getElementById('modalOrderQuantity').value = reorderQty;
-    }
-
-    // Remove any previous modal hiding classes
-    modal.classList.remove('hidden');
-    modal.classList.remove('invisible');
-    modal.classList.add('flex');
-    if (typeof modal.showModal === 'function') {
-        try {
-            modal.showModal();
-        } catch (e) {
-            // If already open, ignore
-        }
-    }
-    productDropdown.focus();
-}
 function openCreateOrderModal() {
     const modal = document.getElementById('createOrderModal');
     if (!modal) {
@@ -4233,18 +4177,8 @@ function openCreateOrderModal() {
     };
 
 
-    // Remove any previous modal hiding classes
     modal.classList.remove('hidden');
-    modal.classList.remove('invisible');
     modal.classList.add('flex');
-    // For <dialog> elements, also call .showModal() if supported
-    if (typeof modal.showModal === 'function') {
-        try {
-            modal.showModal();
-        } catch (e) {
-            // If already open, ignore
-        }
-    }
     productDropdown.focus();
 }
 
@@ -4493,10 +4427,10 @@ function populateEditFormInModal(product) {
 
 
     const photoPreview = document.getElementById('scanToEdit_productPhotoPreview');
-    if (product.photoURL || product.photo) {
-        photoPreview.src = product.photoURL || product.photo;
+    if (product.photo) {
+        photoPreview.src = product.photo;
         photoPreview.classList.remove('hidden'); // Make sure it's visible if there's a photo
-        scanToEditModalOriginalPhotoUrl = product.photoURL || product.photo;
+        scanToEditModalOriginalPhotoUrl = product.photo;
     } else {
         photoPreview.src = '#'; // Placeholder or default image
         photoPreview.classList.add('hidden'); // Hide if no photo, or use a placeholder
@@ -4647,21 +4581,9 @@ function openMoveProductModal() {
 
     moveProductModal_currentProductId = null;
 
-    // Remove any previous modal hiding classes
     modal.classList.remove('hidden');
-    modal.classList.remove('invisible');
     modal.classList.add('flex');
-    // For <dialog> elements, also call .showModal() if supported
-    if (typeof modal.showModal === 'function') {
-        try {
-            modal.showModal();
-        } catch (e) {
-            // If already open, ignore
-        }
-    }
-    // Focus the input
-    const input = document.getElementById('moveProductModal_productIdInput');
-    if (input) input.focus();
+    document.getElementById('moveProductModal_productIdInput').focus();
 }
 
 function closeMoveProductModal() {

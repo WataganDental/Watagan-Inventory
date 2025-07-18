@@ -1,5 +1,5 @@
 @import "tailwindcss";
 
 @plugin "daisyui" {
-  themes: garden --default, business --prefersdark;
+  themes: cupcake --default, dark --prefersdark;
 }

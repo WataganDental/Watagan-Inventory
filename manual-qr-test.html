@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual QR Print Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .result { margin: 10px 0; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <h1>Manual QR Print Test</h1>
+    
+    <button onclick="createTestData()">1. Create Test Data</button>
+    <button onclick="openQRPrint()">2. Open QR Print View</button>
+    <button onclick="openOrderPrint()">3. Open Order Print View</button>
+    <button onclick="checkConsole()">4. Check Console Logs</button>
+    
+    <div id="results" class="result">
+        Click buttons in order to test the QR print functionality.
+    </div>
+    
+    <script>
+        function createTestData() {
+            const testData = [
+                {
+                    id: 'DENTAL001',
+                    name: 'Surgical Scissors',
+                    quantity: 15,
+                    location: 'Surgery-A1',
+                    cost: 45.99,
+                    supplier: 'MedSupply Inc',
+                    category: 'Surgical Tools',
+                    minQuantity: 5,
+                    image: ''
+                },
+                {
+                    id: 'DENTAL002', 
+                    name: 'Dental Mirror',
+                    quantity: 25,
+                    location: 'General-B2',
+                    cost: 12.50,
+                    supplier: 'DentalCorp',
+                    category: 'Basic Tools',
+                    minQuantity: 10,
+                    image: ''
+                },
+                {
+                    id: 'DENTAL003',
+                    name: 'Local Anesthetic',
+                    quantity: 8,
+                    location: 'Pharmacy-C1',
+                    cost: 89.99,
+                    supplier: 'PharmaMed',
+                    category: 'Medication',
+                    minQuantity: 3,
+                    image: ''
+                }
+            ];
+            
+            // Store data for QR print
+            localStorage.setItem('printData', JSON.stringify(testData));
+            
+            // Store data for order print  
+            const orderData = testData.map(item => ({
+                id: `ORDER-${item.id}`,
+                productId: item.id,
+                productName: item.name,
+                quantity: Math.floor(item.quantity / 2), // Order half the current stock
+                location: item.location
+            }));
+            localStorage.setItem('orderPrintData', JSON.stringify(orderData));
+            
+            document.getElementById('results').innerHTML = `
+                <strong>Test data created!</strong><br>
+                QR Print Data: ${testData.length} items<br>
+                Order Print Data: ${orderData.length} items<br>
+                Data stored in localStorage.
+            `;
+            
+            console.log('Test data created:', { testData, orderData });
+        }
+        
+        function openQRPrint() {
+            const printWindow = window.open('public/qr-print-view.html', '_blank', 'width=1200,height=800');
+            if (printWindow) {
+                document.getElementById('results').innerHTML = 'QR Print View opened in new window. Check for QR codes.';
+            } else {
+                document.getElementById('results').innerHTML = 'Failed to open QR Print View. Check popup blocker.';
+            }
+        }
+        
+        function openOrderPrint() {
+            const printWindow = window.open('public/order-print-view.html', '_blank', 'width=1200,height=800');
+            if (printWindow) {
+                document.getElementById('results').innerHTML = 'Order Print View opened in new window. Check for QR codes.';
+            } else {
+                document.getElementById('results').innerHTML = 'Failed to open Order Print View. Check popup blocker.';
+            }
+        }
+        
+        function checkConsole() {
+            document.getElementById('results').innerHTML = `
+                <strong>Console Check:</strong><br>
+                Open browser Developer Tools (F12) and check the Console tab for any error messages.<br>
+                Look for QR generation logs and library loading messages.
+            `;
+        }
+    </script>
+</body>
+</html>

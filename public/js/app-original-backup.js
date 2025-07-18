@@ -1422,34 +1422,130 @@ async function populateProductsDropdown() {
 }
 
 async function loadAndDisplayOrders() {
-  console.log('[loadAndDisplayOrders] Using orders manager for compatibility');
-  
-  // Get filter values
-  const filterStatusDropdown = document.getElementById('filterOrderStatus');
-  const filterSupplierDropdown = document.getElementById('filterOrderSupplier');
-  
-  const statusFilter = filterStatusDropdown ? filterStatusDropdown.value : 'pending';
-  const supplierFilter = filterSupplierDropdown ? filterSupplierDropdown.value : '';
-  
-  console.log(`[loadAndDisplayOrders] Filters - Status: "${statusFilter}", Supplier: "${supplierFilter}"`);
-  
-  try {
-    // Use the orders manager to display orders with filters
-    if (window.ordersManager) {
-      await window.ordersManager.displayOrders(statusFilter, supplierFilter);
-      console.log('[loadAndDisplayOrders] Orders loaded successfully via orders manager');
-    } else {
-      console.error('[loadAndDisplayOrders] Orders manager not available');
-      const ordersTableBody = document.getElementById('ordersTableBody');
-      if (ordersTableBody) {
-        ordersTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-red-500 dark:text-red-400">Orders manager not initialized</td></tr>';
-      }
+  console.log('[loadAndDisplayOrders] Attempting to load and display orders.');
+  const ordersTableBody = document.getElementById('ordersTableBody');
+  const ordersContainerFallback = document.getElementById('ordersContainer'); // Fallback if table body not found or for general messages
+
+  if (!ordersTableBody) {
+    console.error('[loadAndDisplayOrders] Critical: HTML element with ID "ordersTableBody" not found.');
+    if (ordersContainerFallback) {
+        ordersContainerFallback.innerHTML = '<p class="text-red-500 dark:text-red-400">Error: UI element for orders missing (ordersTableBody). Cannot display orders.</p>';
     }
+    return;
+  }
+
+  try {
+    const user = firebase.auth().currentUser;
+    console.log('[loadAndDisplayOrders] Current user:', user ? { uid: user.uid, email: user.email, role: currentUserRole } : 'No user logged in');
+
+    if (!user) {
+      console.error('[loadAndDisplayOrders] No authenticated user found.');
+      ordersTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-red-500 dark:text-red-400">Error: You must be logged in to view orders.</td></tr>';
+      return;
+    }
+
+    console.log(`[loadAndDisplayOrders] Current user UID: ${user.uid}, Role: ${currentUserRole}`);
+
+    const db = firebase.firestore();
+    const filterStatusDropdown = document.getElementById('filterOrderStatus');
+    // Default to 'pending' if the dropdown value is empty, though HTML change should make it selected.
+    const selectedStatus = (filterStatusDropdown && filterStatusDropdown.value) ? filterStatusDropdown.value : 'pending';
+
+    console.log(`[loadAndDisplayOrders] Fetching orders from Firestore collection "orders". Selected status: '${selectedStatus}'`);
+
+    let ordersQuery = db.collection('orders');
+
+    if (selectedStatus) {
+      // Ensure 'Backordered' status uses the correct value 'backordered' if that's what's stored in Firestore
+      ordersQuery = ordersQuery.where('status', '==', selectedStatus);
+    }
+    // Example: ordersQuery = ordersQuery.orderBy('createdAt', 'desc'); // You might want to add ordering
+
+    const snapshot = await ordersQuery.get();
+
+    console.log(`[loadAndDisplayOrders] Snapshot received. Empty: ${snapshot.empty}, Size: ${snapshot.size}`);
+
+    ordersTableBody.innerHTML = ''; // Clear existing content (like "Loading orders...")
+
+    if (snapshot.empty) {
+      ordersTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-gray-500 dark:text-gray-400">No orders found in the database.</td></tr>';
+      console.log('[loadAndDisplayOrders] No orders found in the database.');
+      return;
+    }
+
+    snapshot.forEach(doc => {
+      const orderData = doc.data();
+      console.log(`[loadAndDisplayOrders] Processing order doc ID: ${doc.id}, Data:`, JSON.stringify(orderData));
+
+      const row = ordersTableBody.insertRow();
+      row.className = 'border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-750'; // Added hover effect
+
+      // Matching the table structure in public/index.html for orders
+      // Order ID, Product Name, Quantity, Status, Order Date, Actions
+      const cellOrderId = row.insertCell();
+      cellOrderId.className = 'px-4 py-2 whitespace-nowrap';
+      cellOrderId.textContent = doc.id;
+
+      const cellProductName = row.insertCell();
+      cellProductName.className = 'px-4 py-2';
+      // Assuming product name needs to be fetched or is stored with the order.
+      // For now, using productId, will need adjustment if product name is expected.
+      cellProductName.textContent = orderData.productName || orderData.productId || 'N/A'; // Prefer productName if available
+
+      const cellQuantity = row.insertCell();
+      cellQuantity.className = 'px-4 py-2 text-center';
+      cellQuantity.textContent = orderData.quantity || 'N/A';
+
+      const cellStatus = row.insertCell();
+      cellStatus.className = 'px-4 py-2';
+      const status = orderData.status || 'Pending'; // Default to 'Pending' if no status
+      cellStatus.textContent = status;
+
+      // Apply styling based on status
+      if (status === 'Pending') {
+        cellStatus.classList.add('status-pending');
+    } else if (status === 'Fulfilled' || status === 'fulfilled') {
+        cellStatus.classList.add('status-fulfilled');
+      } else if (status === 'Cancelled' || status === 'cancelled') {
+        cellStatus.classList.add('status-cancelled');
+    } else if (status === 'Backordered' || status === 'backordered') {
+        cellStatus.classList.add('status-backordered');
+    } else if (status === 'Received' || status === 'received') { // New
+      cellStatus.classList.add('status-received');
+    } else if (status === 'Partially Received' || status === 'partially_received') { // New
+      cellStatus.classList.add('status-partially-received');
+    } else {
+        cellStatus.classList.add('status-other');
+      }
+
+      const cellOrderDate = row.insertCell();
+      cellOrderDate.className = 'px-4 py-2 whitespace-nowrap';
+      cellOrderDate.textContent = orderData.createdAt && orderData.createdAt.toDate
+                                  ? orderData.createdAt.toDate().toLocaleDateString()
+                                  : 'N/A';
+
+      const cellActions = row.insertCell();
+      cellActions.className = 'px-4 py-2 text-center whitespace-nowrap';
+
+      const editStatusBtn = document.createElement('button');
+      editStatusBtn.className = 'btn btn-xs btn-outline btn-primary'; // Using DaisyUI button classes
+      editStatusBtn.textContent = 'Edit Status';
+      editStatusBtn.addEventListener('click', () => {
+        openMiniStatusModal(doc.id, orderData.status);
+      });
+      cellActions.appendChild(editStatusBtn);
+
+      // Original viewOrderDetails call is removed as per new plan.
+      // The old viewOrderDetails opened the larger modal.
+      // cellActions.innerHTML = `<button class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-xs" onclick="viewOrderDetails('${doc.id}')">View</button>`;
+    });
+    console.log('[loadAndDisplayOrders] Orders loaded and displayed successfully into ordersTableBody with Edit Status buttons.');
+
   } catch (error) {
-    console.error('[loadAndDisplayOrders] Error:', error);
-    const ordersTableBody = document.getElementById('ordersTableBody');
-    if (ordersTableBody) {
-      ordersTableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-red-500 dark:text-red-400">Error loading orders: ${error.message}</td></tr>`;
+    console.error('[loadAndDisplayOrders] Error loading and displaying orders:', error.message, error.stack);
+    ordersTableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-red-500 dark:text-red-400">Error loading orders. Details: ${error.message}. Check console.</td></tr>`;
+    if (ordersContainerFallback && ordersTableBody !== ordersContainerFallback) { // If using a different general container for high-level errors
+        ordersContainerFallback.innerHTML = `<p class="text-red-500 dark:text-red-400">Error loading orders. Please check console.</p>`;
     }
   }
 }
@@ -2355,7 +2451,6 @@ function updateSupplierDropdown() {
   const filterSupplierDropdown = document.getElementById('filterSupplier');
   const filterToOrderSupplierDropdown = document.getElementById('filterToOrderSupplier');
   const filterOrderSupplierDropdown = document.getElementById('filterOrderSupplierDropdown'); // Added this line
-  const qrOrderSupplierSelect = document.getElementById('qrOrderSupplierSelect'); // Added for Order QR generation
 
   const populate = (dropdown, includeAllOption) => {
     if (!dropdown) return;
@@ -2376,7 +2471,6 @@ function updateSupplierDropdown() {
   populate(filterSupplierDropdown, true);
   populate(filterToOrderSupplierDropdown, true);
   populate(filterOrderSupplierDropdown, true); // Added this line
-  populate(qrOrderSupplierSelect, true); // Added for Order QR generation
   console.log('Supplier dropdowns updated.');
 }
 
@@ -4135,60 +4229,6 @@ function setUpdateStockModalLastActionFeedback(message, isError = false) {
 // END: Update Stock Modal Functions
 
 // START: Create Order Modal Functions
-// Opens the Create Order modal and pre-selects product and quantity if provided
-function openCreateOrderModalWithProduct(productId, reorderQty) {
-    const modal = document.getElementById('createOrderModal');
-    if (!modal) {
-        console.error("Create Order Modal element not found.");
-        return;
-    }
-    console.log("Opening Create Order Modal with product:", productId, "qty:", reorderQty);
-
-    // Reset form fields
-    const productDropdown = document.getElementById('modalOrderProductId');
-    productDropdown.innerHTML = '<option value="">Loading products...</option>'; // Placeholder
-    document.getElementById('modalOrderQuantity').value = '';
-    document.getElementById('modalOrderSupplierInfo').classList.add('hidden');
-    document.getElementById('modalOrderSelectedProductSupplier').textContent = 'N/A';
-
-    // Populate product dropdown
-    if (inventory && inventory.length > 0) {
-        productDropdown.innerHTML = '<option value="">Select Product</option>';
-        inventory.sort((a,b) => (a.name || a.id).localeCompare(b.name || b.id)).forEach(product => {
-            const option = document.createElement('option');
-            option.value = product.id;
-            option.textContent = `${product.name} (Stock: ${product.quantity}, Min: ${product.minQuantity})`;
-            option.dataset.supplier = product.supplier || 'N/A';
-            productDropdown.appendChild(option);
-        });
-        // Pre-select product if provided
-        if (productId) {
-            productDropdown.value = productId;
-            // Trigger change event to show supplier info
-            productDropdown.dispatchEvent(new Event('change'));
-        }
-    } else {
-        productDropdown.innerHTML = '<option value="">No products available</option>';
-    }
-
-    // Pre-fill quantity if provided
-    if (reorderQty) {
-        document.getElementById('modalOrderQuantity').value = reorderQty;
-    }
-
-    // Remove any previous modal hiding classes
-    modal.classList.remove('hidden');
-    modal.classList.remove('invisible');
-    modal.classList.add('flex');
-    if (typeof modal.showModal === 'function') {
-        try {
-            modal.showModal();
-        } catch (e) {
-            // If already open, ignore
-        }
-    }
-    productDropdown.focus();
-}
 function openCreateOrderModal() {
     const modal = document.getElementById('createOrderModal');
     if (!modal) {
@@ -4233,18 +4273,8 @@ function openCreateOrderModal() {
     };
 
 
-    // Remove any previous modal hiding classes
     modal.classList.remove('hidden');
-    modal.classList.remove('invisible');
     modal.classList.add('flex');
-    // For <dialog> elements, also call .showModal() if supported
-    if (typeof modal.showModal === 'function') {
-        try {
-            modal.showModal();
-        } catch (e) {
-            // If already open, ignore
-        }
-    }
     productDropdown.focus();
 }
 
@@ -4493,10 +4523,10 @@ function populateEditFormInModal(product) {
 
 
     const photoPreview = document.getElementById('scanToEdit_productPhotoPreview');
-    if (product.photoURL || product.photo) {
-        photoPreview.src = product.photoURL || product.photo;
+    if (product.photo) {
+        photoPreview.src = product.photo;
         photoPreview.classList.remove('hidden'); // Make sure it's visible if there's a photo
-        scanToEditModalOriginalPhotoUrl = product.photoURL || product.photo;
+        scanToEditModalOriginalPhotoUrl = product.photo;
     } else {
         photoPreview.src = '#'; // Placeholder or default image
         photoPreview.classList.add('hidden'); // Hide if no photo, or use a placeholder
@@ -4647,21 +4677,9 @@ function openMoveProductModal() {
 
     moveProductModal_currentProductId = null;
 
-    // Remove any previous modal hiding classes
     modal.classList.remove('hidden');
-    modal.classList.remove('invisible');
     modal.classList.add('flex');
-    // For <dialog> elements, also call .showModal() if supported
-    if (typeof modal.showModal === 'function') {
-        try {
-            modal.showModal();
-        } catch (e) {
-            // If already open, ignore
-        }
-    }
-    // Focus the input
-    const input = document.getElementById('moveProductModal_productIdInput');
-    if (input) input.focus();
+    document.getElementById('moveProductModal_productIdInput').focus();
 }
 
 function closeMoveProductModal() {
@@ -5618,71 +5636,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch(e) {
             console.error('[DOMContentLoaded] Error during miscellaneous initializations:', e);
-        }
-
-        // Block: Debug Orders Button
-        try {
-            const debugOrdersBtn = document.getElementById('debugOrdersBtn');
-            if (debugOrdersBtn) {
-                debugOrdersBtn.addEventListener('click', async () => {
-                    console.log('=== ORDERS DEBUG START ===');
-                    
-                    try {
-                        // Check authentication
-                        const user = firebase.auth().currentUser;
-                        console.log('Current user:', user ? { uid: user.uid, email: user.email } : 'No user logged in');
-                        
-                        if (!user) {
-                            alert('Not authenticated. Please log in first.');
-                            return;
-                        }
-                        
-                        // Test direct database query
-                        console.log('Testing direct Firestore query...');
-                        const allOrdersSnapshot = await db.collection('orders').get();
-                        console.log(`Total orders in database: ${allOrdersSnapshot.size}`);
-                        
-                        if (allOrdersSnapshot.size > 0) {
-                            console.log('Sample orders from database:');
-                            allOrdersSnapshot.docs.slice(0, 5).forEach(doc => {
-                                const data = doc.data();
-                                console.log(`- Order ${doc.id}: status="${data.status}", supplier="${data.supplier}"`);
-                            });
-                        }
-                        
-                        // Test orders manager
-                        if (window.ordersManager) {
-                            console.log('Testing orders manager...');
-                            await window.ordersManager.loadOrders();
-                            console.log(`Orders manager loaded ${window.ordersManager.orders.length} orders`);
-                            
-                            // Test filtering
-                            const statusFilter = document.getElementById('filterOrderStatus').value;
-                            console.log(`Current status filter: "${statusFilter}"`);
-                            const filtered = window.ordersManager.applyOrderFilters(statusFilter, '');
-                            console.log(`Filtered result: ${filtered.length} orders`);
-                        } else {
-                            console.log('Orders manager not available');
-                        }
-                        
-                        // Test compatibility function
-                        console.log('Testing loadAndDisplayOrders function...');
-                        await loadAndDisplayOrders();
-                        
-                        alert('Debug complete! Check the console for detailed output.');
-                        
-                    } catch (error) {
-                        console.error('Debug error:', error);
-                        alert(`Debug error: ${error.message}`);
-                    }
-                    
-                    console.log('=== ORDERS DEBUG END ===');
-                });
-            } else {
-                console.warn('[DOMContentLoaded] debugOrdersBtn not found');
-            }
-        } catch(e) {
-            console.error('[DOMContentLoaded] Error setting up debug orders button:', e);
         }
 
 

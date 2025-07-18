@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+</head>
+<body>
+    <h1>QR Code Test</h1>
+    <div id="qr-container"></div>
+    <div id="qr-container-2"></div>
+    <div id="qr-container-3"></div>
+
+    <script>
+        function generateTestQR(containerId, text) {
+            const container = document.getElementById(containerId);
+            try {
+                const qr = qrcode(0, 'M');
+                qr.addData(text);
+                qr.make();
+                
+                const qrDataURL = qr.createDataURL(4);
+                const img = document.createElement('img');
+                img.src = qrDataURL;
+                img.style.width = '100px';
+                img.style.height = '100px';
+                img.style.imageRendering = 'pixelated';
+                
+                const label = document.createElement('div');
+                label.textContent = text;
+                label.style.textAlign = 'center';
+                label.style.marginTop = '5px';
+                
+                container.appendChild(img);
+                container.appendChild(label);
+                
+                console.log(`QR generated for: ${text}`);
+            } catch (error) {
+                console.error('QR generation failed:', error);
+                container.innerHTML = `<div>Error: ${error.message}</div>`;
+            }
+        }
+
+        // Test with different IDs
+        window.addEventListener('load', function() {
+            generateTestQR('qr-container', 'TEST001');
+            generateTestQR('qr-container-2', 'PRODUCT123');
+            generateTestQR('qr-container-3', '00823ff7-c61b-486e-9c7e-a610ed2cdc7');
+        });
+    </script>
+
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        div[id^="qr-container"] { 
+            display: inline-block; 
+            margin: 20px; 
+            border: 1px solid #ccc; 
+            padding: 10px; 
+            text-align: center;
+        }
+    </style>
+</body>
+</html>
