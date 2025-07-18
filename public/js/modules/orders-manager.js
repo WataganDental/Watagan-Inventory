@@ -15,7 +15,20 @@ export class OrdersManager {
      */
     async loadOrders(forceRefresh = false) {
         try {
-            // Use performance optimizer for cached loading if available
+            // Try Firebase optimizer first for cost-effective loading
+            if (window.app && window.app.firebaseOptimizer) {
+                console.log('Loading orders using Firebase optimizer...');
+                this.orders = await window.app.firebaseOptimizer.getCollection('orders', {
+                    orderBy: [['createdAt', 'desc']], // Simplified to single field to avoid index requirement
+                    limit: 200,
+                    cacheDuration: 120000, // 2 minutes for orders
+                    source: forceRefresh ? 'server' : 'default'
+                });
+                console.log(`Loaded ${this.orders.length} orders using Firebase optimizer`);
+                return this.orders;
+            }
+            
+            // Fallback to performance optimizer
             if (window.app && window.app.performanceOptimizer) {
                 console.log('Loading orders using performance optimizer...');
                 this.orders = await window.app.performanceOptimizer.loadDataWithCache('orders', 'orders_cache', forceRefresh);
@@ -24,9 +37,12 @@ export class OrdersManager {
                 return this.orders;
             }
 
-            // Fallback to direct loading
-            console.log('Loading orders from database...');
-            const ordersSnapshot = await window.db.collection('orders').get();
+            // Fallback to direct loading (less efficient)
+            console.log('Loading orders from database (direct query - less efficient)...');
+            const ordersSnapshot = await window.db.collection('orders')
+                .orderBy('orderDate', 'desc')
+                .limit(200)
+                .get();
             
             this.orders = [];
             
@@ -53,14 +69,14 @@ export class OrdersManager {
     }
 
     /**
-     * Display orders with smart default filter (backordered first, then pending, then all)
+     * Display orders with smart default filter (backordered first, then pending only)
      */
     async displayOrdersWithDefaultFilter() {
         try {
             // First load orders to check what's available
             await this.loadOrders();
             
-            // Check order priorities: backordered > pending > all
+            // Check order priorities: backordered > pending only (no "all")
             const hasBackorderedOrders = this.orders.some(order => 
                 (order.status || '').toLowerCase() === 'backordered'
             );
@@ -69,19 +85,13 @@ export class OrdersManager {
                 (order.status || 'pending').toLowerCase() === 'pending'
             );
             
-            // Determine default filter based on priority
-            let defaultFilter = '';
-            let filterReason = 'no specific orders found';
+            // Determine default filter based on priority - only pending or backordered
+            let defaultFilter = 'pending'; // Default to pending always
+            let filterReason = 'showing pending orders only (default)';
             
             if (hasBackorderedOrders) {
                 defaultFilter = 'backordered';
                 filterReason = 'backordered orders found (highest priority)';
-            } else if (hasPendingOrders) {
-                defaultFilter = 'pending';
-                filterReason = 'pending orders found';
-            } else {
-                defaultFilter = '';
-                filterReason = 'no backordered or pending orders, showing all';
             }
             
             // Update the HTML filter dropdown to match
@@ -728,6 +738,7 @@ export class OrdersManager {
     async submitModalOrder() {
         try {
             const productId = document.getElementById('modalOrderProductId').value;
+            const supplierId = document.getElementById('modalOrderSupplierId').value;
             const quantity = parseInt(document.getElementById('modalOrderQuantity').value) || 0;
             const cost = parseFloat(document.getElementById('modalOrderCost').value) || 0;
 
@@ -735,6 +746,13 @@ export class OrdersManager {
             if (!productId) {
                 if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
                     uiEnhancementManager.showToast('Please select a product', 'warning');
+                }
+                return;
+            }
+
+            if (!supplierId) {
+                if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                    uiEnhancementManager.showToast('Please select a supplier', 'warning');
                 }
                 return;
             }
@@ -762,6 +780,10 @@ export class OrdersManager {
                 return;
             }
 
+            // Find supplier details
+            const supplier = window.app?.suppliers?.find(s => s.id === supplierId);
+            const supplierName = supplier ? supplier.name : supplierId;
+
             // Create order data
             const orderData = {
                 productId: productId,
@@ -769,7 +791,8 @@ export class OrdersManager {
                 quantity: quantity,
                 cost: cost,
                 totalCost: quantity * cost,
-                supplier: product.supplier || '',
+                supplier: supplierName,
+                supplierId: supplierId,
                 notes: `Order created from dashboard modal`,
                 expectedDate: null
             };
@@ -779,6 +802,7 @@ export class OrdersManager {
 
             // Clear form
             document.getElementById('modalOrderProductId').value = '';
+            document.getElementById('modalOrderSupplierId').value = '';
             document.getElementById('modalOrderQuantity').value = '';
             document.getElementById('modalOrderCost').value = '';
 
@@ -809,6 +833,7 @@ export class OrdersManager {
     async submitOrder() {
         try {
             const productId = document.getElementById('orderProductId').value;
+            const supplierId = document.getElementById('orderSupplierId').value;
             const quantity = parseInt(document.getElementById('orderQuantity').value) || 0;
             const cost = parseFloat(document.getElementById('orderCost').value) || 0;
 
@@ -816,6 +841,13 @@ export class OrdersManager {
             if (!productId) {
                 if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
                     uiEnhancementManager.showToast('Please select a product', 'warning');
+                }
+                return;
+            }
+
+            if (!supplierId) {
+                if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                    uiEnhancementManager.showToast('Please select a supplier', 'warning');
                 }
                 return;
             }
@@ -843,6 +875,10 @@ export class OrdersManager {
                 return;
             }
 
+            // Find supplier details
+            const supplier = window.app?.suppliers?.find(s => s.id === supplierId);
+            const supplierName = supplier ? supplier.name : supplierId;
+
             // Create order data
             const orderData = {
                 productId: productId,
@@ -850,7 +886,8 @@ export class OrdersManager {
                 quantity: quantity,
                 cost: cost,
                 totalCost: quantity * cost,
-                supplier: product.supplier || '',
+                supplier: supplierName,
+                supplierId: supplierId,
                 notes: `Order created from orders section`,
                 expectedDate: null
             };
@@ -860,6 +897,7 @@ export class OrdersManager {
 
             // Clear form
             document.getElementById('orderProductId').value = '';
+            document.getElementById('orderSupplierId').value = '';
             document.getElementById('orderQuantity').value = '';
             document.getElementById('orderCost').value = '';
 

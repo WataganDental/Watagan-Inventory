@@ -427,6 +427,7 @@
                                 <!-- Count will be populated by JS, e.g., "X items need attention" -->
                             </div>
                           </div>
+
                           <div class="overflow-x-auto rounded-lg max-h-60">
                             <table class="table table-sm w-full">
                               <thead class="bg-amber-100 dark:bg-amber-800">
@@ -449,8 +450,9 @@
                     </section>
 
                     <h2 class="card-title mt-4">Manage Orders</h2>
-                    <div class="mb-4"><h3 class="text-lg font-semibold">Create New Order</h3><div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div class="mb-4"><h3 class="text-lg font-semibold">Create New Order</h3><div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                         <div><label for="orderProductId" class="label"><span class="label-text">Product</span></label><select id="orderProductId" class="select select-bordered w-full"><option value="">Select Product</option></select></div>
+                        <div><label for="orderSupplierId" class="label"><span class="label-text">Supplier</span></label><select id="orderSupplierId" class="select select-bordered w-full"><option value="">Select Supplier</option></select></div>
                         <div><label for="orderQuantity" class="label"><span class="label-text">Quantity</span></label><input type="number" id="orderQuantity" placeholder="Quantity" class="input input-bordered w-full"></div>
                         <div><label for="orderCost" class="label"><span class="label-text">Unit Cost ($)</span></label><input type="number" id="orderCost" step="0.01" placeholder="Cost per unit" class="input input-bordered w-full"></div>
                         <button id="addOrderBtn" class="btn btn-primary self-end">Add Order</button></div></div>
@@ -862,6 +864,15 @@
                     </div>
                     <select id="modalOrderProductId" class="select select-bordered w-full">
                       <option value="">Select Product</option>
+                      <!-- Options will be populated by JS -->
+                    </select>
+                  </label>
+                  <label class="form-control w-full">
+                    <div class="label">
+                      <span class="label-text">Supplier</span>
+                    </div>
+                    <select id="modalOrderSupplierId" class="select select-bordered w-full">
+                      <option value="">Select Supplier</option>
                       <!-- Options will be populated by JS -->
                     </select>
                   </label>

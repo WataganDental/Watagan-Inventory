@@ -810,7 +810,7 @@ class WataganInventoryApp {
             console.error('Orders manager not available');
         };
 
-        // Add event listeners to auto-fill cost fields
+        // Add event listeners to auto-fill cost fields and auto-select suppliers
         const fillCost = (selectId, costInputId) => {
             const select = document.getElementById(selectId);
             const costInput = document.getElementById(costInputId);
@@ -821,6 +821,28 @@ class WataganInventoryApp {
                         costInput.value = product.cost;
                     } else {
                         costInput.value = '';
+                    }
+                    
+                    // Auto-select supplier if available
+                    let supplierDropdownId = '';
+                    if (selectId === 'modalOrderProductId') {
+                        supplierDropdownId = 'modalOrderSupplierId';
+                    } else if (selectId === 'orderProductId') {
+                        supplierDropdownId = 'orderSupplierId';
+                    }
+                    
+                    if (supplierDropdownId && product && product.supplier) {
+                        const supplierDropdown = document.getElementById(supplierDropdownId);
+                        if (supplierDropdown) {
+                            // Find supplier by name to get the ID
+                            const supplier = window.app?.suppliers?.find(s => s.name === product.supplier);
+                            if (supplier) {
+                                supplierDropdown.value = supplier.id || supplier.name;
+                            } else {
+                                // If supplier not found in list, try setting by name
+                                supplierDropdown.value = product.supplier;
+                            }
+                        }
                     }
                 });
             }
@@ -882,6 +904,15 @@ class WataganInventoryApp {
             window.db = firebase.firestore();
             window.storage = firebase.storage();
             window.auth = firebase.auth();
+            
+            // Initialize Firebase optimizer for cost reduction
+            try {
+                const { createFirebaseOptimizer } = await import('./modules/firebase-optimizer.js');
+                this.firebaseOptimizer = createFirebaseOptimizer(window.db);
+                console.log('[App] Firebase optimizer initialized');
+            } catch (error) {
+                console.warn('[App] Could not load Firebase optimizer:', error);
+            }
             
             // Apply Firebase performance optimizations
             try {
@@ -1212,7 +1243,7 @@ class WataganInventoryApp {
     }
 
     /**
-     * Load inventory data with caching optimization
+     * Load inventory data with optimized Firebase usage
      */
     async loadInventory() {
         try {
@@ -1220,12 +1251,25 @@ class WataganInventoryApp {
                 throw new Error('Database not initialized');
             }
 
-            // Use performance optimizer for cached loading if available
-            if (this.performanceOptimizer) {
+            console.log('[App] Loading inventory...');
+
+            // Use Firebase optimizer for cost-effective loading
+            if (this.firebaseOptimizer) {
+                this.inventory = await this.firebaseOptimizer.getCollection('inventory', {
+                    orderBy: [['name', 'asc']],
+                    limit: 1000, // Increased to load all inventory items
+                    cacheDuration: 300000, // 5 minutes
+                    source: 'default' // Use cache first, then server
+                });
+                console.log(`[App] Loaded ${this.inventory.length} inventory items using optimizer`);
+            } else if (this.performanceOptimizer) {
+                // Fallback to performance optimizer
                 this.inventory = await this.performanceOptimizer.loadDataWithCache('inventory', 'inventory_cache');
             } else {
                 // Fallback to direct loading
+                console.log('[App] Using direct Firebase query (no optimizer available)');
                 const snapshot = await window.db.collection('inventory').get();
+                this.inventory = [];
                 this.inventory = [];
                 
                 snapshot.forEach(doc => {
@@ -1249,17 +1293,29 @@ class WataganInventoryApp {
     }
 
     /**
-     * Load suppliers data with caching optimization
+     * Load suppliers data with optimized Firebase usage
      */
     async loadSuppliers() {
         try {
             if (!window.db) return [];
 
-            // Use performance optimizer for cached loading if available
-            if (this.performanceOptimizer) {
+            console.log('[App] Loading suppliers...');
+
+            // Use Firebase optimizer for cost-effective loading
+            if (this.firebaseOptimizer) {
+                this.suppliers = await this.firebaseOptimizer.getCollection('suppliers', {
+                    orderBy: [['name', 'asc']],
+                    limit: 100,
+                    cacheDuration: 1800000, // 30 minutes (suppliers change rarely)
+                    source: 'cache' // Prefer cache for suppliers
+                });
+                console.log(`[App] Loaded ${this.suppliers.length} suppliers using optimizer`);
+            } else if (this.performanceOptimizer) {
+                // Fallback to performance optimizer
                 this.suppliers = await this.performanceOptimizer.loadDataWithCache('suppliers', 'suppliers_cache');
             } else {
                 // Fallback to direct loading
+                console.log('[App] Using direct Firebase query for suppliers (no optimizer available)');
                 const snapshot = await window.db.collection('suppliers').get();
                 this.suppliers = [];
                 
@@ -1341,7 +1397,9 @@ class WataganInventoryApp {
             'filterSupplier', 
             'filterOrderSupplierDropdown',
             'modalOrderSupplier',
-            'qrOrderSupplierSelect'  // Added for Order QR Code Generation
+            'modalOrderSupplierId',      // New modal supplier dropdown
+            'orderSupplierId',           // New orders section supplier dropdown
+            'qrOrderSupplierSelect'      // Added for Order QR Code Generation
         ];
 
         dropdowns.forEach(dropdownId => {
@@ -1350,17 +1408,25 @@ class WataganInventoryApp {
                 // Save current value
                 const currentValue = dropdown.value;
                 
-                // Clear and repopulate - different default option for QR dropdowns
+                // Clear and repopulate - different default option for different dropdowns
                 if (dropdownId === 'qrOrderSupplierSelect' || dropdownId === 'filterSupplier' || dropdownId === 'filterOrderSupplierDropdown') {
                     dropdown.innerHTML = '<option value="">All Suppliers</option>';
+                } else if (dropdownId === 'modalOrderSupplierId' || dropdownId === 'orderSupplierId') {
+                    dropdown.innerHTML = '<option value="">Select Supplier</option>';
                 } else {
                     dropdown.innerHTML = '<option value="">Select supplier...</option>';
                 }
                 
                 this.suppliers.forEach(supplier => {
                     const option = document.createElement('option');
-                    option.value = supplier.name;
-                    option.textContent = supplier.name;
+                    // Use supplier ID as value for the new order dropdowns to ensure we get the right reference
+                    if (dropdownId === 'modalOrderSupplierId' || dropdownId === 'orderSupplierId') {
+                        option.value = supplier.id || supplier.name;
+                        option.textContent = supplier.name;
+                    } else {
+                        option.value = supplier.name;
+                        option.textContent = supplier.name;
+                    }
                     dropdown.appendChild(option);
                 });
                 
@@ -2500,19 +2566,6 @@ class WataganInventoryApp {
             const inactiveTableBody = document.getElementById(inactiveTableBodyId);
             if (inactiveTableBody) inactiveTableBody.innerHTML = '';
 
-            // Update alert badge
-            if (lowStockAlertBadge) {
-                if (lowStockItems.length > 0) {
-                    lowStockAlertBadge.textContent = `${lowStockItems.length} items need attention`;
-                    lowStockAlertBadge.classList.remove('hidden');
-                } else {
-                    lowStockAlertBadge.textContent = '0 items need attention';
-                    lowStockAlertBadge.classList.add('hidden');
-                }
-            } else {
-                // If badge not found, do not warn repeatedly
-            }
-
             // Clear existing table
             lowStockTableBody.innerHTML = '';
 
@@ -2530,38 +2583,98 @@ class WataganInventoryApp {
                     </td>
                 `;
             } else {
+                // Group items by supplier
+                const itemsBySupplier = {};
                 lowStockItems.forEach(item => {
-                    const currentQuantity = parseInt(item.quantity) || 0;
-                    const quantityOrdered = pendingQuantities[item.id] || 0; // Use calculated pending quantities
-                    const minQuantity = parseInt(item.minQuantity) || 0;
-                    const totalAvailable = currentQuantity + quantityOrdered;
+                    const supplierName = item.supplier || 'No Supplier Specified';
+                    if (!itemsBySupplier[supplierName]) {
+                        itemsBySupplier[supplierName] = [];
+                    }
+                    itemsBySupplier[supplierName].push(item);
+                });
+
+                // Sort suppliers alphabetically
+                const sortedSuppliers = Object.keys(itemsBySupplier).sort();
+
+                // Render grouped items
+                sortedSuppliers.forEach((supplierName, supplierIndex) => {
+                    const supplierItems = itemsBySupplier[supplierName];
                     
-                    const row = lowStockTableBody.insertRow();
-                    row.className = 'border-b dark:border-slate-700 hover:bg-amber-50 dark:hover:bg-amber-900';
-                    row.innerHTML = `
-                        <td class="px-4 py-2 font-medium text-amber-800 dark:text-amber-200">${item.name}</td>
-                        <td class="px-4 py-2 text-center">
-                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                                ${currentQuantity}
-                            </span>
-                        </td>
-                        <td class="px-4 py-2 text-center">
-                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${quantityOrdered > 0 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}">
-                                ${quantityOrdered}
-                            </span>
-                        </td>
-                        <td class="px-4 py-2 text-center text-amber-700 dark:text-amber-300">${minQuantity}</td>
-                        <td class="px-4 py-2 text-amber-700 dark:text-amber-300">${item.location || 'Not specified'}</td>
-                        <td class="px-4 py-2 text-amber-700 dark:text-amber-300">${item.supplier || 'Not specified'}</td>
-                        <td class="px-4 py-2 text-center">
-                            <div class="flex items-center justify-center gap-2">
-                                <button class="btn btn-success btn-xs order-now-btn" data-product-id="${item.id}" data-reorder-qty="${Math.max(1, minQuantity - totalAvailable)}" title="Order ${Math.max(1, minQuantity - totalAvailable)} more to reach minimum">Order Now</button>
-                                <button class="btn btn-warning btn-xs edit-product-btn" data-product-id="${item.id}">Edit</button>
-                                <button class="btn btn-accent btn-xs move-product-btn" data-product-id="${item.id}">Move</button>
+                    // Add supplier header row
+                    const headerRow = lowStockTableBody.insertRow();
+                    headerRow.className = 'bg-base-200 dark:bg-slate-600';
+                    headerRow.innerHTML = `
+                        <td colspan="7" class="px-4 py-3 font-semibold text-base-content">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H3m2 0h4M9 7h6m-6 4h6m-6 4h6"></path>
+                                </svg>
+                                ${supplierName} (${supplierItems.length} item${supplierItems.length !== 1 ? 's' : ''})
                             </div>
                         </td>
                     `;
+
+                    // Add items for this supplier
+                    supplierItems.forEach(item => {
+                        const currentQuantity = parseInt(item.quantity) || 0;
+                        const quantityOrdered = pendingQuantities[item.id] || 0; // Use calculated pending quantities
+                        const minQuantity = parseInt(item.minQuantity) || 0;
+                        const totalAvailable = currentQuantity + quantityOrdered;
+                        
+                        const row = lowStockTableBody.insertRow();
+                        row.className = 'border-b dark:border-slate-700 hover:bg-amber-50 dark:hover:bg-amber-900';
+                        row.innerHTML = `
+                            <td class="px-4 py-2 font-medium text-amber-800 dark:text-amber-200 pl-8">${item.name}</td>
+                            <td class="px-4 py-2 text-center">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                    ${currentQuantity}
+                                </span>
+                            </td>
+                            <td class="px-4 py-2 text-center">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${quantityOrdered > 0 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}">
+                                    ${quantityOrdered}
+                                </span>
+                            </td>
+                            <td class="px-4 py-2 text-center text-amber-700 dark:text-amber-300">${minQuantity}</td>
+                            <td class="px-4 py-2 text-amber-700 dark:text-amber-300">${item.location || 'Not specified'}</td>
+                            <td class="px-4 py-2 text-amber-700 dark:text-amber-300">${item.supplier || 'Not specified'}</td>
+                            <td class="px-4 py-2 text-center">
+                                <div class="flex items-center justify-center gap-2">
+                                    <button class="btn btn-success btn-xs order-now-btn" data-product-id="${item.id}" data-reorder-qty="${Math.max(1, minQuantity - totalAvailable)}" title="Order ${Math.max(1, minQuantity - totalAvailable)} more to reach minimum">Order Now</button>
+                                    <button class="btn btn-warning btn-xs edit-product-btn" data-product-id="${item.id}">Edit</button>
+                                    <button class="btn btn-accent btn-xs move-product-btn" data-product-id="${item.id}">Move</button>
+                                </div>
+                            </td>
+                        `;
+                    });
+
+                    // Add spacing between supplier groups (except for the last one)
+                    if (supplierIndex < sortedSuppliers.length - 1) {
+                        const spacerRow = lowStockTableBody.insertRow();
+                        spacerRow.innerHTML = `<td colspan="7" class="py-2"></td>`;
+                    }
                 });
+            }
+
+            // Update alert badge to show supplier count (moved outside if/else)
+            if (lowStockAlertBadge) {
+                if (lowStockItems.length > 0) {
+                    // Group items by supplier to count unique suppliers
+                    const itemsBySupplier = {};
+                    lowStockItems.forEach(item => {
+                        const supplierName = item.supplier || 'No Supplier Specified';
+                        if (!itemsBySupplier[supplierName]) {
+                            itemsBySupplier[supplierName] = [];
+                        }
+                        itemsBySupplier[supplierName].push(item);
+                    });
+                    const supplierCount = Object.keys(itemsBySupplier).length;
+                    lowStockAlertBadge.textContent = `${lowStockItems.length} items from ${supplierCount} supplier${supplierCount !== 1 ? 's' : ''}`;
+                    lowStockAlertBadge.classList.remove('hidden');
+                } else {
+                    lowStockAlertBadge.textContent = '0 items need attention';
+                    lowStockAlertBadge.classList.add('hidden');
+                }
             }
 
             console.log(`[App] Low stock alerts updated for ${targetTableBodyId}: ${lowStockItems.length} items`);

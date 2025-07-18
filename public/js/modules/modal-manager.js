@@ -269,7 +269,9 @@ export class ModalManager {
         // Clear individual form fields since there's no form element
         const fields = [
             'modalOrderProductId',
+            'modalOrderSupplierId',
             'modalOrderQuantity',
+            'modalOrderCost',
             'modalOrderSupplier',
             'modalOrderNotes'
         ];

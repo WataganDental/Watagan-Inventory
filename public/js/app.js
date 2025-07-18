@@ -535,17 +535,33 @@ function processQuickStockUploadedFile() { console.log('processQuickStockUploade
 async function handleAddOrder() {
     console.log('[handleAddOrder] Initiated.');
     const productId = document.getElementById('orderProductId').value;
+    const supplierId = document.getElementById('orderSupplierId')?.value;
     const quantityInput = document.getElementById('orderQuantity');
+    const costInput = document.getElementById('orderCost');
     const quantity = parseInt(quantityInput.value);
+    const cost = parseFloat(costInput?.value) || 0;
 
     if (!productId) {
         uiEnhancementManager.showToast('Please select a product to order.', 'warning');
         console.warn('[handleAddOrder] No product selected.');
         return;
     }
+    
+    if (!supplierId) {
+        uiEnhancementManager.showToast('Please select a supplier.', 'warning');
+        console.warn('[handleAddOrder] No supplier selected.');
+        return;
+    }
+    
     if (isNaN(quantity) || quantity <= 0) {
         uiEnhancementManager.showToast('Please enter a valid quantity greater than 0.', 'warning');
         console.warn('[handleAddOrder] Invalid quantity:', quantityInput.value);
+        return;
+    }
+
+    if (cost <= 0) {
+        uiEnhancementManager.showToast('Please enter a valid cost per unit.', 'warning');
+        console.warn('[handleAddOrder] Invalid cost:', cost);
         return;
     }
 
@@ -564,15 +580,23 @@ async function handleAddOrder() {
     }
 
     try {
+        // Find supplier details
+        const supplier = suppliers.find(s => s.id === supplierId || s.name === supplierId);
+        const supplierName = supplier ? supplier.name : supplierId;
+
         const orderData = {
             productId: productId,
             productName: product.name,
             quantity: quantity,
+            cost: cost,
+            totalCost: quantity * cost,
             status: 'pending',
-            orderDate: firebase.firestore.Timestamp.now(), // Corrected to use orderDate as per other parts of the app
-            createdAt: firebase.firestore.Timestamp.now(), // Keep createdAt for consistency if used elsewhere
+            orderDate: firebase.firestore.Timestamp.now(),
+            createdAt: firebase.firestore.Timestamp.now(),
             userId: user.uid,
-            supplier: product.supplier || null // Include supplier from product data
+            supplier: supplierName,
+            supplierId: supplierId,
+            notes: 'Order created from orders section'
         };
 
         const orderRef = await db.collection('orders').add(orderData);
@@ -595,7 +619,9 @@ async function handleAddOrder() {
 
         // Clear form fields
         document.getElementById('orderProductId').value = '';
+        if (document.getElementById('orderSupplierId')) document.getElementById('orderSupplierId').value = '';
         quantityInput.value = '';
+        if (costInput) costInput.value = '';
 
         // Refresh UI components
         console.log('[handleAddOrder] Refreshing UI components...');
@@ -609,7 +635,6 @@ async function handleAddOrder() {
         if (typeof displayPendingOrdersOnDashboard === "function") {
             displayPendingOrdersOnDashboard(); // Refresh pending orders on dashboard
         }
-
 
         console.log('[handleAddOrder] Process completed successfully.');
 
@@ -1425,19 +1450,24 @@ async function populateProductsDropdown() {
 async function loadAndDisplayOrders() {
   console.log('[loadAndDisplayOrders] Using orders manager for compatibility');
   
-  // Get filter values
-  const filterStatusDropdown = document.getElementById('filterOrderStatus');
-  const filterSupplierDropdown = document.getElementById('filterOrderSupplier');
-  
-  const statusFilter = filterStatusDropdown ? filterStatusDropdown.value : 'pending';
-  const supplierFilter = filterSupplierDropdown ? filterSupplierDropdown.value : '';
-  
-  console.log(`[loadAndDisplayOrders] Filters - Status: "${statusFilter}", Supplier: "${supplierFilter}"`);
-  
   try {
-    // Use the orders manager to display orders with filters
+    // Use the orders manager with smart default filtering
     if (window.ordersManager) {
-      await window.ordersManager.displayOrders(statusFilter, supplierFilter);
+      // Check if specific filters are applied
+      const filterStatusDropdown = document.getElementById('filterOrderStatus');
+      const filterSupplierDropdown = document.getElementById('filterOrderSupplier');
+      
+      const statusFilter = filterStatusDropdown ? filterStatusDropdown.value : '';
+      const supplierFilter = filterSupplierDropdown ? filterSupplierDropdown.value : '';
+      
+      // If no filters are applied, use smart default filtering
+      if (!statusFilter && !supplierFilter) {
+        console.log('[loadAndDisplayOrders] No filters applied, using smart default filtering');
+        await window.ordersManager.displayOrdersWithDefaultFilter();
+      } else {
+        console.log(`[loadAndDisplayOrders] Applying filters - Status: "${statusFilter}", Supplier: "${supplierFilter}"`);
+        await window.ordersManager.displayOrders(statusFilter, supplierFilter);
+      }
       console.log('[loadAndDisplayOrders] Orders loaded successfully via orders manager');
     } else {
       console.error('[loadAndDisplayOrders] Orders manager not available');
@@ -2356,6 +2386,8 @@ function updateSupplierDropdown() {
   const filterSupplierDropdown = document.getElementById('filterSupplier');
   const filterToOrderSupplierDropdown = document.getElementById('filterToOrderSupplier');
   const filterOrderSupplierDropdown = document.getElementById('filterOrderSupplierDropdown'); // Added this line
+  const orderSupplierDropdown = document.getElementById('orderSupplierId'); // New order supplier dropdown
+  const modalOrderSupplierDropdown = document.getElementById('modalOrderSupplierId'); // New modal order supplier dropdown
   const qrOrderSupplierSelect = document.getElementById('qrOrderSupplierSelect'); // Added for Order QR generation
 
   const populate = (dropdown, includeAllOption) => {
@@ -2377,6 +2409,8 @@ function updateSupplierDropdown() {
   populate(filterSupplierDropdown, true);
   populate(filterToOrderSupplierDropdown, true);
   populate(filterOrderSupplierDropdown, true); // Added this line
+  populate(orderSupplierDropdown, false); // New order supplier dropdown
+  populate(modalOrderSupplierDropdown, false); // New modal order supplier dropdown
   populate(qrOrderSupplierSelect, true); // Added for Order QR generation
   console.log('Supplier dropdowns updated.');
 }
@@ -2978,9 +3012,12 @@ async function updateToOrderTable() {
             return;
         }
 
-        const toOrderTableElement = document.getElementById('toOrderTable'); // Corrected ID
-        if (!toOrderTableElement) {
-            console.log('toOrderTable element not found'); // Corrected log message
+        // Update both low stock table bodies
+        const ordersViewTableBody = document.getElementById('ordersViewLowStockTableBody');
+        const dashboardTableBody = document.getElementById('lowStockTableBody');
+        
+        if (!ordersViewTableBody && !dashboardTableBody) {
+            console.log('No low stock table bodies found');
             return;
         }
 
@@ -2991,71 +3028,142 @@ async function updateToOrderTable() {
 
         console.log(`Found ${productsToOrder.length} products that need ordering`);
 
-        // Clear existing table
-        toOrderTableElement.innerHTML = ''; // Corrected variable name
+        // Function to update a table body
+        const updateTableBody = (tableBody) => {
+            if (!tableBody) return;
+            
+            // Clear existing table
+            tableBody.innerHTML = '';
 
-        if (productsToOrder.length === 0) {
-            const row = toOrderTableElement.insertRow(); // Corrected variable name
-            row.innerHTML = `
-                <td colspan="6" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-                    <div class="flex flex-col items-center">
-                        <svg class="w-12 h-12 mb-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        <h3 class="text-lg font-semibold mb-2">All products are well stocked!</h3>
-                        <p class="text-sm">No items currently need reordering</p>
-                    </div>
-                </td>
-            `;
-        } else {
-            productsToOrder.forEach(item => {
-                const row = toOrderTableElement.insertRow(); // Corrected variable name
-                const quantityNeeded = Math.max(0, item.minQuantity - item.quantity - (item.quantityOrdered || 0));
-                const recommendedOrder = item.reorderQuantity || quantityNeeded;
-                
-                row.className = 'border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-750';
+            if (productsToOrder.length === 0) {
+                const row = tableBody.insertRow();
                 row.innerHTML = `
-                    <td class="px-4 py-2 font-medium">${item.name}</td>
-                    <td class="px-4 py-2 text-center">
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                            ${item.quantity}
-                        </span>
-                    </td>
-                    <td class="px-4 py-2 text-center">${item.minQuantity || 0}</td>
-                    <td class="px-4 py-2 text-center">${item.quantityOrdered || 0}</td>
-                    <td class="px-4 py-2">${item.supplier || 'Not specified'}</td>
-                    <td class="px-4 py-2">
-                        <div class="flex items-center gap-2">
-                            <button onclick="createOrder('${item.id}', ${recommendedOrder})" class="btn btn-primary btn-xs">
-                                Order ${recommendedOrder}
-                            </button>
-                            <button onclick="viewQRCode('${item.id}')" class="btn btn-secondary btn-xs">
-                                QR Code
-                            </button>
+                    <td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                        <div class="flex flex-col items-center">
+                            <svg class="w-12 h-12 mb-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <h3 class="text-lg font-semibold mb-2">All products are well stocked!</h3>
+                            <p class="text-sm">No items currently need reordering</p>
                         </div>
                     </td>
                 `;
-            });
-        }
+            } else {
+                // Group products by supplier
+                const productsBySupplier = {};
+                productsToOrder.forEach(item => {
+                    const supplierName = item.supplier || 'No Supplier Specified';
+                    if (!productsBySupplier[supplierName]) {
+                        productsBySupplier[supplierName] = [];
+                    }
+                    productsBySupplier[supplierName].push(item);
+                });
 
-        // Update reorder notification
+                // Sort suppliers alphabetically
+                const sortedSuppliers = Object.keys(productsBySupplier).sort();
+
+                // Render grouped products
+                sortedSuppliers.forEach((supplierName, supplierIndex) => {
+                    const supplierProducts = productsBySupplier[supplierName];
+                    
+                    // Add supplier header row
+                    const headerRow = tableBody.insertRow();
+                    headerRow.className = 'bg-base-200 dark:bg-slate-600';
+                    headerRow.innerHTML = `
+                        <td colspan="7" class="px-4 py-3 font-semibold text-base-content">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H3m2 0h4M9 7h6m-6 4h6m-6 4h6"></path>
+                                </svg>
+                                ${supplierName} (${supplierProducts.length} item${supplierProducts.length !== 1 ? 's' : ''})
+                            </div>
+                        </td>
+                    `;
+
+                    // Add products for this supplier
+                    supplierProducts.forEach(item => {
+                        const row = tableBody.insertRow();
+                        const quantityNeeded = Math.max(0, item.minQuantity - item.quantity - (item.quantityOrdered || 0));
+                        const recommendedOrder = item.reorderQuantity || quantityNeeded;
+                        
+                        row.className = 'border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-750';
+                        row.innerHTML = `
+                            <td class="px-2 py-1 font-medium pl-8">${item.name}</td>
+                            <td class="px-2 py-1 text-center">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                    ${item.quantity}
+                                </span>
+                            </td>
+                            <td class="px-2 py-1 text-center">${item.quantityOrdered || 0}</td>
+                            <td class="px-2 py-1 text-center">${item.minQuantity || 0}</td>
+                            <td class="px-2 py-1 text-gray-500 dark:text-gray-400 text-sm">${item.location || 'Not specified'}</td>
+                            <td class="px-2 py-1 text-gray-500 dark:text-gray-400 text-sm">${item.supplier || 'Not specified'}</td>
+                            <td class="px-2 py-1">
+                                <div class="flex items-center gap-1">
+                                    <button onclick="createOrder('${item.id}', ${recommendedOrder})" class="btn btn-primary btn-xs">
+                                        Order ${recommendedOrder}
+                                    </button>
+                                    <button onclick="viewQRCode('${item.id}')" class="btn btn-secondary btn-xs">
+                                        QR
+                                    </button>
+                                </div>
+                            </td>
+                        `;
+                    });
+
+                    // Add spacing between supplier groups (except for the last one)
+                    if (supplierIndex < sortedSuppliers.length - 1) {
+                        const spacerRow = tableBody.insertRow();
+                        spacerRow.innerHTML = `<td colspan="7" class="py-2"></td>`;
+                    }
+                });
+            }
+        };
+
+        // Update both table bodies
+        updateTableBody(ordersViewTableBody);
+        updateTableBody(dashboardTableBody);
+
+        // Update reorder notification and badges
+        const supplierCount = productsToOrder.length > 0 ? Object.keys(productsBySupplier || {}).length : 0;
+        
+        // Update notification bar
         const reorderNotificationBar = document.getElementById('reorderNotificationBar');
         if (reorderNotificationBar) {
             if (productsToOrder.length > 0) {
-                reorderNotificationBar.textContent = `Products to reorder: ${productsToOrder.length}`;
+                reorderNotificationBar.textContent = `Products to reorder: ${productsToOrder.length} items from ${supplierCount} supplier${supplierCount !== 1 ? 's' : ''}`;
                 reorderNotificationBar.classList.remove('hidden');
             } else {
                 reorderNotificationBar.classList.add('hidden');
             }
         }
 
-        console.log('To-order table updated successfully');
+        // Update badge for orders view
+        const ordersViewBadge = document.getElementById('ordersViewLowStockAlertBadge');
+        if (ordersViewBadge) {
+            if (productsToOrder.length > 0) {
+                ordersViewBadge.textContent = `${productsToOrder.length} items from ${supplierCount} supplier${supplierCount !== 1 ? 's' : ''}`;
+            } else {
+                ordersViewBadge.textContent = 'All stocked';
+            }
+        }
+
+        // Update badge for dashboard view
+        const dashboardBadge = document.getElementById('dashboardLowStockAlertBadge');
+        if (dashboardBadge) {
+            if (productsToOrder.length > 0) {
+                dashboardBadge.textContent = `${productsToOrder.length} items need attention`;
+            } else {
+                dashboardBadge.textContent = 'All stocked';
+            }
+        }
+
+        console.log('Low stock tables updated successfully with supplier grouping');
     } catch (error) {
         console.error('Error in updateToOrderTable:', error);
     }
 }
 
-// Missing viewQRCode function
 async function viewQRCode(productId) {
     console.log('viewQRCode called for product:', productId);
     try {
