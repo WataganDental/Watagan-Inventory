@@ -855,7 +855,7 @@ class WataganInventoryApp {
     }
 
     /**
-     * Initialize Firebase
+     * Initialize Firebase with performance optimizations
      */
     async initFirebase() {
         if (this.firebaseInitialized) {
@@ -882,6 +882,33 @@ class WataganInventoryApp {
             window.db = firebase.firestore();
             window.storage = firebase.storage();
             window.auth = firebase.auth();
+            
+            // Apply Firebase performance optimizations
+            try {
+                const { applyFirebaseOptimizations } = await import('./firebase-performance-config.js');
+                this.firebaseConfig = applyFirebaseOptimizations();
+                console.log('[App] Firebase performance optimizations applied');
+            } catch (error) {
+                console.warn('[App] Could not load Firebase performance config:', error);
+            }
+
+            // Initialize performance optimizer
+            try {
+                const { performanceOptimizer } = await import('./modules/performance-optimizer.js');
+                this.performanceOptimizer = performanceOptimizer;
+                console.log('[App] Performance optimizer initialized');
+            } catch (error) {
+                console.warn('[App] Could not load performance optimizer:', error);
+            }
+            
+            // Initialize performance monitor
+            try {
+                const { performanceMonitor } = await import('./modules/performance-monitor.js');
+                this.performanceMonitor = performanceMonitor;
+                console.log('[App] Performance monitor initialized (Ctrl+Shift+P to toggle)');
+            } catch (error) {
+                console.warn('[App] Could not load performance monitor:', error);
+            }
             
             // Initialize FirebaseUI for authentication
             if (typeof firebaseui !== 'undefined') {
@@ -1185,7 +1212,7 @@ class WataganInventoryApp {
     }
 
     /**
-     * Load inventory data
+     * Load inventory data with caching optimization
      */
     async loadInventory() {
         try {
@@ -1193,15 +1220,21 @@ class WataganInventoryApp {
                 throw new Error('Database not initialized');
             }
 
-            const snapshot = await window.db.collection('inventory').get();
-            this.inventory = [];
-            
-            snapshot.forEach(doc => {
-                this.inventory.push({
-                    id: doc.id,
-                    ...doc.data()
+            // Use performance optimizer for cached loading if available
+            if (this.performanceOptimizer) {
+                this.inventory = await this.performanceOptimizer.loadDataWithCache('inventory', 'inventory_cache');
+            } else {
+                // Fallback to direct loading
+                const snapshot = await window.db.collection('inventory').get();
+                this.inventory = [];
+                
+                snapshot.forEach(doc => {
+                    this.inventory.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
                 });
-            });
+            }
 
             // Update global reference and display manager
             window.inventory = this.inventory;
@@ -1216,25 +1249,39 @@ class WataganInventoryApp {
     }
 
     /**
-     * Load suppliers data
+     * Load suppliers data with caching optimization
      */
     async loadSuppliers() {
         try {
             if (!window.db) return [];
 
-            const snapshot = await window.db.collection('suppliers').get();
-            this.suppliers = [];
-            
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                this.suppliers.push({
-                    id: doc.id,
-                    name: data.name || doc.id, // Use data.name if available, otherwise use doc.id
-                    ...data
+            // Use performance optimizer for cached loading if available
+            if (this.performanceOptimizer) {
+                this.suppliers = await this.performanceOptimizer.loadDataWithCache('suppliers', 'suppliers_cache');
+            } else {
+                // Fallback to direct loading
+                const snapshot = await window.db.collection('suppliers').get();
+                this.suppliers = [];
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    this.suppliers.push({
+                        id: doc.id,
+                        name: data.name || doc.id, // Use data.name if available, otherwise use doc.id
+                        ...data
+                    });
                 });
-            });
+            }
 
-            this.populateSupplierDropdowns();
+            // Throttle dropdown population
+            if (this.performanceOptimizer) {
+                this.performanceOptimizer.throttledUpdate('supplier_dropdowns', () => {
+                    this.populateSupplierDropdowns();
+                }, 500);
+            } else {
+                this.populateSupplierDropdowns();
+            }
+            
             console.log(`[App] Loaded ${this.suppliers.length} suppliers`);
             
         } catch (error) {
@@ -1244,25 +1291,39 @@ class WataganInventoryApp {
     }
 
     /**
-     * Load locations data
+     * Load locations data with caching optimization
      */
     async loadLocations() {
         try {
             if (!window.db) return [];
 
-            const snapshot = await window.db.collection('locations').get();
-            this.locations = [];
-            
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                this.locations.push({
-                    id: doc.id,
-                    name: data.name || doc.id, // Use data.name if available, otherwise use doc.id
-                    ...data
+            // Use performance optimizer for cached loading if available
+            if (this.performanceOptimizer) {
+                this.locations = await this.performanceOptimizer.loadDataWithCache('locations', 'locations_cache');
+            } else {
+                // Fallback to direct loading
+                const snapshot = await window.db.collection('locations').get();
+                this.locations = [];
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    this.locations.push({
+                        id: doc.id,
+                        name: data.name || doc.id, // Use data.name if available, otherwise use doc.id
+                        ...data
+                    });
                 });
-            });
+            }
 
-            this.populateLocationDropdowns();
+            // Throttle dropdown population
+            if (this.performanceOptimizer) {
+                this.performanceOptimizer.throttledUpdate('location_dropdowns', () => {
+                    this.populateLocationDropdowns();
+                }, 500);
+            } else {
+                this.populateLocationDropdowns();
+            }
+            
             console.log(`[App] Loaded ${this.locations.length} locations`);
             
         } catch (error) {
@@ -2705,7 +2766,7 @@ class WataganInventoryApp {
     }
 
     /**
-     * Start real-time listeners for orders and inventory
+     * Start optimized real-time listeners for orders and inventory
      */
     startRealtimeListeners() {
         if (!window.db) {
@@ -2713,120 +2774,97 @@ class WataganInventoryApp {
             return;
         }
 
-        console.log('[Realtime] Starting real-time listeners...');
+        console.log('[Realtime] Starting optimized real-time listeners...');
 
-        // Orders listener
-        this.ordersListener = window.db.collection('orders').onSnapshot(
-            (snapshot) => {
-                console.log('[Realtime] Orders collection changed, updating data...');
-                
-                // Update orders manager data
-                if (this.ordersManager) {
-                    const orders = [];
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        const order = {
-                            id: doc.id,
-                            ...data,
-                            status: data.status || 'pending'
-                        };
-                        orders.push(order);
-                    });
+        // Initialize performance optimizer if not already done
+        if (!this.performanceOptimizer) {
+            import('./modules/performance-optimizer.js').then(module => {
+                this.performanceOptimizer = module.performanceOptimizer;
+                this.setupOptimizedListeners();
+            });
+        } else {
+            this.setupOptimizedListeners();
+        }
+    }
+
+    /**
+     * Setup optimized listeners using performance optimizer
+     */
+    setupOptimizedListeners() {
+        // Orders listener with optimization
+        this.ordersListener = this.performanceOptimizer.optimizedListener(
+            'orders',
+            'orders_realtime',
+            (orders, metadata) => {
+                // Only update if data actually changed
+                if (!metadata.fromCache || metadata.hasPendingWrites) {
+                    console.log(`[Realtime] Orders updated: ${orders.length} items`);
                     
-                    this.ordersManager.orders = orders;
-                    console.log(`[Realtime] Updated ${orders.length} orders in memory`);
-                    
-                    // Show subtle notification for real-time update
-                    if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
-                        uiEnhancementManager.showToast(`Orders updated (${orders.length} total)`, 'info', 2000);
+                    // Update orders manager data
+                    if (this.ordersManager) {
+                        this.ordersManager.orders = orders;
+                        
+                        // Smart UI refresh - only update visible components
+                        this.performanceOptimizer.smartUIRefresh('orders');
+                        this.performanceOptimizer.smartUIRefresh('dashboard');
+                        
+                        // Throttled low stock alerts update
+                        this.performanceOptimizer.throttledUpdate('low_stock_alerts', () => {
+                            this.updateLowStockAlerts();
+                        }, 2000);
                     }
                     
-                    // Refresh orders display if currently viewing orders
-                    const ordersSection = document.getElementById('ordersSectionContainer');
-                    if (ordersSection && !ordersSection.classList.contains('hidden')) {
-                        console.log('[Realtime] Orders view active, refreshing display');
-                        this.ordersManager.displayOrders();
-                    }
-                    
-                    // Update low stock alerts with new order data
-                    this.updateLowStockAlerts();
-                    
-                    // Update dashboard if visible
-                    const dashboardSection = document.getElementById('dashboardViewContainer');
-                    if (dashboardSection && !dashboardSection.classList.contains('hidden')) {
-                        this.updateDashboard();
-                    }
-                }
-            },
-            (error) => {
-                console.error('[Realtime] Orders listener error:', error);
-                // Fallback to auto-refresh if real-time fails
-                if (!this.autoRefreshInterval) {
-                    console.log('[Realtime] Falling back to auto-refresh due to listener error');
-                    this.startAutoRefresh();
+                    // Show subtle notification (throttled)
+                    this.performanceOptimizer.throttledUpdate('orders_notification', () => {
+                        if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                            uiEnhancementManager.showToast(`Orders synced (${orders.length})`, 'info', 1500);
+                        }
+                    }, 5000); // Only show notification every 5 seconds max
                 }
             }
         );
 
-        // Inventory listener
-        this.inventoryListener = window.db.collection('inventory').onSnapshot(
-            (snapshot) => {
-                console.log('[Realtime] Inventory collection changed, updating data...');
-                
-                const inventory = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    const item = {
-                        id: doc.id,
-                        ...data
-                    };
-                    inventory.push(item);
-                });
-                
-                this.inventory = inventory;
-                window.inventory = inventory; // Update global reference
-                console.log(`[Realtime] Updated ${inventory.length} inventory items in memory`);
-                
-                // Show subtle notification for real-time update
-                if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
-                    uiEnhancementManager.showToast(`Inventory updated (${inventory.length} items)`, 'info', 2000);
-                }
-                
-                // Refresh inventory display if currently viewing inventory
-                const inventorySection = document.getElementById('inventoryContainer');
-                if (inventorySection && !inventorySection.classList.contains('hidden')) {
-                    console.log('[Realtime] Inventory view active, refreshing display');
-                    this.displayInventory();
-                }
-                
-                // Update product dropdowns
-                this.populateOrderProductDropdowns();
-                
-                // Update low stock alerts
-                this.updateLowStockAlerts();
-                
-                // Update dashboard if visible
-                const dashboardSection = document.getElementById('dashboardViewContainer');
-                if (dashboardSection && !dashboardSection.classList.contains('hidden')) {
-                    this.updateDashboard();
-                }
-            },
-            (error) => {
-                console.error('[Realtime] Inventory listener error:', error);
-                // Fallback to auto-refresh if real-time fails
-                if (!this.autoRefreshInterval) {
-                    console.log('[Realtime] Falling back to auto-refresh due to listener error');
-                    this.startAutoRefresh();
+        // Inventory listener with optimization
+        this.inventoryListener = this.performanceOptimizer.optimizedListener(
+            'inventory',
+            'inventory_realtime',
+            (inventory, metadata) => {
+                // Only update if data actually changed
+                if (!metadata.fromCache || metadata.hasPendingWrites) {
+                    console.log(`[Realtime] Inventory updated: ${inventory.length} items`);
+                    
+                    this.inventory = inventory;
+                    window.inventory = inventory; // Update global reference
+                    
+                    // Smart UI refresh - only update visible components
+                    this.performanceOptimizer.smartUIRefresh('inventory');
+                    this.performanceOptimizer.smartUIRefresh('dashboard');
+                    
+                    // Throttled updates for expensive operations
+                    this.performanceOptimizer.throttledUpdate('product_dropdowns', () => {
+                        this.populateOrderProductDropdowns();
+                    }, 3000);
+                    
+                    this.performanceOptimizer.throttledUpdate('low_stock_alerts', () => {
+                        this.updateLowStockAlerts();
+                    }, 2000);
+                    
+                    // Show subtle notification (throttled)
+                    this.performanceOptimizer.throttledUpdate('inventory_notification', () => {
+                        if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                            uiEnhancementManager.showToast(`Inventory synced (${inventory.length})`, 'info', 1500);
+                        }
+                    }, 5000); // Only show notification every 5 seconds max
                 }
             }
         );
 
         this.realtimeListenersEnabled = true;
-        console.log('[Realtime] Real-time listeners started successfully');
+        console.log('[Realtime] Optimized real-time listeners started successfully');
         
         // Show user notification
         if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
-            uiEnhancementManager.showToast('Real-time updates enabled - data will sync automatically', 'success');
+            uiEnhancementManager.showToast('Optimized real-time sync enabled', 'success');
         }
         
         // Stop auto-refresh since we have real-time updates now

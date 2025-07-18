@@ -601,6 +601,17 @@ export class EventHandlerManager {
                 } else {
                     await window.processFullReceipt(window.currentMiniModalOrderId, orderData, productData, productRef);
                 }
+            } else if (newStatus === 'fulfilled' && typeof window.processFullReceipt === 'function') {
+                // For fulfilled status, same as received but keep status as 'fulfilled'
+                if (Object.keys(updateData).length > 1) { // More than just status
+                    await orderRef.update(updateData);
+                    // Refresh order data for processing
+                    const updatedOrderDoc = await orderRef.get();
+                    const updatedOrderData = updatedOrderDoc.data();
+                    await window.processFullReceipt(window.currentMiniModalOrderId, updatedOrderData, productData, productRef, 'fulfilled');
+                } else {
+                    await window.processFullReceipt(window.currentMiniModalOrderId, orderData, productData, productRef, 'fulfilled');
+                }
             } else if (newStatus === 'partially_received' && typeof window.processPartialReceipt === 'function') {
                 // For partial receipt, update quantity first then process
                 if (Object.keys(updateData).length > 1) { // More than just status

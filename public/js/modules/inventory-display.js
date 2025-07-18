@@ -20,9 +20,23 @@ export class InventoryDisplayManager {
     }
 
     /**
-     * Display inventory with optional filtering
+     * Display inventory with optional filtering and performance optimization
      */
     displayInventory(searchTerm = '', supplierFilter = '', locationFilter = '') {
+        // Use performance optimizer throttling if available
+        if (window.app && window.app.performanceOptimizer) {
+            window.app.performanceOptimizer.throttledUpdate('inventory_display', () => {
+                this.doDisplayInventory(searchTerm, supplierFilter, locationFilter);
+            }, 300);
+        } else {
+            this.doDisplayInventory(searchTerm, supplierFilter, locationFilter);
+        }
+    }
+
+    /**
+     * Internal method to actually display inventory
+     */
+    doDisplayInventory(searchTerm = '', supplierFilter = '', locationFilter = '') {
         const inventoryTableBody = document.getElementById('inventoryTable');
         const loadingEl = document.getElementById('inventoryLoading');
         const errorEl = document.getElementById('inventoryError');
@@ -49,8 +63,14 @@ export class InventoryDisplayManager {
             this.filteredInventory = this.applyFilters(searchTerm, supplierFilter, locationFilter);
             this.totalFilteredItems = this.filteredInventory.length;
 
-            // Update inventory statistics
-            this.updateInventoryStatistics();
+            // Update inventory statistics (throttled)
+            if (window.app && window.app.performanceOptimizer) {
+                window.app.performanceOptimizer.throttledUpdate('inventory_stats', () => {
+                    this.updateInventoryStatistics();
+                }, 1000);
+            } else {
+                this.updateInventoryStatistics();
+            }
 
             if (this.filteredInventory.length === 0) {
                 this.hideLoading(loadingEl);
@@ -73,9 +93,15 @@ export class InventoryDisplayManager {
 
             inventoryTableBody.innerHTML = tableRows;
 
-            // Attach event listeners to new elements
+            // Attach event listeners to new elements (throttled)
             if (typeof window.productManager !== 'undefined' && window.productManager.attachTableEventListeners) {
-                window.productManager.attachTableEventListeners();
+                if (window.app && window.app.performanceOptimizer) {
+                    window.app.performanceOptimizer.throttledUpdate('inventory_events', () => {
+                        window.productManager.attachTableEventListeners();
+                    }, 200);
+                } else {
+                    window.productManager.attachTableEventListeners();
+                }
             }
 
             this.hideLoading(loadingEl);

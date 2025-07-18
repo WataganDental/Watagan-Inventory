@@ -881,8 +881,8 @@ function updateEnhancedDashboard() {
 }
 
 // START: Order Processing Functions
-async function processFullReceipt(orderId, orderData, productData, productRef) {
-    console.log(`[processFullReceipt] Processing full receipt for order ${orderId}`);
+async function processFullReceipt(orderId, orderData, productData, productRef, finalStatus = 'received') {
+    console.log(`[processFullReceipt] Processing full receipt for order ${orderId}, final status: ${finalStatus}`);
     if (!orderData || !productData || !productRef) {
         uiEnhancementManager.showToast("Missing data for full receipt processing.", "error");
         console.error("[processFullReceipt] Missing orderData, productData, or productRef.");
@@ -903,12 +903,13 @@ async function processFullReceipt(orderId, orderData, productData, productRef) {
         });
         console.log(`[processFullReceipt] Inventory updated for product ${productData.id}: quantity=${newInventoryQuantity}, quantityOrdered=${newInventoryQuantityOrdered}`);
 
-        // Update order status to 'Received'
-        await orderRefFs.update({ status: 'received' });
-        console.log(`[processFullReceipt] Order ${orderId} status updated to 'received'.`);
+        // Update order status to the specified final status
+        await orderRefFs.update({ status: finalStatus });
+        console.log(`[processFullReceipt] Order ${orderId} status updated to '${finalStatus}'.`);
 
-        uiEnhancementManager.showToast(`Order ${orderId} fully received. Inventory updated.`, "success");
-        await logActivity('order_received_full', `Order ${orderId} (${orderData.productName}) fully received. Quantity: ${quantityReceived}.`, orderId, orderData.productName);
+        const statusText = finalStatus === 'fulfilled' ? 'fulfilled' : 'received';
+        uiEnhancementManager.showToast(`Order ${orderId} ${statusText}. Inventory updated.`, "success");
+        await logActivity('order_received_full', `Order ${orderId} (${orderData.productName}) ${statusText}. Quantity: ${quantityReceived}.`, orderId, orderData.productName);
 
         // Update local inventory array for immediate UI reflection
         const localProductIndex = inventory.findIndex(p => p.id === productData.id);
@@ -5191,6 +5192,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (newStatus === 'received') {
                             console.log(`Calling processFullReceipt for order ${currentMiniModalOrderId}`);
                             await processFullReceipt(currentMiniModalOrderId, orderData, productData, productRef);
+                        } else if (newStatus === 'fulfilled') {
+                            // When order is fulfilled, it means the items were received - same as 'received' status
+                            console.log(`Calling processFullReceipt for order ${currentMiniModalOrderId} (fulfilled status)`);
+                            await processFullReceipt(currentMiniModalOrderId, orderData, productData, productRef, 'fulfilled');
                         } else if (newStatus === 'partially_received') {
                             if (isNaN(quantityReceived) || quantityReceived <= 0) {
                                 uiEnhancementManager.showToast("Please enter a valid quantity received for partial receipt.", "warning");
@@ -5202,7 +5207,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                             console.log(`Calling processPartialReceipt for order ${currentMiniModalOrderId} with quantity ${quantityReceived}`);
                             await processPartialReceipt(currentMiniModalOrderId, orderData, productData, productRef, quantityReceived);
-                        } else { // Handle other simple status changes (Pending, Fulfilled, Cancelled, Backordered)
+                        } else { // Handle other simple status changes (Pending, Cancelled, Backordered)
                             if (orderData.status !== newStatus) {
                                 await orderRef.update({ status: newStatus });
                                 uiEnhancementManager.showToast(`Order ${currentMiniModalOrderId} status updated to ${newStatus}.`, "success");

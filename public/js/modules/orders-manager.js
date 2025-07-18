@@ -11,12 +11,21 @@ export class OrdersManager {
     }
 
     /**
-     * Load orders from database
+     * Load orders from database with caching optimization
      */
-    async loadOrders() {
+    async loadOrders(forceRefresh = false) {
         try {
+            // Use performance optimizer for cached loading if available
+            if (window.app && window.app.performanceOptimizer) {
+                console.log('Loading orders using performance optimizer...');
+                this.orders = await window.app.performanceOptimizer.loadDataWithCache('orders', 'orders_cache', forceRefresh);
+                
+                console.log(`Loaded ${this.orders.length} orders from ${forceRefresh ? 'database' : 'cache/database'}`);
+                return this.orders;
+            }
+
+            // Fallback to direct loading
             console.log('Loading orders from database...');
-            // Load all orders without ordering to avoid index issues
             const ordersSnapshot = await window.db.collection('orders').get();
             
             this.orders = [];
@@ -30,11 +39,6 @@ export class OrdersManager {
                     status: data.status || 'pending'
                 };
                 this.orders.push(order);
-            });
-
-            console.log(`Loaded ${this.orders.length} orders:`);
-            this.orders.forEach(order => {
-                console.log(`- Order ${order.id}: status="${order.status}", supplier="${order.supplier}"`);
             });
 
             console.log(`Loaded ${this.orders.length} orders`);
@@ -435,7 +439,7 @@ export class OrdersManager {
     }
 
     /**
-     * Update order status
+     * Update order status with optimization
      */
     async updateOrderStatus(orderId, newStatus, quantityReceived = null) {
         try {
@@ -459,20 +463,24 @@ export class OrdersManager {
             if (newStatus === 'partially_received' && quantityReceived !== null) {
                 updateData.quantityReceived = quantityReceived;
                 updateData.quantityRemaining = (orderData.quantity || 0) - quantityReceived;
-            } else if (newStatus === 'received') {
+            } else if (newStatus === 'received' || newStatus === 'fulfilled') {
                 updateData.quantityReceived = orderData.quantity || 0;
                 updateData.quantityRemaining = 0;
             }
 
-            // Update order
-            await orderRef.update(updateData);
+            // Use batched writes if performance optimizer is available
+            if (window.app && window.app.performanceOptimizer) {
+                await window.app.performanceOptimizer.batchWrite('orders', orderId, updateData, 'update');
+            } else {
+                await orderRef.update(updateData);
+            }
 
             // Process inventory updates if needed
-            if ((newStatus === 'received' || newStatus === 'partially_received') && orderData.productId) {
+            if ((newStatus === 'received' || newStatus === 'fulfilled' || newStatus === 'partially_received') && orderData.productId) {
                 await this.processOrderReceipt(orderId, orderData, quantityReceived);
             }
 
-            // Log activity
+            // Log activity (batch this too if possible)
             if (typeof window.logActivity === 'function') {
                 await window.logActivity(
                     'order_status_changed',
@@ -487,10 +495,16 @@ export class OrdersManager {
                 uiEnhancementManager.showToast(`Order status updated to ${this.formatStatus(newStatus)}`, 'success');
             }
 
-            // Refresh displays
-            await this.displayOrders();
-            if (typeof window.updateInventoryDashboard === 'function') {
-                window.updateInventoryDashboard();
+            // Use smart refresh instead of full refresh
+            if (window.app && window.app.performanceOptimizer) {
+                window.app.performanceOptimizer.smartUIRefresh('orders');
+                window.app.performanceOptimizer.smartUIRefresh('dashboard');
+            } else {
+                // Fallback to full refresh
+                await this.displayOrders();
+                if (typeof window.updateInventoryDashboard === 'function') {
+                    window.updateInventoryDashboard();
+                }
             }
 
         } catch (error) {
