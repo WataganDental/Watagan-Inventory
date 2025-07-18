@@ -77,9 +77,13 @@ export class UIEnhancementManager {
 
         this.dashboardStats.totalProducts = inventory.length;
         this.dashboardStats.lowStockCount = inventory.filter(item => {
-            const quantity = parseInt(item.quantity) || 0;
+            const currentQuantity = parseInt(item.quantity) || 0;
+            const quantityOrdered = parseInt(item.quantityOrdered) || 0;
             const minQuantity = parseInt(item.minQuantity) || 0;
-            return quantity > 0 && quantity <= minQuantity;
+            const totalAvailable = currentQuantity + quantityOrdered;
+            
+            // Show in low stock if: current quantity is low AND total available (including orders) is still below minimum
+            return currentQuantity > 0 && currentQuantity <= minQuantity && totalAvailable <= minQuantity;
         }).length;
         this.dashboardStats.outOfStockCount = inventory.filter(item => {
             const quantity = parseInt(item.quantity) || 0;
