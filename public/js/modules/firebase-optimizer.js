@@ -14,6 +14,7 @@ export class FirebaseOptimizer {
         this.batchOperations = [];
         this.listeners = new Map();
         this.queryCache = new Map();
+        this.pendingRequests = new Map(); // Track pending requests to prevent duplicates
         this.monitor = performanceMonitor;
         
         // Performance tracking
@@ -39,7 +40,7 @@ export class FirebaseOptimizer {
         
         // Check cache first unless force refresh
         if (cacheEntry && !options.forceRefresh) {
-            const isExpired = Date.now() - cacheEntry.timestamp > (options.cacheDuration || 300000); // 5 min default
+            const isExpired = Date.now() - cacheEntry.timestamp > (options.cacheDuration || 1800000); // 30 min default for better caching
             if (!isExpired) {
                 this.stats.cacheHits++;
                 this.monitor.trackRead(collection, 'document', true);
@@ -88,24 +89,58 @@ export class FirebaseOptimizer {
             orderBy = [],
             limit = 1000, // Increased default limit to handle larger collections
             startAfter = null,
-            cacheDuration = 180000, // 3 minutes
+            cacheDuration = 600000, // Increased to 10 minutes for better caching
             source = 'default'
         } = options;
         
         // Create cache key from query parameters
         const cacheKey = this.createQueryCacheKey(collection, { where, orderBy, limit, startAfter });
+        
+        // Check if this exact request is already pending
+        if (this.pendingRequests.has(cacheKey)) {
+            console.log(`[Firebase] Request already pending for ${collection}, waiting...`);
+            return await this.pendingRequests.get(cacheKey);
+        }
+        
         const cacheEntry = this.queryCache.get(cacheKey);
         
-        // Check cache first
+        // Check cache first - be more aggressive about using cache
         if (cacheEntry && !options.forceRefresh) {
             const isExpired = Date.now() - cacheEntry.timestamp > cacheDuration;
             if (!isExpired) {
                 this.stats.cacheHits++;
                 this.monitor.trackRead(collection, 'collection', true);
-                console.log(`[Firebase] Query cache hit for ${collection}`);
+                console.log(`[Firebase] Query cache hit for ${collection} (${cacheEntry.data.length} items)`);
                 return cacheEntry.data;
             }
         }
+        
+        // For critical collections, use cache even if slightly stale to reduce reads
+        if (cacheEntry && ['suppliers', 'locations', 'inventory'].includes(collection)) {
+            const staleDuration = Date.now() - cacheEntry.timestamp;
+            if (staleDuration < 1800000) { // 30 minutes for critical collections
+                this.stats.cacheHits++;
+                this.monitor.trackRead(collection, 'collection', true);
+                console.log(`[Firebase] Using stale cache for ${collection} (${Math.round(staleDuration/60000)}min old)`);
+                return cacheEntry.data;
+            }
+        }
+        
+        // Create and track the request promise
+        const requestPromise = this._executeCollectionQuery(collection, options, cacheKey);
+        this.pendingRequests.set(cacheKey, requestPromise);
+        
+        try {
+            const result = await requestPromise;
+            return result;
+        } finally {
+            // Clean up pending request
+            this.pendingRequests.delete(cacheKey);
+        }
+    }
+
+    async _executeCollectionQuery(collection, options, cacheKey) {
+        const { where = [], orderBy = [], limit = 1000, startAfter = null } = options;
         
         try {
             let query = this.db.collection(collection);
@@ -125,10 +160,32 @@ export class FirebaseOptimizer {
             if (startAfter) query = query.startAfter(startAfter);
             
             this.stats.reads++;
-            this.monitor.trackRead(collection, 'collection', false);
-            console.log(`[Firebase] Querying collection ${collection} (estimated ${limit} reads)`);
+            console.log(`[Firebase] Querying collection ${collection} (estimated ${limit || 1000} reads)`);
             
-            const snapshot = await query.get({ source });
+            // Always try cache first for better performance
+            let snapshot;
+            let fromCache = false;
+            try {
+                snapshot = await query.get({ source: 'cache' });
+                fromCache = true;
+                console.log(`[Firebase] Cache query for ${collection} returned ${snapshot.size} documents`);
+                
+                // Only go to server if cache is truly empty AND we expect data
+                if (snapshot.empty && this.shouldExpectData(collection)) {
+                    console.log(`[Firebase] Cache empty for ${collection}, trying server...`);
+                    snapshot = await query.get({ source: 'server' });
+                    fromCache = false;
+                    this.monitor.trackRead(collection, 'collection', false);
+                } else {
+                    this.monitor.trackRead(collection, 'collection', true);
+                }
+            } catch (cacheError) {
+                console.log(`[Firebase] Cache error for ${collection}, falling back to server:`, cacheError.message);
+                snapshot = await query.get({ source: 'server' });
+                fromCache = false;
+                this.monitor.trackRead(collection, 'collection', false);
+            }
+            
             const data = [];
             
             snapshot.forEach(doc => {
@@ -142,13 +199,18 @@ export class FirebaseOptimizer {
                 });
             });
             
-            // Cache query result
+            // Cache query result with extended duration for critical collections
+            const extendedDuration = ['suppliers', 'locations'].includes(collection) ? 1800000 : 600000;
             this.queryCache.set(cacheKey, {
                 data,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                duration: extendedDuration
             });
             
-            this.stats.cacheMisses++;
+            if (!fromCache) {
+                this.stats.cacheMisses++;
+            }
+            console.log(`[Firebase] ${collection} query completed: ${data.length} items (from ${fromCache ? 'cache' : 'server'})`);
             return data;
             
         } catch (error) {
@@ -319,6 +381,14 @@ export class FirebaseOptimizer {
         return `query_${collection}_${JSON.stringify(options)}`;
     }
 
+    /**
+     * Helper to determine if we should expect data for a collection
+     */
+    shouldExpectData(collection) {
+        const expectedCollections = ['suppliers', 'locations', 'inventory', 'orders'];
+        return expectedCollections.includes(collection);
+    }
+
     clearQueryCache(collection) {
         for (const [key] of this.queryCache) {
             if (key.startsWith(`query_${collection}_`)) {
@@ -346,6 +416,24 @@ export class FirebaseOptimizer {
         const stats = this.getStats();
         console.log('[Firebase] Performance Stats:', stats);
         return stats;
+    }
+
+    /**
+     * Load suppliers from the database
+     */
+    async loadSuppliers() {
+        try {
+            const suppliersRef = window.db.collection('suppliers');
+            const snapshot = await suppliersRef.get();
+            if (snapshot.empty) {
+                console.warn('No suppliers found in the database.');
+                return [];
+            }
+            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (error) {
+            console.error('Error querying suppliers:', error);
+            return [];
+        }
     }
 }
 

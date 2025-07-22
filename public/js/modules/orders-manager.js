@@ -85,24 +85,19 @@ export class OrdersManager {
                 (order.status || 'pending').toLowerCase() === 'pending'
             );
             
-            // Determine default filter based on priority - only pending or backordered
-            let defaultFilter = 'pending'; // Default to pending always
-            let filterReason = 'showing pending orders only (default)';
-            
-            if (hasBackorderedOrders) {
-                defaultFilter = 'backordered';
-                filterReason = 'backordered orders found (highest priority)';
-            }
-            
+            // Determine default filter based on priority - show ALL orders to troubleshoot
+            let defaultFilter = 'pending_backordered'; // Show pending & backordered by default
+            let filterReason = 'showing pending & backordered orders by default';
+
             // Update the HTML filter dropdown to match
             const statusFilterEl = document.getElementById('filterOrderStatus');
             if (statusFilterEl) {
                 statusFilterEl.value = defaultFilter;
             }
-            
+
             console.log(`Using default filter: "${defaultFilter}" (${filterReason})`);
             console.log(`Orders summary: ${this.orders.length} total, ${hasBackorderedOrders ? 'has' : 'no'} backordered, ${hasPendingOrders ? 'has' : 'no'} pending`);
-            
+
             // Display with the determined filter
             await this.displayOrders(defaultFilter, '');
             
@@ -189,28 +184,36 @@ export class OrdersManager {
             console.log('No status filter - showing all orders');
             return this.orders;
         }
-        
+
+        // Special case: show both pending and backordered
+        if (statusFilter === 'pending_backordered') {
+            const filtered = this.orders.filter(order => {
+                const orderStatus = (order.status || 'pending').toLowerCase();
+                return orderStatus === 'pending' || orderStatus === 'backordered' || orderStatus === 'partially_received';
+            });
+            console.log(`Filtered to ${filtered.length} orders (pending & backordered)`);
+            return filtered;
+        }
+
         const filtered = this.orders.filter(order => {
             // Status filter - case insensitive matching
             if (statusFilter) {
                 const orderStatus = (order.status || 'pending').toLowerCase();
                 const filterStatus = statusFilter.toLowerCase();
-                
+
                 // Direct match first
                 if (orderStatus === filterStatus) {
                     return true;
                 }
-                
+
                 // Handle mixed case statuses from original app
                 const statusVariations = {
                     'pending': ['pending', 'Pending'],
-                    'received': ['received', 'Received'],
-                    'partially_received': ['partially_received', 'Partially Received', 'partial'],
+                    'backordered': ['backordered', 'Backordered', 'partially_received', 'Partially Received', 'partial'],
                     'fulfilled': ['fulfilled', 'Fulfilled'],
-                    'cancelled': ['cancelled', 'Cancelled'],
-                    'backordered': ['backordered', 'Backordered']
+                    'cancelled': ['cancelled', 'Cancelled']
                 };
-                
+
                 for (const [key, variations] of Object.entries(statusVariations)) {
                     if (filterStatus === key) {
                         const isMatch = variations.some(variation => 
@@ -220,7 +223,7 @@ export class OrdersManager {
                         if (isMatch) return true;
                     }
                 }
-                
+
                 console.log(`Order ${order.id} filtered out: status "${order.status}" doesn't match filter "${statusFilter}"`);
                 return false;
             }
@@ -232,7 +235,7 @@ export class OrdersManager {
 
             return true;
         });
-        
+
         console.log(`Filtered to ${filtered.length} orders`);
         return filtered;
     }
@@ -313,12 +316,9 @@ export class OrdersManager {
         const statusMap = {
             'pending': 'Pending',
             'ordered': 'Ordered', 
-            'partially_received': 'Partial',
-            'partially received': 'Partial',
-            'received': 'Received',
+            'backordered': 'Backordered',
             'cancelled': 'Cancelled',
-            'fulfilled': 'Fulfilled',
-            'backordered': 'Backordered'
+            'fulfilled': 'Fulfilled'
         };
         
         return statusMap[statusLower] || status;
@@ -730,6 +730,38 @@ export class OrdersManager {
             }
             throw error;
         }
+        // Update supplier in inventory if changed
+        if (order.productId && order.supplier) {
+            try {
+                // Get current product data
+                const productDoc = await window.db.collection('inventory').doc(order.productId).get();
+                if (productDoc.exists) {
+                    const currentSupplier = productDoc.data().supplier || '';
+                    if (currentSupplier !== order.supplier) {
+                        await window.db.collection('inventory').doc(order.productId).update({
+                            supplier: order.supplier,
+                            lastSupplierUpdate: new Date(),
+                            lastSupplierFromOrder: docRef.id
+                        });
+                        // Update local inventory data
+                        if (window.app?.inventory) {
+                            const productIndex = window.app.inventory.findIndex(p => p.id === order.productId);
+                            if (productIndex !== -1) {
+                                window.app.inventory[productIndex].supplier = order.supplier;
+                                window.app.inventory[productIndex].lastSupplierUpdate = new Date();
+                                window.app.inventory[productIndex].lastSupplierFromOrder = docRef.id;
+                            }
+                        }
+                        console.log(`[OrdersManager] Supplier updated for product ${order.productName}`);
+                    }
+                }
+            } catch (supplierUpdateError) {
+                console.error('[OrdersManager] Error updating supplier:', supplierUpdateError);
+                if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                    uiEnhancementManager.showToast(`Order created but failed to update supplier: ${supplierUpdateError.message}`, 'warning');
+                }
+            }
+        }
     }
 
     /**
@@ -800,11 +832,20 @@ export class OrdersManager {
             // Create the order
             const orderId = await this.createOrder(orderData);
 
+
+            // Prevent double submission
+            const modalSubmitBtn = document.getElementById('modalSubmitOrderBtn');
+            if (modalSubmitBtn) modalSubmitBtn.disabled = true;
+
             // Clear form
             document.getElementById('modalOrderProductId').value = '';
             document.getElementById('modalOrderSupplierId').value = '';
             document.getElementById('modalOrderQuantity').value = '';
             document.getElementById('modalOrderCost').value = '';
+
+            // Set filter to pending_backordered so new order is visible
+            const statusFilterEl = document.getElementById('filterOrderStatus');
+            if (statusFilterEl) statusFilterEl.value = 'pending_backordered';
 
             // Close modal
             if (window.app?.modalManager?.closeCreateOrderModal) {
@@ -815,6 +856,9 @@ export class OrdersManager {
             if (window.app?.updateDashboard) {
                 window.app.updateDashboard();
             }
+
+            // Re-enable button after short delay
+            setTimeout(() => { if (modalSubmitBtn) modalSubmitBtn.disabled = false; }, 1000);
 
             return orderId;
 
@@ -895,11 +939,23 @@ export class OrdersManager {
             // Create the order
             const orderId = await this.createOrder(orderData);
 
+
+            // Prevent double submission
+            const addOrderBtn = document.getElementById('addOrderBtn');
+            if (addOrderBtn) addOrderBtn.disabled = true;
+
             // Clear form
             document.getElementById('orderProductId').value = '';
             document.getElementById('orderSupplierId').value = '';
             document.getElementById('orderQuantity').value = '';
             document.getElementById('orderCost').value = '';
+
+            // Set filter to pending_backordered so new order is visible
+            const statusFilterEl = document.getElementById('filterOrderStatus');
+            if (statusFilterEl) statusFilterEl.value = 'pending_backordered';
+
+            // Re-enable button after short delay
+            setTimeout(() => { if (addOrderBtn) addOrderBtn.disabled = false; }, 1000);
 
             return orderId;
 
@@ -1015,47 +1071,66 @@ export class OrdersManager {
             console.error("Dashboard Pending Orders table body not found.");
             return;
         }
-        tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4">Loading pending orders...</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4">Loading pending/backordered orders...</td></tr>';
 
         try {
-            const ordersSnapshot = await window.db.collection('orders')
-                .where('status', '==', 'pending')
+            // Get both pending and backordered (including legacy partially_received)
+            const ordersSnapshotPending = await window.db.collection('orders')
+                .where('status', 'in', ['pending', 'backordered', 'partially_received'])
                 .orderBy('orderDate', 'desc')
                 .limit(10)
                 .get();
 
-            if (ordersSnapshot.empty) {
-                tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-gray-500 dark:text-gray-400">No pending orders found.</td></tr>';
+            if (ordersSnapshotPending.empty) {
+                tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-gray-500 dark:text-gray-400">No pending or backordered orders found.</td></tr>';
                 return;
             }
 
-            tableBody.innerHTML = ''; // Clear loading message
-            ordersSnapshot.forEach(doc => {
+            tableBody.innerHTML = '';
+            ordersSnapshotPending.forEach(doc => {
                 const order = doc.data();
                 const row = tableBody.insertRow();
-                row.className = 'hover'; // DaisyUI hover effect
+                row.className = 'hover';
+
+                // Show 'Backordered' for both backordered and partially_received
+                let statusDisplay = order.status;
+                if (statusDisplay === 'partially_received' || statusDisplay === 'backordered') {
+                    statusDisplay = 'Backordered';
+                }
 
                 row.innerHTML = `
                     <td class="text-xs whitespace-nowrap">${doc.id}</td>
                     <td>${order.productName || 'N/A'}</td>
                     <td class="text-center">${order.quantity}</td>
                     <td class="text-xs whitespace-nowrap">${order.orderDate ? order.orderDate.toDate().toLocaleDateString() : 'N/A'}</td>
-                    <td><span class="badge badge-warning badge-sm">${order.status}</span></td>
+                    <td><span class="badge badge-warning badge-sm">${statusDisplay}</span></td>
                     <td class="text-center">
-                        <button class="btn btn-xs btn-ghost" onclick="openMiniStatusModal('${doc.id}', '${order.status}')" title="Edit Status">
+                        <button class="btn btn-xs btn-ghost dashboard-edit-status-btn" data-order-id="${doc.id}" data-order-status="${order.status}" title="Edit Status">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
                         </button>
                     </td>
                 `;
             });
-            console.log("Pending orders displayed on dashboard.");
+            // Add event listeners for status edit buttons
+            tableBody.querySelectorAll('.dashboard-edit-status-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const orderId = this.getAttribute('data-order-id');
+                    const orderStatus = this.getAttribute('data-order-status');
+                    if (typeof window.openMiniStatusUpdateModal === 'function') {
+                        window.openMiniStatusUpdateModal(orderId, orderStatus);
+                    } else if (typeof openMiniStatusUpdateModal === 'function') {
+                        openMiniStatusUpdateModal(orderId, orderStatus);
+                    } else {
+                        alert('Status modal function not found.');
+                    }
+                });
+            });
+            console.log("Pending/backordered orders displayed on dashboard.");
         } catch (error) {
-            console.error("Error fetching or displaying pending orders on dashboard:", error);
-            tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-red-500 dark:text-red-400">Error loading pending orders.</td></tr>';
-            
-            // Show error toast if available
+            console.error("Error fetching or displaying pending/backordered orders on dashboard:", error);
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4 text-red-500 dark:text-red-400">Error loading pending/backordered orders.</td></tr>';
             if (typeof window.uiEnhancementManager !== 'undefined' && window.uiEnhancementManager.showToast) {
-                window.uiEnhancementManager.showToast('Error loading pending orders: ' + error.message, 'error');
+                window.uiEnhancementManager.showToast('Error loading pending/backordered orders: ' + error.message, 'error');
             }
         }
     }

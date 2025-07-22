@@ -245,14 +245,176 @@ export class ModalManager {
     /**
      * Open Create Order Modal
      */
-    openCreateOrderModal() {
+    /**
+     * Open Create Order Modal
+     * @param {string|null} currentSupplierId - The supplier to select by default
+     */
+    /**
+     * Open Create Order Modal
+     * Waits for suppliers and locations to be loaded before populating dropdowns
+     * @param {string|null} currentSupplierId - The supplier to select by default
+     * @param {string|null} productId - The product to pre-select
+     * @param {number|string|null} quantity - The quantity to pre-fill
+     * @returns {Promise<void>} Promise that resolves when modal is open and ready
+     */
+    async openCreateOrderModal(currentSupplierId = null, productId = null, quantity = null) {
+        const modal = document.getElementById('createOrderModal');
+        if (!modal) {
+            console.error('Modal element #createOrderModal not found!');
+            this.showAlertModal('Error', 'Order modal not found. Please check your HTML.');
+            throw new Error('Modal not found');
+        }
+
+        await this.ensureSuppliersLoaded();
+        // Note: ensureLocationsLoaded() commented out as modalOrderLocationId doesn't exist in current HTML
+        // await this.ensureLocationsLoaded();
+
         this.openModal('createOrderModal', {
             focusElement: 'modalOrderProductId',
             onClose: () => this.resetCreateOrderForm()
         });
 
-        // Populate product dropdown
-        this.populateOrderProductDropdown();
+        this.populateOrderProductDropdown(productId);
+        
+        // Auto-select supplier if productId is provided and currentSupplierId is not specified
+        let supplierToSelect = currentSupplierId;
+        if (productId && !currentSupplierId && window.inventory) {
+            const selectedProduct = window.inventory.find(item => item.id === productId);
+            if (selectedProduct && selectedProduct.supplier) {
+                supplierToSelect = selectedProduct.supplier;
+                console.log(`[ModalManager] Auto-selecting supplier "${selectedProduct.supplier}" for product "${selectedProduct.name}"`);
+            }
+        }
+        
+        this.populateOrderSupplierDropdown(supplierToSelect);
+        // Note: populateOrderLocationDropdown() commented out as modalOrderLocationId doesn't exist in current HTML
+        // this.populateOrderLocationDropdown();
+
+        // Pre-fill quantity if provided
+        if (quantity !== null) {
+            const quantityInput = document.getElementById('modalOrderQuantity');
+            if (quantityInput) {
+                quantityInput.value = quantity;
+            }
+        }
+
+        const supplierSelect = document.getElementById('modalOrderSupplierId');
+        if (supplierSelect && (!window.app?.suppliers || window.app.suppliers.length === 0)) {
+            supplierSelect.innerHTML = '<option value="">No suppliers available</option>';
+        }
+
+        // Location dropdown check removed as the field doesn't exist in current modal
+        // const locationSelect = document.getElementById('modalOrderLocationId');
+        // if (locationSelect && (!window.app?.locations || window.app.locations.length === 0)) {
+        //     locationSelect.innerHTML = '<option value="">No locations available</option>';
+        // }
+
+        // Return a resolved promise to indicate the modal is ready
+        return Promise.resolve();
+    }
+
+    /**
+     * Ensures suppliers are loaded before populating dropdowns
+     */
+    async ensureSuppliersLoaded() {
+        // Check if app has already loaded suppliers
+        if (window.app?.suppliers && window.app.suppliers.length > 0) {
+            console.log('[DEBUG] Using existing suppliers from window.app:', window.app.suppliers.length);
+            return;
+        }
+
+        // If app exists but hasn't loaded suppliers yet, use app's loadSuppliers method
+        if (window.app && typeof window.app.loadSuppliers === 'function') {
+            console.log('[DEBUG] Loading suppliers via app.loadSuppliers()...');
+            await window.app.loadSuppliers();
+            return;
+        }
+
+        // Fallback: load suppliers directly
+        try {
+            if (!window.db) {
+                console.error('[DEBUG] Firebase database not initialized');
+                window.app = window.app || {};
+                window.app.suppliers = [];
+                return;
+            }
+
+            const suppliersRef = window.db.collection('suppliers');
+            console.log('[DEBUG] Querying suppliers collection in Firebase directly...');
+            const snapshot = await suppliersRef.get();
+            console.log(`[DEBUG] Suppliers query returned ${snapshot.size} documents.`);
+            
+            if (snapshot.empty) {
+                console.warn('No suppliers found in the database.');
+                window.app = window.app || {};
+                window.app.suppliers = [];
+            } else {
+                const suppliers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                window.app = window.app || {};
+                window.app.suppliers = suppliers;
+                console.log('[DEBUG] Suppliers loaded directly:', window.app.suppliers);
+            }
+        } catch (error) {
+            console.error('Error loading suppliers:', error);
+            window.app = window.app || {};
+            window.app.suppliers = [];
+        }
+    }
+
+    /**
+     * Ensures locations are loaded before populating dropdowns
+     */
+    async ensureLocationsLoaded() {
+        if (window.app?.locations && window.app.locations.length > 0) return;
+        if (window.app?.loadLocations) {
+            await window.app.loadLocations();
+        }
+    }
+
+    /**
+     * Populate order location dropdown
+     */
+    populateOrderLocationDropdown() {
+        const select = document.getElementById('modalOrderLocationId');
+        const locations = window.app?.locations || [];
+        if (!select) return;
+
+        select.innerHTML = '<option value="">Select Location</option>';
+        if (locations.length === 0) {
+            select.innerHTML = '<option value="">No locations available</option>';
+            return;
+        }
+        locations.forEach(location => {
+            const option = document.createElement('option');
+            option.value = location.id;
+            option.textContent = location.name;
+            select.appendChild(option);
+        });
+    }
+    /**
+     * Populate order supplier dropdown
+     * Populates #modalOrderSupplierId with all suppliers from window.app.suppliers
+     * Optionally selects the current supplier if available
+     */
+    populateOrderSupplierDropdown(currentSupplierId = null) {
+        const select = document.getElementById('modalOrderSupplierId');
+        const suppliers = window.app?.suppliers || [];
+        if (!select) return;
+
+        select.innerHTML = '<option value="">Select Supplier</option>';
+        if (suppliers.length === 0) {
+            select.innerHTML = '<option value="">No suppliers available</option>';
+            return;
+        }
+        suppliers.forEach(supplier => {
+            const option = document.createElement('option');
+            option.value = supplier.id;
+            option.textContent = supplier.name;
+            if (currentSupplierId && supplier.id === currentSupplierId) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
     }
 
     /**
@@ -286,8 +448,9 @@ export class ModalManager {
 
     /**
      * Populate order product dropdown (enhanced with low stock priority)
+     * @param {string|null} selectedProductId - Product ID to pre-select
      */
-    populateOrderProductDropdown() {
+    populateOrderProductDropdown(selectedProductId = null) {
         const select = document.getElementById('modalOrderProductId');
         if (!select || !window.inventory) return;
 
@@ -317,6 +480,9 @@ export class ModalManager {
                 const option = document.createElement('option');
                 option.value = item.id;
                 option.textContent = `${item.name} (Stock: ${item.quantity || 0})`;
+                if (selectedProductId && item.id === selectedProductId) {
+                    option.selected = true;
+                }
                 lowStockOptgroup.appendChild(option);
             });
             select.appendChild(lowStockOptgroup);
@@ -330,12 +496,21 @@ export class ModalManager {
                 const option = document.createElement('option');
                 option.value = item.id;
                 option.textContent = `${item.name} (Stock: ${item.quantity || 0})`;
+                if (selectedProductId && item.id === selectedProductId) {
+                    option.selected = true;
+                }
                 regularOptgroup.appendChild(option);
             });
             select.appendChild(regularOptgroup);
         }
 
         console.log(`[ModalManager] Populated dropdown - ${lowStockItems.length} low stock, ${regularItems.length} regular items`);
+        
+        // If a product was selected, trigger change event to update any dependent fields
+        if (selectedProductId) {
+            const changeEvent = new Event('change', { bubbles: true });
+            select.dispatchEvent(changeEvent);
+        }
     }
 
     /**

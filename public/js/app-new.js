@@ -1,5 +1,15 @@
 // Mini Status Update Modal logic
 document.addEventListener('DOMContentLoaded', function() {
+    // Wire up Add Order button in orders section
+    const addOrderBtn = document.getElementById('addOrderBtn');
+    if (addOrderBtn) {
+        addOrderBtn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            if (window.handleAddOrder) {
+                await window.handleAddOrder();
+            }
+        });
+    }
   const miniModal = document.getElementById('miniStatusUpdateModal');
   const closeBtn = document.getElementById('miniModalCloseBtn');
   const saveBtn = document.getElementById('miniModalSaveStatusBtn');
@@ -434,32 +444,38 @@ class WataganInventoryApp {
             const productDropdown = document.getElementById('modalOrderProductId');
             productDropdown.innerHTML = '<option value="">Select Product</option>';
             document.getElementById('modalOrderQuantity').value = quantity || '';
-            document.getElementById('modalOrderSupplierInfo').classList.add('hidden');
-            document.getElementById('modalOrderSelectedProductSupplier').textContent = 'N/A';
 
             // Populate product dropdown and select the product
+            let selectedProduct = null;
             if (window.inventory && window.inventory.length > 0) {
-                window.inventory.sort((a,b) => (a.name || a.id).localeCompare(b.name || b.id)).forEach(product => {
+                window.inventory.forEach(product => {
                     const option = document.createElement('option');
                     option.value = product.id;
                     option.textContent = `${product.name} (Stock: ${product.quantity}, Min: ${product.minQuantity})`;
-                    option.dataset.supplier = product.supplier || 'N/A';
-                    if (product.id === productId) option.selected = true;
+                    option.dataset.supplier = product.supplier || '';
+                    if (product.id === productId) {
+                        option.selected = true;
+                        selectedProduct = product;
+                    }
                     productDropdown.appendChild(option);
                 });
             } else {
                 productDropdown.innerHTML = '<option value="">No products available</option>';
             }
 
-            // Show supplier info if available
-            const selectedOption = productDropdown.options[productDropdown.selectedIndex];
-            const supplier = selectedOption ? selectedOption.dataset.supplier : null;
-            if (supplier && supplier !== 'N/A') {
-                document.getElementById('modalOrderSelectedProductSupplier').textContent = supplier;
-                document.getElementById('modalOrderSupplierInfo').classList.remove('hidden');
-            } else {
-                document.getElementById('modalOrderSupplierInfo').classList.add('hidden');
-            }
+            // Populate supplier dropdown and set default to product's supplier
+            const supplierDropdown = document.getElementById('modalOrderSupplierId');
+            supplierDropdown.innerHTML = '<option value="">Select Supplier</option>';
+            const suppliers = window.app?.suppliers || window.suppliers || [];
+            suppliers.forEach(supplier => {
+                const option = document.createElement('option');
+                option.value = supplier.id || supplier.name;
+                option.textContent = supplier.name;
+                if (selectedProduct && selectedProduct.supplier && (selectedProduct.supplier === supplier.name || selectedProduct.supplier === supplier.id)) {
+                    option.selected = true;
+                }
+                supplierDropdown.appendChild(option);
+            });
 
             // Remove any previous modal hiding classes
             modal.classList.remove('hidden');
@@ -3151,6 +3167,77 @@ document.addEventListener('DOMContentLoaded', async function() {
             app.maximizeSidebar();
         }
         
+
+    // Add event listener for modal order submit button
+    const modalSubmitOrderBtn = document.getElementById('modalSubmitOrderBtn');
+    if (modalSubmitOrderBtn) {
+        modalSubmitOrderBtn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            // Collect modal form data
+            const productId = document.getElementById('modalOrderProductId').value;
+            const supplierId = document.getElementById('modalOrderSupplierId').value;
+            const quantity = parseInt(document.getElementById('modalOrderQuantity').value);
+            const cost = parseFloat(document.getElementById('modalOrderCost').value);
+            if (!productId || isNaN(quantity) || quantity <= 0) {
+                window.uiEnhancementManager?.showToast('Please select a product and enter a valid quantity.', 'warning');
+                return;
+            }
+            const product = window.app?.inventory?.find(p => p.id === productId);
+            if (!product) {
+                window.uiEnhancementManager?.showToast('Selected product not found. Please refresh.', 'error');
+                return;
+            }
+            const user = window.app?.currentUser || (window.firebase?.auth()?.currentUser);
+            if (!user) {
+                window.uiEnhancementManager?.showToast('You must be logged in to create an order.', 'error');
+                return;
+            }
+            try {
+                const orderData = {
+                    productId,
+                    productName: product.name,
+                    quantity,
+                    unitCost: cost || null,
+                    status: 'pending',
+                    orderDate: window.firebase?.firestore?.Timestamp?.now() || new Date(),
+                    createdAt: window.firebase?.firestore?.Timestamp?.now() || new Date(),
+                    userId: user.uid,
+                    supplier: supplierId || product.supplier || null
+                };
+                const db = window.db || window.firebase?.firestore();
+                const orderRef = await db.collection('orders').add(orderData);
+                // Update product quantityOrdered
+                const productRef = db.collection('inventory').doc(productId);
+                await db.runTransaction(async (transaction) => {
+                    const productDoc = await transaction.get(productRef);
+                    if (!productDoc.exists) throw new Error('Product not found in inventory.');
+                    const currentQuantityOrdered = productDoc.data().quantityOrdered || 0;
+                    transaction.update(productRef, { quantityOrdered: currentQuantityOrdered + quantity });
+                });
+                // Log activity
+                if (typeof window.logActivity === 'function') {
+                    await window.logActivity('order_created', `Order for ${quantity} of ${product.name} (Order ID: ${orderRef.id}) created.`, orderRef.id, product.name);
+                }
+                window.uiEnhancementManager?.showToast(`Order for ${product.name} created successfully!`, 'success');
+                // Clear modal fields
+                document.getElementById('modalOrderProductId').value = '';
+                document.getElementById('modalOrderSupplierId').value = '';
+                document.getElementById('modalOrderQuantity').value = '';
+                document.getElementById('modalOrderCost').value = '';
+                // Refresh UI
+                // Reset filter dropdown to show all statuses
+                const statusFilterEl = document.getElementById('filterOrderStatus');
+                if (statusFilterEl) statusFilterEl.value = '';
+                // Reload and display all orders
+                if (window.app?.ordersManager?.loadOrders) await window.app.ordersManager.loadOrders(true);
+                if (window.app?.ordersManager?.displayOrdersWithDefaultFilter) await window.app.ordersManager.displayOrdersWithDefaultFilter();
+                if (window.app?.updateRecentActivity) window.app.updateRecentActivity();
+                if (window.app?.updateDashboard) window.app.updateDashboard();
+            } catch (error) {
+                window.uiEnhancementManager?.showToast(`Error creating order: ${error.message}`, 'error');
+            }
+        });
+    }
         console.log('[DOMContentLoaded] App initialization complete');
         
     } catch (error) {

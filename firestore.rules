@@ -59,20 +59,20 @@ service cloud.firestore {
     match /suppliers/{document} {
       allow read: if isUserAdmin() || isUserStaff();
       allow write: if isUserAdmin() && 
-                     resource.data.keys().hasAll(['name']) &&
-                     resource.data.name is string && 
-                     resource.data.name.size() > 0 && 
-                     resource.data.name.size() <= 100;
+                     request.resource.data.keys().hasAll(['name']) &&
+                     request.resource.data.name is string && 
+                     request.resource.data.name.size() > 0 && 
+                     request.resource.data.name.size() <= 100;
     }
 
     // Rules for locations collection
     match /locations/{document} {
       allow read: if isUserAdmin() || isUserStaff();
       allow write: if isUserAdmin() && 
-                     resource.data.keys().hasAll(['name']) &&
-                     resource.data.name is string && 
-                     resource.data.name.size() > 0 && 
-                     resource.data.name.size() <= 100;
+                     request.resource.data.keys().hasAll(['name']) &&
+                     request.resource.data.name is string && 
+                     request.resource.data.name.size() > 0 && 
+                     request.resource.data.name.size() <= 100;
     }
 
     // Rules for orders collection

@@ -190,7 +190,7 @@
                     <a href="#" id="menuReports" class="group flex items-center p-2 text-base-content hover:bg-base-300 rounded-md transition-colors">
                         <!-- Reports Icon - Document with Chart -->
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-success group-hover:text-success-focus transition-colors">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                         </svg>
                         <span class="menu-text ml-3 font-medium">Reports</span>
                     </a>
@@ -199,7 +199,7 @@
                     <a href="#" id="menuSuppliers" class="group flex items-center p-2 text-base-content hover:bg-base-300 rounded-md transition-colors">
                         <!-- Suppliers Icon -->
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-warning group-hover:text-warning-focus transition-colors">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v.958m12 11.177h-2.25m0-11.177L10.5 5.625m1.972 0h.008v.008h-.008v-.008z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v.958m12 11.177h-2.25m0-11.177L10.5 5.625m1.972 0h.008v.008h-.008v-.008z" />
                         </svg>
                         <span class="menu-text ml-3 font-medium">Suppliers & Locations</span>
                     </a>
@@ -458,7 +458,7 @@
                         <button id="addOrderBtn" class="btn btn-primary self-end">Add Order</button></div></div>
                     <h3 class="text-lg font-semibold mt-6 mb-2">Existing Orders</h3>
                     <div class="flex flex-wrap gap-4 mb-4">
-                        <div><label for="filterOrderStatus" class="label"><span class="label-text">Filter by Status</span></label><select id="filterOrderStatus" class="select select-bordered w-full sm:w-auto"><option value="" selected>All Statuses</option><option value="backordered">Backordered</option><option value="pending">Pending</option><option value="partially_received">Partially Received</option><option value="received">Received</option><option value="fulfilled">Fulfilled</option><option value="cancelled">Cancelled</option></select></div>
+                        <div><label for="filterOrderStatus" class="label"><span class="label-text">Filter by Status</span></label><select id="filterOrderStatus" class="select select-bordered w-full sm:w-auto"><option value="pending_backordered" selected>Pending & Backordered</option><option value="">All Statuses</option><option value="backordered">Backordered</option><option value="pending">Pending</option><option value="fulfilled">Fulfilled</option><option value="cancelled">Cancelled</option></select></div>
                         <div><label for="filterOrderSupplierDropdown" class="label"><span class="label-text">Filter by Supplier</span></label><select id="filterOrderSupplierDropdown" class="select select-bordered w-full sm:w-auto"><option value="">All Suppliers</option></select></div>
                         <div class="flex items-end"><button id="debugOrdersBtn" class="btn btn-warning btn-sm">Debug Orders</button></div>
                     </div>
@@ -858,39 +858,37 @@
                 </form>
                 <h3 class="text-xl font-semibold mb-4">Create New Order</h3>
                 <div class="space-y-4">
-                  <label class="form-control w-full">
-                    <div class="label">
-                      <span class="label-text">Product</span>
-                    </div>
-                    <select id="modalOrderProductId" class="select select-bordered w-full">
-                      <option value="">Select Product</option>
-                      <!-- Options will be populated by JS -->
-                    </select>
-                  </label>
-                  <label class="form-control w-full">
-                    <div class="label">
-                      <span class="label-text">Supplier</span>
-                    </div>
-                    <select id="modalOrderSupplierId" class="select select-bordered w-full">
-                      <option value="">Select Supplier</option>
-                      <!-- Options will be populated by JS -->
-                    </select>
-                  </label>
-                  <label class="form-control w-full">
-                    <div class="label">
-                      <span class="label-text">Quantity</span>
-                    </div>
-                    <input type="number" id="modalOrderQuantity" placeholder="Enter quantity" class="input input-bordered w-full">
-                  </label>
-                  <label class="form-control w-full">
-                    <div class="label">
-                      <span class="label-text">Unit Cost ($)</span>
-                    </div>
-                    <input type="number" id="modalOrderCost" step="0.01" placeholder="Enter cost per unit" class="input input-bordered w-full">
-                  </label>
-                  <div id="modalOrderSupplierInfo" class="text-sm text-base-content/70 hidden">
-                    Supplier: <span id="modalOrderSelectedProductSupplier" class="font-semibold">N/A</span>
+                <label class="form-control w-full">
+                  <div class="label">
+                    <span class="label-text">Product</span>
                   </div>
+                  <select id="modalOrderProductId" class="select select-bordered w-full">
+                    <option value="">Select Product</option>
+                    <!-- Options will be populated by JS -->
+                  </select>
+                </label>
+                <label class="form-control w-full">
+                  <div class="label">
+                    <span class="label-text">Supplier</span>
+                  </div>
+                  <select id="modalOrderSupplierId" class="select select-bordered w-full">
+                    <option value="">Select Supplier</option>
+                    <!-- Options will be populated by JS -->
+                  </select>
+                </label>
+                <label class="form-control w-full">
+                  <div class="label">
+                    <span class="label-text">Quantity</span>
+                  </div>
+                  <input type="number" id="modalOrderQuantity" placeholder="Enter quantity" class="input input-bordered w-full">
+                </label>
+                <label class="form-control w-full">
+                  <div class="label">
+                    <span class="label-text">Unit Cost ($)</span>
+                  </div>
+                  <input type="number" id="modalOrderCost" step="0.01" placeholder="Enter cost per unit" class="input input-bordered w-full">
+                </label>
+                <!-- ...existing code... -->
                 </div>
                 <div class="modal-action">
                   <button id="modalSubmitOrderBtn" class="btn btn-success">Submit Order</button>
@@ -1033,7 +1031,7 @@
                     <button id="updateStockDoneBtn" class="btn btn-primary">Done</button>
                 </div>
               </div>
-            </div>
+            </dialog>
 
             <!-- Scan to Edit Product Modal -->
             <div id="scanToEditProductModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
@@ -1164,8 +1162,8 @@
             <!-- User Management View Container -->
             <div id="userManagementViewContainer" class="hidden ml-64 max-w-[calc(100vw-16rem)] p-4">
               <!-- User Management Section (from public/index.html) -->
-              <div class="overflow-x-auto">
-                <section id="userManagementSectionContainer" class="mb-8 min-w-max">
+              <div class="w-full max-w-5xl flex justify-center mx-auto">
+                <section id="userManagementSectionContainer" class="mb-8">
                   <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-semibold">User Role Management</h2>
                   </div>
@@ -1175,18 +1173,18 @@
                         <button id="deleteSelectedUsersBtn" class="btn btn-sm btn-error">Delete Selected</button>
                         <button id="updateRoleForSelectedUsersBtn" class="btn btn-sm btn-warning">Update Role for Selected</button>
                       </div>
-                      <div class="overflow-x-auto">
-                        <table id="userRolesTable" class="table table-sm">
+                      <div class="overflow-x-auto rounded-lg">
+                        <table id="userRolesTable" class="table table-sm min-w-[700px]">
                           <thead>
                         <tr>
-                          <th class="text-center">
+                          <th class="text-center px-2 py-2">
                             <input type="checkbox" id="selectAllUsersCheckbox" class="checkbox checkbox-sm">
                           </th>
-                          <th>User Email</th>
-                          <th class="hidden lg:table-cell">User UID</th>
-                          <th>Role</th>
-                          <th>New Role</th>
-                          <th class="text-center">Action</th>
+                          <th class="px-2 py-2">User Email</th>
+                          <th class="hidden lg:table-cell px-2 py-2">User UID</th>
+                          <th class="px-2 py-2">Role</th>
+                          <th class="px-2 py-2">New Role</th>
+                          <th class="text-center px-2 py-2">Action</th>
                         </tr>
                       </thead>
                       <tbody id="userRolesTableBody">
@@ -1238,7 +1236,7 @@
             <input type="number" id="miniModalEditableQuantity" min="1" class="mt-1 block w-full pl-3 pr-3 py-2 text-base border-gray-300 dark:border-slate-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-slate-700 dark:text-gray-200">
           </div>
 
-          <div>
+          <div></div>
             <label for="miniModalOrderStatusSelect" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Status:</label>
             <select id="miniModalOrderStatusSelect" name="status" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-slate-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-slate-700 dark:text-gray-200">
               <option value="pending">Pending</option>
@@ -1255,7 +1253,7 @@
             <input type="number" id="miniModalQuantityReceived" name="quantityReceived" placeholder="Enter if applicable" class="mt-1 block w-full pl-3 pr-3 py-2 text-base border-gray-300 dark:border-slate-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-slate-700 dark:text-gray-200">
           </div>
 
-        <div class="mt-6 flex justify-end space-x-3">
+        <div class="mt-6 flex justify-end space-x-3"></div>
           <button id="miniModalCloseBtn" type="button" class="px-4 py-2 bg-gray-300 text-gray-800 dark:bg-slate-600 dark:text-gray-200 text-sm font-medium rounded-md shadow-sm hover:bg-gray-400 dark:hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:focus:ring-offset-slate-900">
             Cancel
           </button>
