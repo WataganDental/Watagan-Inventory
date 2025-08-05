@@ -646,7 +646,15 @@ export class ProductManager {
             return;
         }
 
-        navigator.mediaDevices.getUserMedia({ video: true })
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .catch(() => {
+                // Fallback to front camera if back camera is not available
+                return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+            })
+            .catch(() => {
+                // Final fallback to any available camera
+                return navigator.mediaDevices.getUserMedia({ video: true });
+            })
             .then(stream => {
                 video.srcObject = stream;
                 video.style.display = 'block';
@@ -805,7 +813,15 @@ export class ProductManager {
             return;
         }
 
-        navigator.mediaDevices.getUserMedia({ video: true })
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .catch(() => {
+                // Fallback to front camera if back camera is not available
+                return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+            })
+            .catch(() => {
+                // Final fallback to any available camera
+                return navigator.mediaDevices.getUserMedia({ video: true });
+            })
             .then(stream => {
                 video.srcObject = stream;
                 video.classList.remove('hidden');

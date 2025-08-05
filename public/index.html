@@ -1328,55 +1328,39 @@
             
             console.log('[Debug] Current user:', firebase.auth().currentUser.email);
             
-            // Test direct database access
-            const ordersRef = window.db.collection('orders');
-            const snapshot = await ordersRef.get();
-            
-            console.log(`[Debug] Database query result: ${snapshot.size} orders found`);
-            
-            if (snapshot.empty) {
-              alert('No orders found in database');
-              return;
-            }
-            
-            // Log all orders with their actual status values
-            const orders = [];
-            snapshot.forEach(doc => {
-              const data = doc.data();
-              orders.push({
-                id: doc.id,
-                status: data.status,
-                supplier: data.supplier,
-                items: data.items ? data.items.length : 0
-              });
-              console.log(`[Debug] Order ${doc.id}: status="${data.status}", supplier="${data.supplier}"`);
-            });
-            
-            const statusFilter = document.getElementById('filterOrderStatus').value || 'pending';
-            console.log(`[Debug] Current status filter: "${statusFilter}"`);
-            
-            const filteredOrders = orders.filter(order => {
-              if (!statusFilter) return true;
-              return (order.status || 'pending').toLowerCase() === statusFilter.toLowerCase();
-            });
-            
-            console.log(`[Debug] Filtered orders: ${filteredOrders.length} out of ${orders.length}`);
-            
-            console.log('[Debug] Testing displayOrdersWithDefaultFilter with new priority logic...');
-            if (window.ordersManager) {
-              await window.ordersManager.displayOrdersWithDefaultFilter();
-              console.log('[Debug] displayOrdersWithDefaultFilter completed');
+            // Test orders manager enrichment specifically
+            if (window.app && window.app.ordersManager) {
+              console.log('[Debug] Testing orders manager cost enrichment...');
               
-              // Show detailed breakdown of order statuses
-              const statusCounts = {};
-              window.ordersManager.orders.forEach(order => {
-                const status = order.status || 'pending';
-                statusCounts[status] = (statusCounts[status] || 0) + 1;
+              // Force reload orders with enrichment
+              await window.app.ordersManager.loadOrders(true);
+              
+              console.log('[Debug] Orders after enrichment:', window.app.ordersManager.orders.length);
+              
+              // Log first few orders with cost details
+              window.app.ordersManager.orders.slice(0, 3).forEach((order, index) => {
+                console.log(`[Debug] Order ${index + 1}:`, {
+                  id: order.id.substring(0, 8),
+                  productId: order.productId,
+                  productName: order.productName,
+                  cost: order.cost,
+                  totalCost: order.totalCost,
+                  costSource: order.costSource,
+                  quantity: order.quantity
+                });
               });
-              console.log('[Debug] Order status breakdown:', statusCounts);
+              
+              // Check inventory availability
+              console.log('[Debug] Window.app.inventory length:', window.app?.inventory?.length || 'not available');
+              console.log('[Debug] Window.inventory length:', window.inventory?.length || 'not available');
+              
+              // Force refresh display
+              await window.app.ordersManager.displayOrders('', '');
+              
+              alert('Debug complete! Check console for detailed cost enrichment results.');
+            } else {
+              alert('Orders manager not available');
             }
-            
-            alert(`Debug complete: Found ${orders.length} orders, ${filteredOrders.length} after filtering. Check console for details.`);
             
           } catch (error) {
             console.error('[Debug] Error:', error);
@@ -1385,6 +1369,49 @@
         });
       }
     });
+  </script>
+
+  <!-- Global debugging function for console testing -->
+  <script>
+    // Add global debugging function for console testing
+    window.debugOrdersCosts = async function() {
+      console.log('=== ORDERS COST DEBUG ===');
+      
+      if (!window.app?.ordersManager) {
+        console.error('Orders manager not available');
+        return;
+      }
+      
+      console.log('1. Loading orders with force refresh...');
+      await window.app.ordersManager.loadOrders(true);
+      
+      console.log('2. Checking first few orders:');
+      window.app.ordersManager.orders.slice(0, 5).forEach((order, i) => {
+        console.log(`Order ${i+1}:`, {
+          id: order.id?.substring(0, 8),
+          productName: order.productName,
+          cost: order.cost,
+          totalCost: order.totalCost,
+          quantity: order.quantity,
+          costSource: order.costSource
+        });
+      });
+      
+      console.log('3. Checking inventory availability:');
+      console.log('window.app.inventory:', window.app?.inventory?.length || 'not available');
+      console.log('window.inventory:', window.inventory?.length || 'not available');
+      
+      console.log('4. Testing formatCost function:');
+      if (window.app.ordersManager.formatCost) {
+        console.log('formatCost(10.50, "inventory"):', window.app.ordersManager.formatCost(10.50, 'inventory'));
+        console.log('formatCost(null, null):', window.app.ordersManager.formatCost(null, null));
+      }
+      
+      console.log('5. Refreshing display...');
+      await window.app.ordersManager.displayOrders('', '');
+      
+      console.log('=== DEBUG COMPLETE ===');
+    };
   </script>
 
 </body>

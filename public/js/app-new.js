@@ -267,8 +267,17 @@ class WataganInventoryApp {
             // Show video, hide preview
             video.classList.remove('hidden');
             preview.classList.add('hidden');
-            // Start camera
-            navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+            // Start camera (prefer back camera)
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                .catch(() => {
+                    // Fallback to front camera if back camera is not available
+                    return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                })
+                .catch(() => {
+                    // Final fallback to any available camera
+                    return navigator.mediaDevices.getUserMedia({ video: true });
+                })
+                .then(stream => {
                 video.srcObject = stream;
                 video.play();
                 // Wire up take photo

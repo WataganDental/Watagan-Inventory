@@ -19,11 +19,15 @@ export class OrdersManager {
             if (window.app && window.app.firebaseOptimizer) {
                 console.log('Loading orders using Firebase optimizer...');
                 this.orders = await window.app.firebaseOptimizer.getCollection('orders', {
-                    orderBy: [['createdAt', 'desc']], // Simplified to single field to avoid index requirement
+                    orderBy: [['dateCreated', 'desc']], // Fixed: was single field to avoid index requirement, now using correct field name
                     limit: 200,
                     cacheDuration: 120000, // 2 minutes for orders
                     source: forceRefresh ? 'server' : 'default'
                 });
+                
+                // Enrich orders with cost data from inventory if missing
+                await this.enrichOrdersWithCostData();
+                
                 console.log(`Loaded ${this.orders.length} orders using Firebase optimizer`);
                 return this.orders;
             }
@@ -33,6 +37,9 @@ export class OrdersManager {
                 console.log('Loading orders using performance optimizer...');
                 this.orders = await window.app.performanceOptimizer.loadDataWithCache('orders', 'orders_cache', forceRefresh);
                 
+                // Enrich orders with cost data from inventory if missing
+                await this.enrichOrdersWithCostData();
+                
                 console.log(`Loaded ${this.orders.length} orders from ${forceRefresh ? 'database' : 'cache/database'}`);
                 return this.orders;
             }
@@ -40,7 +47,7 @@ export class OrdersManager {
             // Fallback to direct loading (less efficient)
             console.log('Loading orders from database (direct query - less efficient)...');
             const ordersSnapshot = await window.db.collection('orders')
-                .orderBy('orderDate', 'desc')
+                .orderBy('dateCreated', 'desc') // Fixed: was 'orderDate', should be 'dateCreated'
                 .limit(200)
                 .get();
             
@@ -57,6 +64,9 @@ export class OrdersManager {
                 this.orders.push(order);
             });
 
+            // Enrich orders with cost data from inventory if missing
+            await this.enrichOrdersWithCostData();
+
             console.log(`Loaded ${this.orders.length} orders`);
             return this.orders;
         } catch (error) {
@@ -66,6 +76,112 @@ export class OrdersManager {
             }
             return [];
         }
+    }
+
+    /**
+     * Enrich orders with cost data from inventory if missing
+     * Note: Orders typically have the most accurate cost data, but we ensure totals are calculated
+     */
+    async enrichOrdersWithCostData() {
+        try {
+            console.log('[OrdersManager] Starting cost enrichment process...');
+            console.log('[OrdersManager] Current orders:', this.orders.length);
+            
+            // Get current inventory data for fallback lookup only
+            let inventory = [];
+            
+            if (window.app && window.app.inventory && window.app.inventory.length > 0) {
+                inventory = window.app.inventory;
+                console.log('[OrdersManager] Using app.inventory:', inventory.length, 'items');
+            } else if (window.inventory && window.inventory.length > 0) {
+                inventory = window.inventory;
+                console.log('[OrdersManager] Using window.inventory:', inventory.length, 'items');
+            } else {
+                // Load inventory data if not available
+                console.log('[OrdersManager] Loading inventory for cost enrichment...');
+                const inventorySnapshot = await window.db.collection('inventory').get();
+                inventorySnapshot.forEach(doc => {
+                    inventory.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                console.log('[OrdersManager] Loaded inventory from Firebase:', inventory.length, 'items');
+            }
+
+            // Enrich orders that are missing cost data (orders usually have accurate costs)
+            let enrichedCount = 0;
+            
+            this.orders.forEach((order, index) => {
+                console.log(`[OrdersManager] Processing order ${index + 1}:`, {
+                    id: order.id,
+                    productId: order.productId,
+                    currentCost: order.cost,
+                    quantity: order.quantity
+                });
+                
+                // Only enrich if cost is missing or zero (orders typically have the most accurate cost)
+                if (!order.cost || order.cost === 0) {
+                    const product = inventory.find(p => p.id === order.productId);
+                    console.log(`[OrdersManager] Looking for product ${order.productId} in inventory as fallback:`, product);
+                    
+                    if (product && product.cost && product.cost > 0) {
+                        order.cost = parseFloat(product.cost);
+                        order.totalCost = order.cost * (parseInt(order.quantity) || 0);
+                        order.costSource = 'inventory'; // Mark where the cost came from
+                        enrichedCount++;
+                        console.log(`[OrdersManager] Enriched order ${order.id} with fallback inventory cost:`, order.cost, 'total:', order.totalCost);
+                    } else {
+                        console.log(`[OrdersManager] No cost data found for product ${order.productId} - will show N/A`);
+                    }
+                } else {
+                    console.log(`[OrdersManager] Order ${order.id} already has cost:`, order.cost, '(most accurate source)');
+                }
+                
+                // Ensure totalCost is calculated for all orders that have cost and quantity
+                if (order.cost && order.quantity && (!order.totalCost || order.totalCost === 0)) {
+                    order.totalCost = order.cost * parseInt(order.quantity);
+                    console.log(`[OrdersManager] Calculated totalCost for order ${order.id}:`, order.totalCost);
+                }
+            });
+
+            if (enrichedCount > 0) {
+                console.log(`[OrdersManager] Enriched ${enrichedCount} orders with fallback cost data from inventory`);
+            } else {
+                console.log(`[OrdersManager] All orders already have cost data (this is expected - orders have most accurate costs)`);
+            }
+
+        } catch (error) {
+            console.error('[OrdersManager] Error enriching orders with cost data:', error);
+        }
+    }
+
+    formatCost(cost, costSource) {
+        if (cost) {
+            const formattedCost = '$' + cost.toFixed(2);
+            return costSource === 'inventory' ? 
+                `<span title="Cost from inventory">${formattedCost}</span>` : 
+                formattedCost;
+        }
+        return '<span class="text-warning" title="No cost data available">N/A</span>';
+    }
+
+    formatTotalCost(order) {
+        let totalCost = order.totalCost;
+        
+        // Calculate if not already calculated
+        if (!totalCost && order.cost && order.quantity) {
+            totalCost = order.cost * order.quantity;
+        }
+        
+        if (totalCost) {
+            const formattedTotal = '$' + totalCost.toFixed(2);
+            return order.costSource === 'inventory' ? 
+                `<span title="Total calculated from inventory cost">${formattedTotal}</span>` : 
+                formattedTotal;
+        }
+        
+        return '<span class="text-warning" title="Cannot calculate total - missing cost or quantity">N/A</span>';
     }
 
     /**
@@ -276,8 +392,8 @@ export class OrdersManager {
                 <td class="px-2 py-1 font-mono text-sm">${orderId}</td>
                 <td class="px-2 py-1 font-medium">${order.productName || 'Unknown Product'}</td>
                 <td class="px-2 py-1 text-center">${order.quantity || 0}</td>
-                <td class="px-2 py-1 text-center">${order.cost ? '$' + order.cost.toFixed(2) : 'N/A'}</td>
-                <td class="px-2 py-1 text-center font-semibold">${order.totalCost ? '$' + order.totalCost.toFixed(2) : (order.cost && order.quantity ? '$' + (order.cost * order.quantity).toFixed(2) : 'N/A')}</td>
+                <td class="px-2 py-1 text-center">${this.formatCost(order.cost, order.costSource)}</td>
+                <td class="px-2 py-1 text-center font-semibold">${this.formatTotalCost(order)}</td>
                 <td class="px-2 py-1 text-center">
                     <span class="badge ${statusColor} badge-sm">${displayStatus}</span>
                 </td>
@@ -630,7 +746,16 @@ export class OrdersManager {
                 uiEnhancementManager.showToast('Order deleted successfully', 'success');
             }
 
-            // Refresh display
+            // Force cache invalidation and refresh display
+            if (window.app && window.app.firebaseOptimizer) {
+                window.app.firebaseOptimizer.invalidateCache('orders');
+            }
+            if (window.app && window.app.performanceOptimizer) {
+                window.app.performanceOptimizer.clearCache('orders_cache');
+            }
+            
+            // Force refresh from server
+            await this.loadOrders(true); // Force refresh
             await this.displayOrders();
 
         } catch (error) {
@@ -697,6 +822,39 @@ export class OrdersManager {
                 }
             }
 
+            // Update supplier in inventory if changed
+            if (order.productId && order.supplier) {
+                try {
+                    // Get current product data
+                    const productDoc = await window.db.collection('inventory').doc(order.productId).get();
+                    if (productDoc.exists) {
+                        const currentSupplier = productDoc.data().supplier || '';
+                        if (currentSupplier !== order.supplier) {
+                            await window.db.collection('inventory').doc(order.productId).update({
+                                supplier: order.supplier,
+                                lastSupplierUpdate: new Date(),
+                                lastSupplierFromOrder: docRef.id
+                            });
+                            // Update local inventory data
+                            if (window.app?.inventory) {
+                                const productIndex = window.app.inventory.findIndex(p => p.id === order.productId);
+                                if (productIndex !== -1) {
+                                    window.app.inventory[productIndex].supplier = order.supplier;
+                                    window.app.inventory[productIndex].lastSupplierUpdate = new Date();
+                                    window.app.inventory[productIndex].lastSupplierFromOrder = docRef.id;
+                                }
+                            }
+                            console.log(`[OrdersManager] Supplier updated for product ${order.productName}`);
+                        }
+                    }
+                } catch (supplierUpdateError) {
+                    console.error('[OrdersManager] Error updating supplier:', supplierUpdateError);
+                    if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                        uiEnhancementManager.showToast(`Order created but failed to update supplier: ${supplierUpdateError.message}`, 'warning');
+                    }
+                }
+            }
+
             // Log activity
             if (typeof window.logActivity === 'function') {
                 await window.logActivity(
@@ -730,45 +888,23 @@ export class OrdersManager {
             }
             throw error;
         }
-        // Update supplier in inventory if changed
-        if (order.productId && order.supplier) {
-            try {
-                // Get current product data
-                const productDoc = await window.db.collection('inventory').doc(order.productId).get();
-                if (productDoc.exists) {
-                    const currentSupplier = productDoc.data().supplier || '';
-                    if (currentSupplier !== order.supplier) {
-                        await window.db.collection('inventory').doc(order.productId).update({
-                            supplier: order.supplier,
-                            lastSupplierUpdate: new Date(),
-                            lastSupplierFromOrder: docRef.id
-                        });
-                        // Update local inventory data
-                        if (window.app?.inventory) {
-                            const productIndex = window.app.inventory.findIndex(p => p.id === order.productId);
-                            if (productIndex !== -1) {
-                                window.app.inventory[productIndex].supplier = order.supplier;
-                                window.app.inventory[productIndex].lastSupplierUpdate = new Date();
-                                window.app.inventory[productIndex].lastSupplierFromOrder = docRef.id;
-                            }
-                        }
-                        console.log(`[OrdersManager] Supplier updated for product ${order.productName}`);
-                    }
-                }
-            } catch (supplierUpdateError) {
-                console.error('[OrdersManager] Error updating supplier:', supplierUpdateError);
-                if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
-                    uiEnhancementManager.showToast(`Order created but failed to update supplier: ${supplierUpdateError.message}`, 'warning');
-                }
-            }
-        }
     }
 
     /**
      * Submit order from modal form
      */
     async submitModalOrder() {
+        // Prevent duplicate submissions
+        const modalSubmitBtn = document.getElementById('modalSubmitOrderBtn');
+        if (modalSubmitBtn && modalSubmitBtn.disabled) {
+            console.log('[OrdersManager] Submit already in progress, ignoring duplicate submission');
+            return;
+        }
+        
         try {
+            // Disable button immediately to prevent double submission
+            if (modalSubmitBtn) modalSubmitBtn.disabled = true;
+            
             const productId = document.getElementById('modalOrderProductId').value;
             const supplierId = document.getElementById('modalOrderSupplierId').value;
             const quantity = parseInt(document.getElementById('modalOrderQuantity').value) || 0;
@@ -779,6 +915,8 @@ export class OrdersManager {
                 if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
                     uiEnhancementManager.showToast('Please select a product', 'warning');
                 }
+                // Re-enable button on validation failure
+                if (modalSubmitBtn) modalSubmitBtn.disabled = false;
                 return;
             }
 
@@ -832,11 +970,6 @@ export class OrdersManager {
             // Create the order
             const orderId = await this.createOrder(orderData);
 
-
-            // Prevent double submission
-            const modalSubmitBtn = document.getElementById('modalSubmitOrderBtn');
-            if (modalSubmitBtn) modalSubmitBtn.disabled = true;
-
             // Clear form
             document.getElementById('modalOrderProductId').value = '';
             document.getElementById('modalOrderSupplierId').value = '';
@@ -857,9 +990,6 @@ export class OrdersManager {
                 window.app.updateDashboard();
             }
 
-            // Re-enable button after short delay
-            setTimeout(() => { if (modalSubmitBtn) modalSubmitBtn.disabled = false; }, 1000);
-
             return orderId;
 
         } catch (error) {
@@ -868,6 +998,12 @@ export class OrdersManager {
                 uiEnhancementManager.showToast('Error creating order: ' + error.message, 'error');
             }
             throw error;
+        } finally {
+            // Always re-enable button after completion or error
+            const modalSubmitBtn = document.getElementById('modalSubmitOrderBtn');
+            if (modalSubmitBtn) {
+                setTimeout(() => { modalSubmitBtn.disabled = false; }, 1000);
+            }
         }
     }
 

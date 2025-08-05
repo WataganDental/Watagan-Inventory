@@ -198,9 +198,24 @@ class BarcodeScannerModule {
         }
 
         try {
-            this.currentVideoStream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: 'environment' } 
-            });
+            // Try back camera first, with fallbacks
+            try {
+                this.currentVideoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' } 
+                });
+            } catch (backCameraError) {
+                console.warn('Back camera not available, trying front camera:', backCameraError);
+                try {
+                    this.currentVideoStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { facingMode: 'user' } 
+                    });
+                } catch (frontCameraError) {
+                    console.warn('Front camera not available, trying any camera:', frontCameraError);
+                    this.currentVideoStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: true 
+                    });
+                }
+            }
             
             const video = document.createElement('video');
             video.style.width = '100%';
