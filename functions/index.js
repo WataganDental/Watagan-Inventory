@@ -218,6 +218,44 @@ exports.bulkUpdateUserRoles = onCall(
   }
 );
 
+// Single user role update function
+exports.updateUserRole = onCall(
+  { region: "us-central1" },
+  async (request) => {
+    try {
+      await ensureAdmin(request); // Check for admin privileges
+
+      const { userId, role } = request.data;
+
+      if (!userId || typeof userId !== 'string') {
+        throw new HttpsError("invalid-argument", "User ID must be a valid string.");
+      }
+      if (!role || (role !== "admin" && role !== "staff")) {
+        throw new HttpsError("invalid-argument", "Role must be 'admin' or 'staff'.");
+      }
+
+      const firestore = getFirestore();
+      const userRoleRef = firestore.collection("user_roles").doc(userId);
+      
+      await userRoleRef.set({ role: role }, { merge: true });
+      
+      console.log(`User role updated successfully: ${userId} -> ${role}`);
+      
+      return {
+        message: `User role updated to '${role}' successfully.`,
+        userId: userId,
+        newRole: role
+      };
+    } catch (error) {
+      console.error("Error in updateUserRole:", error);
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      throw new HttpsError("internal", `An unexpected error occurred: ${error.message}`);
+    }
+  }
+);
+
 exports.listUsersAndRoles = onCall(
   { region: "us-central1" },
   async (context) => {
