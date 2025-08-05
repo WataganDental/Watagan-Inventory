@@ -790,11 +790,9 @@ export class EventHandlerManager {
         // Add Product Modal
         const addProductModalHandlers = [
             { id: 'closeAddProductModalBtn', handler: window.closeAddProductModal },
-            { id: 'modalProductSubmitBtn', handler: window.submitModalProduct },
-            { id: 'modalCancelProductBtn', handler: window.closeAddProductModal },
-            { id: 'modalCapturePhotoBtn', handler: window.startModalPhotoCapture },
-            { id: 'modalTakePhotoBtn', handler: window.takeModalPhoto },
-            { id: 'modalCancelPhotoBtn', handler: window.cancelModalPhoto }
+            { id: 'modalProductSubmitBtn', handler: window.submitProduct },
+            { id: 'modalCancelProductBtn', handler: window.closeAddProductModal }
+            // Note: Camera buttons use onclick attributes in HTML to avoid duplicate calls
         ];
 
         addProductModalHandlers.forEach(({ id, handler }) => {

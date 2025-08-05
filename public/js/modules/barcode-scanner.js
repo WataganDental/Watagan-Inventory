@@ -197,6 +197,13 @@ class BarcodeScannerModule {
             this.stopCameraScanner();
         }
 
+        // Check if camera is supported
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            console.error('[BarcodeScannerModule] Camera not supported in this browser');
+            this.updateStatus('error', 'Camera not supported in this browser');
+            return;
+        }
+
         try {
             // Try back camera first, with fallbacks
             try {

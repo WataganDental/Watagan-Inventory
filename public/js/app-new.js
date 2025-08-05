@@ -150,6 +150,7 @@ class WataganInventoryApp {
         window.loadInventory = this.loadInventory.bind(this);
         window.submitProduct = this.submitProduct.bind(this);
         window.resetProductForm = this.resetProductForm.bind(this);
+        window.deleteProduct = this.deleteProduct.bind(this);
         
         // Additional functions for compatibility
         window.displaySuppliersAndLocations = this.displaySuppliersAndLocations.bind(this);
@@ -244,65 +245,17 @@ class WataganInventoryApp {
             }
         };
 
-        // Modal photo capture functions
+        // Modal photo capture functions - delegate to product manager to avoid conflicts
         window.startModalPhotoCapture = function() {
-            // Modal-specific camera logic
-            const video = document.getElementById('modalPhotoVideo');
-            const canvas = document.getElementById('modalPhotoCanvas');
-            const captureBtn = document.getElementById('modalCapturePhotoBtn');
-            const takePhotoBtn = document.getElementById('modalTakePhotoBtn');
-            const cancelPhotoBtn = document.getElementById('modalCancelPhotoBtn');
-            const preview = document.getElementById('modalProductPhotoPreview');
-            if (!video || !canvas || !captureBtn || !takePhotoBtn || !cancelPhotoBtn || !preview) {
-                console.warn('Modal camera elements not found:', {
-                    video: !!video,
-                    canvas: !!canvas,
-                    captureBtn: !!captureBtn,
-                    takePhotoBtn: !!takePhotoBtn,
-                    cancelPhotoBtn: !!cancelPhotoBtn,
-                    preview: !!preview
-                });
-                return;
+            console.log('[Camera] Modal photo capture requested - delegating to product manager');
+            if (window.app && window.app.productManager) {
+                window.app.productManager.startModalPhotoCapture();
+            } else {
+                console.error('[Camera] Product manager not available');
+                if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                    uiEnhancementManager.showToast('Photo capture system not ready', 'error');
+                }
             }
-            // Show video, hide preview
-            video.classList.remove('hidden');
-            preview.classList.add('hidden');
-            // Start camera (prefer back camera)
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-                .catch(() => {
-                    // Fallback to front camera if back camera is not available
-                    return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-                })
-                .catch(() => {
-                    // Final fallback to any available camera
-                    return navigator.mediaDevices.getUserMedia({ video: true });
-                })
-                .then(stream => {
-                video.srcObject = stream;
-                video.play();
-                // Wire up take photo
-                takePhotoBtn.onclick = function() {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    canvas.getContext('2d').drawImage(video, 0, 0);
-                    const dataUrl = canvas.toDataURL('image/png');
-                    preview.src = dataUrl;
-                    preview.classList.remove('hidden');
-                    video.classList.add('hidden');
-                    // Stop camera
-                    stream.getTracks().forEach(track => track.stop());
-                };
-                // Cancel photo
-                cancelPhotoBtn.onclick = function() {
-                    preview.classList.add('hidden');
-                    video.classList.remove('hidden');
-                    preview.src = '';
-                    // Stop camera
-                    stream.getTracks().forEach(track => track.stop());
-                };
-            }).catch(err => {
-                alert('Camera not available: ' + err.message);
-            });
         };
 
         window.takeModalPhoto = function() {
@@ -319,10 +272,43 @@ class WataganInventoryApp {
             }
         };
 
+        // Global product submission function for modal
+        window.submitProduct = function() {
+            console.log('submitProduct called from modal');
+            if (window.app && window.app.productManager) {
+                window.app.productManager.submitProduct();
+            } else {
+                console.error('Product manager not available');
+                if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                    uiEnhancementManager.showToast('Product submission system not ready', 'error');
+                }
+            }
+        };
+
         window.startScanToEditModalPhotoCapture = function() {
             console.log('startScanToEditModalPhotoCapture called');
             if (window.app && window.app.productManager) {
-                window.app.productManager.startPhotoCapture('scanToEditPhotoVideo', 'scanToEditPhotoCanvas');
+                window.app.productManager.startScanToEditModalPhotoCapture();
+            } else {
+                console.error('ProductManager not available for edit modal camera');
+            }
+        };
+
+        window.takeScanToEditModalPhoto = function() {
+            console.log('takeScanToEditModalPhoto called');
+            if (window.app && window.app.productManager) {
+                window.app.productManager.takeScanToEditModalPhoto();
+            } else {
+                console.error('ProductManager not available for edit modal photo capture');
+            }
+        };
+
+        window.cancelScanToEditModalPhoto = function() {
+            console.log('cancelScanToEditModalPhoto called');
+            if (window.app && window.app.productManager) {
+                window.app.productManager.cancelScanToEditModalPhoto();
+            } else {
+                console.error('ProductManager not available for edit modal photo cancel');
             }
         };
 
@@ -1270,7 +1256,7 @@ class WataganInventoryApp {
     /**
      * Load inventory data with optimized Firebase usage
      */
-    async loadInventory() {
+    async loadInventory(forceRefresh = false) {
         try {
             if (!window.db) {
                 throw new Error('Database not initialized');
@@ -1284,12 +1270,12 @@ class WataganInventoryApp {
                     orderBy: [['name', 'asc']],
                     limit: 1000, // Increased to load all inventory items
                     cacheDuration: 300000, // 5 minutes
-                    source: 'default' // Use cache first, then server
+                    source: forceRefresh ? 'server' : 'default' // Force server if refresh requested
                 });
-                console.log(`[App] Loaded ${this.inventory.length} inventory items using optimizer`);
+                console.log(`[App] Loaded ${this.inventory.length} inventory items using optimizer${forceRefresh ? ' (forced refresh)' : ''}`);
             } else if (this.performanceOptimizer) {
                 // Fallback to performance optimizer
-                this.inventory = await this.performanceOptimizer.loadDataWithCache('inventory', 'inventory_cache');
+                this.inventory = await this.performanceOptimizer.loadDataWithCache('inventory', 'inventory_cache', forceRefresh);
             } else {
                 // Fallback to direct loading
                 console.log('[App] Using direct Firebase query (no optimizer available)');
@@ -1423,6 +1409,7 @@ class WataganInventoryApp {
             'filterOrderSupplierDropdown',
             'modalOrderSupplier',
             'modalOrderSupplierId',      // New modal supplier dropdown
+            'modalProductSupplier',      // Add new product modal supplier dropdown
             'orderSupplierId',           // New orders section supplier dropdown
             'qrOrderSupplierSelect'      // Added for Order QR Code Generation
         ];
@@ -1716,6 +1703,20 @@ class WataganInventoryApp {
      */
     resetProductForm() {
         this.productManager.resetProductForm();
+    }
+
+    /**
+     * Delete product using product manager
+     */
+    async deleteProduct(productId) {
+        if (this.productManager && typeof this.productManager.deleteProduct === 'function') {
+            return await this.productManager.deleteProduct(productId);
+        } else {
+            console.error('ProductManager or deleteProduct method not available');
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast('Delete function not available', 'error');
+            }
+        }
     }
 
     /**
@@ -3879,10 +3880,16 @@ window.submitEditProductFromModal = async function() {
             location
         };
 
-        await window.db.collection('inventory').doc(id).update(productDataToUpdate);
-
-        if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
-            uiEnhancementManager.showToast(`Product "${name}" updated successfully!`, 'success');
+        // Use ProductManager.updateProduct to handle photo upload integration
+        if (window.app && window.app.productManager) {
+            await window.app.productManager.updateProduct(id, productDataToUpdate);
+        } else {
+            // Fallback to direct update if ProductManager is not available
+            await window.db.collection('inventory').doc(id).update(productDataToUpdate);
+            
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast(`Product "${name}" updated successfully!`, 'success');
+            }
         }
 
         // Close the modal
@@ -3897,9 +3904,10 @@ window.submitEditProductFromModal = async function() {
             document.getElementById('scanToEditProductIdInput').value = '';
         }
 
-        // Refresh inventory data and displays
+        // Refresh inventory data and displays - force fresh load to get updated photo
         if (typeof window.app !== 'undefined' && window.app.loadInventory) {
-            await window.app.loadInventory();
+            // Force fresh load from server to get updated photo URL
+            await window.app.loadInventory(true); // Force refresh
             await window.app.displayInventory();
             await window.updateInventoryDashboard();
             await window.app.updateLowStockAlerts();

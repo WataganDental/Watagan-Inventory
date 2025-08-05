@@ -187,11 +187,19 @@ export class ModalManager {
     /**
      * Open Add Product Modal
      */
-    openAddProductModal() {
+    async openAddProductModal() {
+        // Ensure data is loaded before opening modal
+        await this.ensureSuppliersLoaded();
+        await this.ensureLocationsLoaded();
+        
         this.openModal('addProductModal', {
             focusElement: 'modalProductName',
             onClose: () => this.resetAddProductForm()
         });
+        
+        // Populate dropdowns after modal is open
+        this.populateModalSupplierDropdown();
+        this.populateModalLocationDropdown();
     }
 
     /**
@@ -230,25 +238,33 @@ export class ModalManager {
             }
         });
 
+        // Reset photo preview and camera state
         const photoPreview = document.getElementById('modalProductPhotoPreview');
         if (photoPreview) {
-            photoPreview.style.display = 'none';
+            photoPreview.classList.add('hidden');
             photoPreview.src = '';
         }
 
-        // Reset any captured photo data
-        if (typeof window.productManager !== 'undefined') {
-            window.productManager.capturedPhoto = null;
+        // Reset camera controls to initial state
+        const captureBtn = document.getElementById('modalCapturePhotoBtn');
+        const takeBtn = document.getElementById('modalTakePhotoBtn');
+        const cancelBtn = document.getElementById('modalCancelPhotoBtn');
+        const video = document.getElementById('modalPhotoVideo');
+
+        if (captureBtn) captureBtn.classList.remove('hidden');
+        if (takeBtn) takeBtn.classList.add('hidden');
+        if (cancelBtn) cancelBtn.classList.add('hidden');
+        if (video) video.classList.add('hidden');
+
+        // Reset any captured photo data and stop any running streams
+        if (window.app && window.app.productManager) {
+            window.app.productManager.capturedPhoto = null;
+            window.app.productManager.cancelModalPhoto(); // This will clean up any active video streams
         }
+
+        console.log('[ModalManager] Add product form reset with camera cleanup');
     }
 
-    /**
-     * Open Create Order Modal
-     */
-    /**
-     * Open Create Order Modal
-     * @param {string|null} currentSupplierId - The supplier to select by default
-     */
     /**
      * Open Create Order Modal
      * Waits for suppliers and locations to be loaded before populating dropdowns
@@ -842,6 +858,56 @@ export class ModalManager {
 
         inputs.forEach(input => {
             input.disabled = isLoading;
+        });
+    }
+
+    /**
+     * Populate modal supplier dropdown for add product modal
+     */
+    populateModalSupplierDropdown() {
+        const dropdown = document.getElementById('modalProductSupplier');
+        if (!dropdown) {
+            console.warn('[ModalManager] modalProductSupplier dropdown not found');
+            return;
+        }
+
+        // Clear existing options
+        dropdown.innerHTML = '<option value="">Select Supplier</option>';
+
+        // Get suppliers from app
+        const suppliers = window.app?.suppliers || [];
+        console.log('[ModalManager] Populating supplier dropdown with', suppliers.length, 'suppliers');
+
+        suppliers.forEach(supplier => {
+            const option = document.createElement('option');
+            option.value = supplier.name || supplier.id;
+            option.textContent = supplier.name || supplier.id;
+            dropdown.appendChild(option);
+        });
+    }
+
+    /**
+     * Populate modal location dropdown for add product modal
+     */
+    populateModalLocationDropdown() {
+        const dropdown = document.getElementById('modalProductLocation');
+        if (!dropdown) {
+            console.warn('[ModalManager] modalProductLocation dropdown not found');
+            return;
+        }
+
+        // Clear existing options
+        dropdown.innerHTML = '<option value="">Select Location</option>';
+
+        // Get locations from app
+        const locations = window.app?.locations || [];
+        console.log('[ModalManager] Populating location dropdown with', locations.length, 'locations');
+
+        locations.forEach(location => {
+            const option = document.createElement('option');
+            option.value = location.name || location.id;
+            option.textContent = location.name || location.id;
+            dropdown.appendChild(option);
         });
     }
 }

@@ -26,17 +26,63 @@ export class ProductManager {
                 return;
             }
 
+            // Check if camera is supported
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.error('Camera not supported in this browser');
+                if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                    uiEnhancementManager.showToast('Camera not supported in this browser', 'error');
+                } else {
+                    alert('Camera not supported in this browser');
+                }
+                return;
+            }
+
             this.currentVideoElement = video;
             this.currentCanvasElement = canvas;
 
-            // Request camera access
-            this.videoStream = await navigator.mediaDevices.getUserMedia({
-                video: { 
-                    width: { ideal: 640 },
-                    height: { ideal: 480 },
-                    facingMode: 'environment' // Use back camera if available
+            // Request camera access with progressive fallback
+            try {
+                console.log('[ProductManager] Trying rear-facing camera...');
+                this.videoStream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'environment' // Use back camera if available
+                    }
+                });
+                console.log('[ProductManager] Rear-facing camera successful');
+            } catch (backCameraError) {
+                console.log('[ProductManager] Rear-facing camera failed, trying front-facing...', backCameraError.message);
+                try {
+                    this.videoStream = await navigator.mediaDevices.getUserMedia({
+                        video: { 
+                            width: { ideal: 640 },
+                            height: { ideal: 480 },
+                            facingMode: 'user' // Use front camera as fallback
+                        }
+                    });
+                    console.log('[ProductManager] Front-facing camera successful');
+                } catch (frontCameraError) {
+                    console.log('[ProductManager] Front-facing camera failed, trying any camera...', frontCameraError.message);
+                    try {
+                        this.videoStream = await navigator.mediaDevices.getUserMedia({
+                            video: { 
+                                width: { ideal: 640 },
+                                height: { ideal: 480 }
+                            }
+                        });
+                        console.log('[ProductManager] Any camera successful');
+                    } catch (anyCameraError) {
+                        console.error('[ProductManager] All camera attempts failed:', anyCameraError.message);
+                        if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                            uiEnhancementManager.showToast('No camera available: ' + anyCameraError.message, 'error');
+                        } else {
+                            alert('No camera available: ' + anyCameraError.message);
+                        }
+                        return;
+                    }
                 }
-            });
+            }
 
             video.srcObject = this.videoStream;
             video.classList.remove('hidden');
@@ -206,7 +252,7 @@ export class ProductManager {
             rowClass = 'bg-warning/20 hover:bg-warning/30';
         }
 
-        const photoUrl = item.photo || `https://picsum.photos/seed/${item.id}/40/40`;
+        const photoUrl = item.photoURL || item.photo || `https://picsum.photos/seed/${item.id}/40/40`;
         const placeholderSvg = `<svg class="w-full h-full text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`;
 
         const itemName = item.name || 'N/A';
@@ -398,7 +444,7 @@ export class ProductManager {
         }
 
         // Store the photo URL for potential reuse
-        this.capturedPhoto = productData.photo || null;
+        this.capturedPhoto = productData.photoURL || null;
     }
 
     /**
@@ -427,17 +473,54 @@ export class ProductManager {
         this.editingProductId = null;
         this.capturedPhoto = null;
 
-        // Reset form fields
+        // Reset regular form fields
         const form = document.getElementById('productForm');
         if (form) {
             form.reset();
         }
 
-        // Hide photo preview
+        // Reset modal form fields
+        const modalFields = [
+            'modalProductId',
+            'modalProductName',
+            'modalProductQuantity',
+            'modalProductCost',
+            'modalProductMinQuantity',
+            'modalProductReorderQuantity',
+            'modalProductQuantityOrdered',
+            'modalProductQuantityBackordered',
+            'modalProductSupplier',
+            'modalProductLocation'
+        ];
+        
+        modalFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                if (field.type === 'checkbox') {
+                    field.checked = false;
+                } else {
+                    field.value = '';
+                }
+            }
+        });
+
+        // Hide photo previews
         const photoPreview = document.getElementById('photoPreview');
         if (photoPreview) {
             photoPreview.style.display = 'none';
             photoPreview.src = '';
+        }
+        
+        const productPhotoPreview = document.getElementById('productPhotoPreview');
+        if (productPhotoPreview) {
+            productPhotoPreview.classList.add('hidden');
+            productPhotoPreview.src = '';
+        }
+        
+        const modalPhotoPreview = document.getElementById('modalProductPhotoPreview');
+        if (modalPhotoPreview) {
+            modalPhotoPreview.classList.add('hidden');
+            modalPhotoPreview.src = '';
         }
 
         // Reset form buttons
@@ -477,6 +560,12 @@ export class ProductManager {
 
             this.resetProductForm();
             
+            // Close modal if we're in modal mode
+            const modal = document.getElementById('addProductModal');
+            if (modal) {
+                modal.close();
+            }
+            
             // Refresh displays
             if (typeof window.loadInventory === 'function') {
                 await window.loadInventory();
@@ -500,18 +589,76 @@ export class ProductManager {
      * Get form data
      */
     getFormData() {
+        // Check if we're in modal mode or regular form mode
+        const isModal = document.getElementById('modalProductName') !== null;
+        const prefix = isModal ? 'modal' : '';
+        
+        const getName = () => {
+            const modalName = document.getElementById('modalProductName')?.value.trim();
+            const regularName = document.getElementById('productName')?.value.trim();
+            return modalName || regularName || '';
+        };
+        
+        const getQuantity = () => {
+            const modalQty = document.getElementById('modalProductQuantity')?.value;
+            const regularQty = document.getElementById('productQuantity')?.value;
+            return parseInt(modalQty || regularQty) || 0;
+        };
+        
+        const getMinQuantity = () => {
+            const modalMin = document.getElementById('modalProductMinQuantity')?.value;
+            const regularMin = document.getElementById('productMinQuantity')?.value;
+            return parseInt(modalMin || regularMin) || 0;
+        };
+        
+        const getReorderQuantity = () => {
+            const modalReorder = document.getElementById('modalProductReorderQuantity')?.value;
+            const regularReorder = document.getElementById('productReorderQuantity')?.value;
+            return parseInt(modalReorder || regularReorder) || 0;
+        };
+        
+        const getCost = () => {
+            const modalCost = document.getElementById('modalProductCost')?.value;
+            const regularCost = document.getElementById('productCost')?.value;
+            return parseFloat(modalCost || regularCost) || 0;
+        };
+        
+        const getSupplier = () => {
+            const modalSupplier = document.getElementById('modalProductSupplier')?.value.trim();
+            const regularSupplier = document.getElementById('productSupplier')?.value.trim();
+            return modalSupplier || regularSupplier || '';
+        };
+        
+        const getLocation = () => {
+            const modalLocation = document.getElementById('modalProductLocation')?.value.trim();
+            const regularLocation = document.getElementById('productLocation')?.value.trim();
+            return modalLocation || regularLocation || '';
+        };
+        
+        const getQuantityOrdered = () => {
+            const modalOrdered = document.getElementById('modalProductQuantityOrdered')?.value;
+            const regularOrdered = document.getElementById('productQuantityOrdered')?.value;
+            return parseInt(modalOrdered || regularOrdered) || 0;
+        };
+        
+        const getQuantityBackordered = () => {
+            const modalBackordered = document.getElementById('modalProductQuantityBackordered')?.value;
+            const regularBackordered = document.getElementById('productQuantityBackordered')?.value;
+            return parseInt(modalBackordered || regularBackordered) || 0;
+        };
+
         return {
-            name: document.getElementById('productName')?.value.trim() || '',
-            quantity: parseInt(document.getElementById('productQuantity')?.value) || 0,
-            minQuantity: parseInt(document.getElementById('productMinQuantity')?.value) || 0,
-            reorderQuantity: parseInt(document.getElementById('productReorderQuantity')?.value) || 0,
-            cost: parseFloat(document.getElementById('productCost')?.value) || 0,
-            supplier: document.getElementById('productSupplier')?.value.trim() || '',
-            location: document.getElementById('productLocation')?.value.trim() || '',
-            photo: this.capturedPhoto || '',
+            name: getName(),
+            quantity: getQuantity(),
+            minQuantity: getMinQuantity(),
+            reorderQuantity: getReorderQuantity(),
+            cost: getCost(),
+            supplier: getSupplier(),
+            location: getLocation(),
+            photoURL: this.capturedPhoto || '',
             lastUpdated: new Date(),
-            quantityOrdered: 0,
-            productQuantityBackordered: 0
+            quantityOrdered: getQuantityOrdered(),
+            productQuantityBackordered: getQuantityBackordered()
         };
     }
 
@@ -547,34 +694,102 @@ export class ProductManager {
      * Add new product
      */
     async addProduct(productData) {
-        const docRef = await window.db.collection('inventory').add(productData);
-        
-        if (typeof window.logActivity === 'function') {
-            await window.logActivity('product_added', `Product "${productData.name}" added`, docRef.id, productData.name);
-        }
+        try {
+            // Handle photo upload if there's a photo captured
+            if (this.capturedPhoto) {
+                console.log('[ProductManager] Uploading photo for new product...');
+                
+                // Create a temporary ID for the photo filename
+                const tempId = Date.now().toString();
+                
+                // Convert data URL to blob if needed
+                let photoBlob;
+                if (typeof this.capturedPhoto === 'string' && this.capturedPhoto.startsWith('data:')) {
+                    // Convert data URL to blob
+                    const response = await fetch(this.capturedPhoto);
+                    photoBlob = await response.blob();
+                } else {
+                    photoBlob = this.capturedPhoto;
+                }
+                
+                const photoURL = await this.uploadPhoto(tempId, photoBlob);
+                if (photoURL) {
+                    productData.photoURL = photoURL;
+                    console.log('[ProductManager] Photo uploaded for new product:', photoURL);
+                } else {
+                    console.warn('[ProductManager] Photo upload failed for new product');
+                    // Continue without photo
+                    productData.photoURL = '';
+                }
+            }
+            
+            const docRef = await window.db.collection('inventory').add(productData);
+            
+            if (typeof window.logActivity === 'function') {
+                await window.logActivity('product_added', `Product "${productData.name}" added`, docRef.id, productData.name);
+            }
 
-        if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
-            uiEnhancementManager.showToast(`Product "${productData.name}" added successfully`, 'success');
-        }
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast(`Product "${productData.name}" added successfully`, 'success');
+            }
 
-        console.log('Product added with ID:', docRef.id);
+            console.log('Product added with ID:', docRef.id);
+        } catch (error) {
+            console.error('Error adding product:', error);
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast('Error adding product: ' + error.message, 'error');
+            }
+            throw error;
+        }
     }
 
     /**
      * Update existing product
      */
     async updateProduct(productId, productData) {
-        await window.db.collection('inventory').doc(productId).update(productData);
-        
-        if (typeof window.logActivity === 'function') {
-            await window.logActivity('product_updated', `Product "${productData.name}" updated`, productId, productData.name);
-        }
+        try {
+            let photoUpdated = false;
+            
+            // Handle photo upload if there's a new photo captured
+            if (this.editModalPhotoBlob) {
+                console.log('[ProductManager] Uploading new photo for product update...');
+                const photoURL = await this.uploadPhoto(productId, this.editModalPhotoBlob);
+                if (photoURL) {
+                    productData.photoURL = photoURL;
+                    photoUpdated = true;
+                    console.log('[ProductManager] Photo uploaded for product update:', photoURL);
+                } else {
+                    console.warn('[ProductManager] Photo upload failed during product update');
+                }
+                // Clear the photo blob after use
+                this.editModalPhotoBlob = null;
+            }
 
-        if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
-            uiEnhancementManager.showToast(`Product "${productData.name}" updated successfully`, 'success');
-        }
+            await window.db.collection('inventory').doc(productId).update(productData);
+            
+            if (typeof window.logActivity === 'function') {
+                const updateDetails = photoUpdated ? 
+                    `Product "${productData.name}" updated (including new photo)` : 
+                    `Product "${productData.name}" updated`;
+                await window.logActivity('product_updated', updateDetails, productId, productData.name);
+            }
 
-        console.log('Product updated:', productId);
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                const successMessage = photoUpdated ? 
+                    `Product "${productData.name}" updated successfully with new photo` : 
+                    `Product "${productData.name}" updated successfully`;
+                uiEnhancementManager.showToast(successMessage, 'success');
+            }
+
+            console.log('Product updated:', productId);
+
+        } catch (error) {
+            console.error('Error updating product:', error);
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast('Error updating product: ' + error.message, 'error');
+            }
+            throw error;
+        }
     }
 
     /**
@@ -633,56 +848,129 @@ export class ProductManager {
     }
 
     /**
-     * Start photo capture
+     * Start photo capture for main form
      */
-    startPhotoCapture() {
-        const video = document.getElementById('cameraVideo');
-        const canvas = document.getElementById('cameraCanvas');
-        const photoControls = document.getElementById('photoControls');
+    async startPhotoCapture() {
+        const video = document.getElementById('photoVideo');
+        const canvas = document.getElementById('photoCanvas');
         const captureBtn = document.getElementById('capturePhotoBtn');
+        const takeBtn = document.getElementById('takePhotoBtn');
+        const cancelBtn = document.getElementById('cancelPhotoBtn');
 
-        if (!video || !canvas || !photoControls || !captureBtn) {
-            console.error('Camera elements not found');
+        console.log('[ProductManager] startPhotoCapture: Looking for elements:', {
+            video: !!video,
+            canvas: !!canvas,
+            captureBtn: !!captureBtn,
+            takeBtn: !!takeBtn,
+            cancelBtn: !!cancelBtn
+        });
+
+        if (!video || !canvas || !captureBtn || !takeBtn || !cancelBtn) {
+            console.error('[ProductManager] startPhotoCapture: Camera elements not found');
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast('Camera elements not found', 'error');
+            }
             return;
         }
 
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-            .catch(() => {
-                // Fallback to front camera if back camera is not available
-                return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-            })
-            .catch(() => {
-                // Final fallback to any available camera
-                return navigator.mediaDevices.getUserMedia({ video: true });
-            })
-            .then(stream => {
-                video.srcObject = stream;
-                video.style.display = 'block';
-                photoControls.style.display = 'block';
-                captureBtn.style.display = 'none';
-                
-                if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
-                    uiEnhancementManager.showToast('Camera activated. Click "Take Photo" when ready.', 'info');
+        // Check if camera is supported
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            console.error('[ProductManager] startPhotoCapture: Camera not supported in this browser');
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast('Camera not supported in this browser', 'error');
+            } else {
+                alert('Camera not supported in this browser');
+            }
+            return;
+        }
+
+        // Start camera with progressive fallback
+        async function startCamera() {
+            try {
+                console.log('[ProductManager] startPhotoCapture: Trying rear-facing camera...');
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                console.log('[ProductManager] startPhotoCapture: Rear-facing camera successful');
+                return stream;
+            } catch (backCameraError) {
+                console.log('[ProductManager] startPhotoCapture: Rear-facing camera failed, trying front-facing...', backCameraError.message);
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                    console.log('[ProductManager] startPhotoCapture: Front-facing camera successful');
+                    return stream;
+                } catch (frontCameraError) {
+                    console.log('[ProductManager] startPhotoCapture: Front-facing camera failed, trying any camera...', frontCameraError.message);
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                        console.log('[ProductManager] startPhotoCapture: Any camera successful');
+                        return stream;
+                    } catch (anyCameraError) {
+                        console.error('[ProductManager] startPhotoCapture: All camera attempts failed:', anyCameraError.message);
+                        throw new Error('No camera available: ' + anyCameraError.message);
+                    }
                 }
-            })
-            .catch(error => {
-                console.error('Error accessing camera:', error);
-                if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
-                    uiEnhancementManager.showToast('Error accessing camera: ' + error.message, 'error');
-                }
+            }
+        }
+
+        try {
+            const stream = await startCamera();
+            video.srcObject = stream;
+            video.classList.remove('hidden');
+            
+            // Debug: Check video element visibility
+            const computedStyle = window.getComputedStyle(video);
+            console.log('[ProductManager] startPhotoCapture: Video element visibility debug:', {
+                hasHiddenClass: video.classList.contains('hidden'),
+                displayStyle: computedStyle.display,
+                visibilityStyle: computedStyle.visibility,
+                opacityStyle: computedStyle.opacity,
+                offsetHeight: video.offsetHeight,
+                offsetWidth: video.offsetWidth
             });
+            
+            // Ensure video plays and is visible
+            video.play().catch(playError => {
+                console.warn('[ProductManager] startPhotoCapture: Video play failed:', playError);
+                // Continue anyway, some browsers don't require explicit play
+            });
+            
+            captureBtn.classList.add('hidden');
+            takeBtn.classList.remove('hidden');
+            cancelBtn.classList.remove('hidden');
+            
+            console.log('[ProductManager] startPhotoCapture: Camera started successfully, video should be visible');
+            
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast('Camera activated. Click "Take Photo" when ready.', 'info');
+            }
+        } catch (error) {
+            console.error('[ProductManager] startPhotoCapture: Error accessing camera:', error);
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast('Error accessing camera: ' + error.message, 'error');
+            } else {
+                alert('Error accessing camera: ' + error.message);
+            }
+        }
     }
 
     /**
-     * Take photo
+     * Take photo for main form
      */
     takePhoto() {
-        const video = document.getElementById('cameraVideo');
-        const canvas = document.getElementById('cameraCanvas');
-        const preview = document.getElementById('photoPreview');
+        const video = document.getElementById('photoVideo');
+        const canvas = document.getElementById('photoCanvas');
+        const preview = document.getElementById('productPhotoPreview');
+
+        console.log('[ProductManager] takePhoto: Looking for elements:', {
+            video: !!video,
+            canvas: !!canvas,
+            preview: !!preview
+        });
 
         if (!video || !canvas || !preview) {
-            console.error('Camera elements not found');
+            console.error('[ProductManager] takePhoto: Camera elements not found');
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast('Camera elements not found', 'error');
+            }
             return;
         }
 
@@ -693,48 +981,77 @@ export class ProductManager {
 
         this.capturedPhoto = canvas.toDataURL('image/jpeg');
         preview.src = this.capturedPhoto;
-        preview.style.display = 'block';
+        preview.classList.remove('hidden');
 
         this.cancelPhoto(); // Hide camera controls
 
+        console.log('[ProductManager] takePhoto: Photo captured successfully');
+        
         if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
             uiEnhancementManager.showToast('Photo captured successfully', 'success');
         }
     }
 
     /**
-     * Cancel photo capture
+     * Cancel photo capture for main form
      */
     cancelPhoto() {
-        const video = document.getElementById('cameraVideo');
-        const photoControls = document.getElementById('photoControls');
+        const video = document.getElementById('photoVideo');
         const captureBtn = document.getElementById('capturePhotoBtn');
+        const takeBtn = document.getElementById('takePhotoBtn');
+        const cancelBtn = document.getElementById('cancelPhotoBtn');
 
-        this.hideCameraControls();
+        console.log('[ProductManager] cancelPhoto: Stopping camera');
 
+        // Stop camera stream
         if (video && video.srcObject) {
             const tracks = video.srcObject.getTracks();
             tracks.forEach(track => track.stop());
             video.srcObject = null;
         }
 
-        if (captureBtn) {
-            captureBtn.style.display = 'inline-block';
-        }
+        // Hide video and controls
+        if (video) video.classList.add('hidden');
+        if (captureBtn) captureBtn.classList.remove('hidden');
+        if (takeBtn) takeBtn.classList.add('hidden');
+        if (cancelBtn) cancelBtn.classList.add('hidden');
+
+        console.log('[ProductManager] cancelPhoto: Camera controls hidden');
     }
 
     /**
      * Hide camera controls
      */
     hideCameraControls() {
-        const video = document.getElementById('cameraVideo');
-        const photoControls = document.getElementById('photoControls');
+        // Hide main form camera elements
+        const video = document.getElementById('photoVideo');
+        const canvas = document.getElementById('photoCanvas');
+        const captureBtn = document.getElementById('capturePhotoBtn');
+        const takeBtn = document.getElementById('takePhotoBtn');
+        const cancelBtn = document.getElementById('cancelPhotoBtn');
 
         if (video) {
-            video.style.display = 'none';
+            video.classList.add('hidden');
+            if (video.srcObject) {
+                const tracks = video.srcObject.getTracks();
+                tracks.forEach(track => track.stop());
+                video.srcObject = null;
+            }
         }
-        if (photoControls) {
-            photoControls.style.display = 'none';
+        if (canvas) canvas.classList.add('hidden');
+        if (captureBtn) captureBtn.classList.remove('hidden');
+        if (takeBtn) takeBtn.classList.add('hidden');
+        if (cancelBtn) cancelBtn.classList.add('hidden');
+
+        // Also hide legacy camera controls if they exist
+        const legacyVideo = document.getElementById('cameraVideo');
+        const legacyControls = document.getElementById('photoControls');
+
+        if (legacyVideo) {
+            legacyVideo.style.display = 'none';
+        }
+        if (legacyControls) {
+            legacyControls.style.display = 'none';
         }
     }
 
@@ -801,44 +1118,94 @@ export class ProductManager {
     /**
      * Start photo capture for modal
      */
-    startModalPhotoCapture() {
+    async startModalPhotoCapture() {
         const video = document.getElementById('modalPhotoVideo');
         const canvas = document.getElementById('modalPhotoCanvas');
         const captureBtn = document.getElementById('modalCapturePhotoBtn');
         const takeBtn = document.getElementById('modalTakePhotoBtn');
         const cancelBtn = document.getElementById('modalCancelPhotoBtn');
 
+        console.log('[ProductManager] startModalPhotoCapture: Elements found:', {
+            video: !!video,
+            canvas: !!canvas,
+            captureBtn: !!captureBtn,
+            takeBtn: !!takeBtn,
+            cancelBtn: !!cancelBtn
+        });
+
         if (!video || !canvas || !captureBtn || !takeBtn || !cancelBtn) {
             console.error('Modal camera elements not found');
             return;
         }
 
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-            .catch(() => {
-                // Fallback to front camera if back camera is not available
-                return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-            })
-            .catch(() => {
-                // Final fallback to any available camera
-                return navigator.mediaDevices.getUserMedia({ video: true });
-            })
-            .then(stream => {
-                video.srcObject = stream;
-                video.classList.remove('hidden');
-                captureBtn.classList.add('hidden');
-                takeBtn.classList.remove('hidden');
-                cancelBtn.classList.remove('hidden');
-                
-                if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
-                    uiEnhancementManager.showToast('Camera activated. Click "Take Photo" when ready.', 'info');
+        // Check if camera is supported
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            console.error('Camera not supported in this browser');
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast('Camera not supported in this browser', 'error');
+            } else {
+                alert('Camera not supported in this browser');
+            }
+            return;
+        }
+
+        // Start camera with progressive fallback
+        async function startCamera() {
+            try {
+                console.log('[ProductManager] startModalPhotoCapture: Trying rear-facing camera...');
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                console.log('[ProductManager] startModalPhotoCapture: Rear-facing camera successful');
+                return stream;
+            } catch (backCameraError) {
+                console.log('[ProductManager] startModalPhotoCapture: Rear-facing camera failed, trying front-facing...', backCameraError.message);
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                    console.log('[ProductManager] startModalPhotoCapture: Front-facing camera successful');
+                    return stream;
+                } catch (frontCameraError) {
+                    console.log('[ProductManager] startModalPhotoCapture: Front-facing camera failed, trying any camera...', frontCameraError.message);
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                        console.log('[ProductManager] startModalPhotoCapture: Any camera successful');
+                        return stream;
+                    } catch (anyCameraError) {
+                        console.error('[ProductManager] startModalPhotoCapture: All camera attempts failed:', anyCameraError.message);
+                        throw new Error('No camera available: ' + anyCameraError.message);
+                    }
                 }
-            })
-            .catch(error => {
-                console.error('Error accessing camera:', error);
-                if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
-                    uiEnhancementManager.showToast('Error accessing camera: ' + error.message, 'error');
-                }
-            });
+            }
+        }
+
+        try {
+            const stream = await startCamera();
+            video.srcObject = stream;
+            video.classList.remove('hidden');
+            
+            // Ensure video starts playing
+            try {
+                await video.play();
+                console.log('[ProductManager] Modal video playing successfully');
+            } catch (playError) {
+                console.warn('[ProductManager] Video autoplay failed (browser policy), user interaction needed:', playError.message);
+            }
+            
+            captureBtn.classList.add('hidden');
+            takeBtn.classList.remove('hidden');
+            cancelBtn.classList.remove('hidden');
+            
+            console.log('[ProductManager] Modal camera UI updated - video should be visible now');
+            
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast('Camera activated. Click "Take Photo" when ready.', 'info');
+            }
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast('Error accessing camera: ' + error.message, 'error');
+            } else {
+                alert('Error accessing camera: ' + error.message);
+            }
+        }
     }
 
     /**
@@ -854,6 +1221,14 @@ export class ProductManager {
             return;
         }
 
+        if (!video.srcObject || video.videoWidth === 0) {
+            console.error('Video stream not ready');
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast('Camera not ready. Please try again.', 'warning');
+            }
+            return;
+        }
+
         const context = canvas.getContext('2d');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -863,11 +1238,14 @@ export class ProductManager {
         preview.src = this.capturedPhoto;
         preview.classList.remove('hidden');
 
-        this.cancelModalPhoto(); // Hide camera controls
+        // Stop the camera stream and hide video
+        this.cancelModalPhoto();
 
         if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
-            uiEnhancementManager.showToast('Photo captured successfully', 'success');
+            uiEnhancementManager.showToast('Photo captured successfully! ✅', 'success');
         }
+
+        console.log('[ProductManager] Photo captured and camera stopped');
     }
 
     /**
@@ -882,8 +1260,18 @@ export class ProductManager {
         // Stop camera stream
         if (video && video.srcObject) {
             const tracks = video.srcObject.getTracks();
-            tracks.forEach(track => track.stop());
+            tracks.forEach(track => {
+                track.stop();
+                console.log('[ProductManager] Stopped video track');
+            });
             video.srcObject = null;
+        }
+
+        // Clear stored video stream reference
+        if (this.videoStream) {
+            const tracks = this.videoStream.getTracks();
+            tracks.forEach(track => track.stop());
+            this.videoStream = null;
         }
 
         // Hide camera and show capture button
@@ -891,6 +1279,189 @@ export class ProductManager {
         if (captureBtn) captureBtn.classList.remove('hidden');
         if (takeBtn) takeBtn.classList.add('hidden');
         if (cancelBtn) cancelBtn.classList.add('hidden');
+
+        console.log('[ProductManager] Modal camera canceled and cleaned up');
+    }
+
+    /**
+     * Start photo capture for Edit Product modal (scanToEdit)
+     */
+    async startScanToEditModalPhotoCapture() {
+        const video = document.getElementById('scanToEdit_photoVideo');
+        const canvas = document.getElementById('scanToEdit_photoCanvas');
+        const captureBtn = document.getElementById('scanToEdit_capturePhotoBtn');
+        const takeBtn = document.getElementById('scanToEdit_takePhotoBtn');
+        const cancelBtn = document.getElementById('scanToEdit_cancelPhotoBtn');
+
+        console.log('[ProductManager] startScanToEditModalPhotoCapture: Elements found:', {
+            video: !!video,
+            canvas: !!canvas,
+            captureBtn: !!captureBtn,
+            takeBtn: !!takeBtn,
+            cancelBtn: !!cancelBtn
+        });
+
+        if (!video || !canvas || !captureBtn || !takeBtn || !cancelBtn) {
+            console.error('Edit modal camera elements not found');
+            return;
+        }
+
+        // Check if camera is supported
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            console.error('Camera not supported in this browser');
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast('Camera not supported in this browser', 'error');
+            } else {
+                alert('Camera not supported in this browser');
+            }
+            return;
+        }
+
+        // Start camera with progressive fallback
+        async function startCamera() {
+            try {
+                console.log('[ProductManager] startScanToEditModalPhotoCapture: Trying rear-facing camera...');
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                console.log('[ProductManager] startScanToEditModalPhotoCapture: Rear-facing camera successful');
+                return stream;
+            } catch (backCameraError) {
+                console.log('[ProductManager] startScanToEditModalPhotoCapture: Rear-facing camera failed, trying front-facing...', backCameraError.message);
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                    console.log('[ProductManager] startScanToEditModalPhotoCapture: Front-facing camera successful');
+                    return stream;
+                } catch (frontCameraError) {
+                    console.log('[ProductManager] startScanToEditModalPhotoCapture: Front-facing camera failed, trying any camera...', frontCameraError.message);
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                        console.log('[ProductManager] startScanToEditModalPhotoCapture: Any camera successful');
+                        return stream;
+                    } catch (anyCameraError) {
+                        console.error('[ProductManager] startScanToEditModalPhotoCapture: All camera attempts failed:', anyCameraError.message);
+                        throw new Error('No camera available: ' + anyCameraError.message);
+                    }
+                }
+            }
+        }
+
+        try {
+            const stream = await startCamera();
+            video.srcObject = stream;
+            video.classList.remove('hidden');
+            
+            // Ensure video starts playing
+            try {
+                await video.play();
+                console.log('[ProductManager] Edit modal video playing successfully');
+            } catch (playError) {
+                console.warn('[ProductManager] Edit modal video autoplay failed (browser policy), user interaction needed:', playError.message);
+            }
+            
+            captureBtn.classList.add('hidden');
+            takeBtn.classList.remove('hidden');
+            cancelBtn.classList.remove('hidden');
+            
+            console.log('[ProductManager] Edit modal camera UI updated - video should be visible now');
+            
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast('Camera activated. Click "Take Photo" when ready.', 'info');
+            }
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast('Error accessing camera: ' + error.message, 'error');
+            } else {
+                alert('Error accessing camera: ' + error.message);
+            }
+        }
+    }
+
+    /**
+     * Take photo in Edit Product modal (scanToEdit)
+     */
+    takeScanToEditModalPhoto() {
+        const video = document.getElementById('scanToEdit_photoVideo');
+        const canvas = document.getElementById('scanToEdit_photoCanvas');
+        const preview = document.getElementById('scanToEdit_productPhotoPreview');
+        const captureBtn = document.getElementById('scanToEdit_capturePhotoBtn');
+        const takeBtn = document.getElementById('scanToEdit_takePhotoBtn');
+        const cancelBtn = document.getElementById('scanToEdit_cancelPhotoBtn');
+
+        if (!video || !canvas || !preview) {
+            console.error('Edit modal photo elements not found');
+            return;
+        }
+
+        try {
+            // Set canvas dimensions to match video
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            // Draw video frame to canvas
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Convert to blob and create URL
+            canvas.toBlob((blob) => {
+                if (blob) {
+                    const url = URL.createObjectURL(blob);
+                    preview.src = url;
+                    preview.classList.remove('hidden');
+                    
+                    // Store the blob for later use in form submission
+                    preview.dataset.photoBlob = URL.createObjectURL(blob);
+                    this.editModalPhotoBlob = blob;
+
+                    console.log('[ProductManager] Edit modal photo captured and preview shown');
+                    
+                    if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                        uiEnhancementManager.showToast('Photo captured successfully!', 'success');
+                    }
+                } else {
+                    console.error('[ProductManager] Failed to create photo blob');
+                    if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                        uiEnhancementManager.showToast('Failed to capture photo', 'error');
+                    }
+                }
+            }, 'image/jpeg', 0.9);
+
+            // Stop camera and reset UI
+            this.cancelScanToEditModalPhoto();
+
+        } catch (error) {
+            console.error('[ProductManager] Error capturing edit modal photo:', error);
+            if (typeof uiEnhancementManager !== 'undefined' && uiEnhancementManager.showToast) {
+                uiEnhancementManager.showToast('Error capturing photo: ' + error.message, 'error');
+            }
+        }
+    }
+
+    /**
+     * Cancel photo capture in Edit Product modal (scanToEdit)
+     */
+    cancelScanToEditModalPhoto() {
+        const video = document.getElementById('scanToEdit_photoVideo');
+        const captureBtn = document.getElementById('scanToEdit_capturePhotoBtn');
+        const takeBtn = document.getElementById('scanToEdit_takePhotoBtn');
+        const cancelBtn = document.getElementById('scanToEdit_cancelPhotoBtn');
+
+        // Stop video stream
+        if (video && video.srcObject) {
+            const tracks = video.srcObject.getTracks();
+            tracks.forEach(track => {
+                track.stop();
+                console.log('[ProductManager] Stopped edit modal video track');
+            });
+            video.srcObject = null;
+        }
+
+        // Hide video and reset UI
+        if (video) video.classList.add('hidden');
+        if (captureBtn) captureBtn.classList.remove('hidden');
+        if (takeBtn) takeBtn.classList.add('hidden');
+        if (cancelBtn) cancelBtn.classList.add('hidden');
+
+        console.log('[ProductManager] Edit modal camera canceled and cleaned up');
     }
 }
 
